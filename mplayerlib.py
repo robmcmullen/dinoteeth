@@ -1,10 +1,11 @@
 """MPlayer slave mode interface by Fabien Devaux 
 
 Found at http://code.activestate.com/recipes/542195/
+
+Modifications by Rob McMullen
 """
-import os
-import select
-import subprocess
+import os, os.path, select, time, subprocess
+
 
 class MPlayer(object):
     """ A class to access a slave mplayer process
@@ -30,16 +31,72 @@ class MPlayer(object):
 
     exe_name = 'mplayer' if os.sep == '/' else 'mplayer.exe'
 
-    def __init__(self):
-        self._mplayer = subprocess.Popen(
-                [self.exe_name, '-slave', '-quiet', '-idle'],
-                stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=1)
+    def __init__(self, filename, *opts):
+        self.filename = filename
+        args = [self.exe_name]
+        if opts:
+            args.extend(opts)
+        if "-slave" not in args:
+            args.append("-slave")
+#            args.append("-idle")
+            args.append("-quiet") # Need this to force ANS output
+        args.append(filename)
+        print args
+        self._mplayer = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=1)
         self._readlines()
+
+    def _is_running(self):
+        return (self._mplayer.poll() is None)
+    
+    def _get_property(self, prop_name):
+        responses = self.command("pausing_keep_force get_property", prop_name)
+        looking_for = "ANS_%s" % prop_name
+        prop_val = None
+        for line in responses:
+            line = line.strip()
+            print(line)
+            if line.startswith(looking_for):
+                dum, prop_val = line.split("=")
+                print(prop_val)
+        return prop_val
+    
+    def _get_int_property(self, prop_name):
+        prop_val = self._get_property(prop_name)
+        return int(prop_val)
+    
+    def _get_float_property(self, prop_name):
+        prop_val = self._get_property(prop_name)
+        return float(prop_val)
+    
+    def _get_current_pos(self):
+        """Return the current position either in time or byte position
+        depending on the type of media.  Byte position is only used for
+        .vob rips
+        
+        Re-raises any exceptions if mplayer has already exited by the time this
+        command is executed
+        """
+        last_pos = -1
+        if self.filename.endswith(".vob"):
+            try:
+                last_pos = self._get_int_property("stream_pos")
+            except:
+                print("Failed checking stream_pos")
+                raise
+        else:
+            try:
+                last_pos = self._get_float_property("time_pos")
+            except:
+                print("Failed checking time_pos")
+                raise
+        return last_pos
 
     def _readlines(self):
         ret = []
         while any(select.select([self._mplayer.stdout.fileno()], [], [], 0.6)):
             ret.append( self._mplayer.stdout.readline() )
+            if not self._is_running():
+                break
         return ret
 
     def command(self, name, *args):
@@ -50,7 +107,10 @@ class MPlayer(object):
                 ' ' if args else '',
                 ' '.join(repr(a) for a in args)
                 )
-        self._mplayer.stdin.write(cmd)
+        try:
+            self._mplayer.stdin.write(cmd)
+        except IOError:
+            pass
         if name == 'quit':
             return
         return self._readlines()
@@ -103,12 +163,20 @@ if __name__ == '__main__':
     import sys
     MPlayer.populate()
     try:
-        mp = MPlayer()
-        import readline
-        readline.parse_and_bind('tab: complete')
-        import rlcompleter
-        mp.loadfile(sys.argv[1])
-        raw_input('Run this with python -i to get interactive shell.'
-                '\nPress any key to quit.')
+        mp = MPlayer(sys.argv[1])
+        print mp._get_stats()
+        last_stream_pos = 0
+        while mp._is_running():
+            responses = mp.command("get_property", "stream_pos")
+            for line in responses:
+                line = line.strip()
+                print(line)
+                if line.startswith("ANS_stream_pos"):
+                    dum, last_stream_pos = line.split("=")
+                    last_stream_pos = int(last_stream_pos)
+                    print(last_stream_pos)
+            time.sleep(1)
+    except:
+        raise
     finally:
         mp.quit()
