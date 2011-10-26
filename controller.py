@@ -22,15 +22,20 @@ class Menu(object):
         return 50
 
     def process_motion(self, motion, layout):
-        print "here"
-        if motion == pyglet.window.key.MOTION_UP:
+        k = pyglet.window.key
+        if motion == k.MOTION_UP:
             self.cursor -= 1
-        elif motion == pyglet.window.key.MOTION_PREVIOUS_PAGE:
+        elif motion == k.MOTION_PREVIOUS_PAGE:
             self.cursor -= layout.menu_renderer.get_page_scroll_unit()
-        elif motion == pyglet.window.key.MOTION_DOWN:
+        elif motion == k.MOTION_DOWN:
             self.cursor += 1
-        elif motion == pyglet.window.key.MOTION_NEXT_PAGE:
+        elif motion == k.MOTION_NEXT_PAGE:
             self.cursor += layout.menu_renderer.get_page_scroll_unit()
+        elif motion == k.MOTION_BEGINNING_OF_LINE or motion == k.MOTION_BEGINNING_OF_FILE:
+            self.cursor = 0
+        elif motion == k.MOTION_END_OF_LINE or motion == k.MOTION_END_OF_FILE:
+            self.cursor = self.num_labels() - 1
+        
         if self.cursor < 0:
             self.cursor = 0
         elif self.cursor >= self.num_labels():
