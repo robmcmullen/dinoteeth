@@ -1,16 +1,47 @@
 import os, sys, glob
 import pyglet
 
+from controller import *
+
+
 class AbstractLayout(object):
     def __init__(self, window, config):
         self.window = window
         self.config = config
         self.compute_params()
+        self.root = None
+        self.hierarchy = []
+        self.controller = None
     
     def compute_params(self):
         self.width, self.height = self.window.get_size()
         print self.width
         print self.height
+    
+    def set_root(self, root):
+        self.root = root
+        self.hierarchy = [root]
+    
+    def get_menu(self):
+        return self.hierarchy[-1]
+    
+    def select_child_menu(self):
+        menu = self.get_menu()
+        selected = menu.get_selected_item()
+        if selected.has_items():
+            self.hierarchy.append(selected)
+            return True
+        return False
+    
+    def select_parent_menu(self):
+        menu = self.hierarchy.pop()
+        if self.hierarchy:
+            return True
+        self.hierarchy.append(menu)
+        return False
+            
+    def get_controller(self):
+        return self.controller
     
     def draw(self, menu):
         pass
@@ -26,6 +57,7 @@ class FontSet(object):
 class MenuDetail2ColumnLayout(AbstractLayout):
     def __init__(self, window, config):
         AbstractLayout.__init__(self, window, config)
+        self.controller = VerticalMenuController(self)
         self.fonts = FontSet(config)
         self.compute_layout()
         self.title_renderer = config.get_title_renderer(window, self.title_box, self.fonts)
@@ -41,8 +73,9 @@ class MenuDetail2ColumnLayout(AbstractLayout):
         self.menu_box = (0, 0, self.menu_width, self.height - self.title_height)
         self.detail_box = (self.menu_width, 0, self.width - self.menu_width, self.height - self.title_height)
     
-    def draw(self, menu):
-        self.title_renderer.draw(menu)
+    def draw(self):
+        self.title_renderer.draw(self.hierarchy)
+        menu = self.get_menu()
         self.menu_renderer.draw(menu)
         self.detail_renderer.draw(menu)
 
@@ -76,7 +109,8 @@ class VerticalMenuRenderer(MenuRenderer):
     
     def draw(self, menu):
         color = (0, 255, 0, 255)
-        text = menu.get_label(menu.cursor)
+        item = menu.get_selected_item()
+        text = item.get_title()
         # Render center item in larger font
         label = pyglet.text.Label(text,
                                   font_name=self.fonts.name,
@@ -89,7 +123,8 @@ class VerticalMenuRenderer(MenuRenderer):
         i = menu.cursor - 1
         limit = max(0, menu.cursor - self.items_in_half)
         while i >= limit:
-            text = menu.get_label(i)
+            item = menu.get_item(i)
+            text = item.get_title()
             label = pyglet.text.Label(text,
                               font_name=self.fonts.name,
                               font_size=self.fonts.size,
@@ -101,9 +136,10 @@ class VerticalMenuRenderer(MenuRenderer):
             
         y = self.center - self.fonts.selected_size
         i = menu.cursor + 1
-        limit = min(menu.num_labels() - 1, menu.cursor + self.items_in_half)
+        limit = min(menu.num_items() - 1, menu.cursor + self.items_in_half)
         while i <= limit:
-            text = menu.get_label(i)
+            item = menu.get_item(i)
+            text = item.get_title()
             label = pyglet.text.Label(text,
                               font_name=self.fonts.name,
                               font_size=self.fonts.size,
@@ -115,9 +151,12 @@ class VerticalMenuRenderer(MenuRenderer):
 
 
 class TitleRenderer(Renderer):
-    def draw(self, menu):
-        title = "Main Window Title"
-        label = pyglet.text.Label(title,
+    def draw(self, hierarchy):
+        title = []
+        for menu in hierarchy:
+            title.append(menu.get_title())
+        text = " > ".join(title)
+        label = pyglet.text.Label(text,
                                   font_name=self.fonts.name,
                                   font_size=self.fonts.size,
                                   x=self.x + self.w/2, y=self.y,
@@ -127,9 +166,10 @@ class TitleRenderer(Renderer):
 
 class DetailRenderer(Renderer):
     def draw(self, menu):
-        image = menu.get_detail_image(menu.cursor)
+        item = menu.get_selected_item()
+        image = item.get_detail_image()
         image.blit(self.x, self.h - image.height, 0)
-        text = menu.get_details(menu.cursor)
+        text = item.get_details()
         label = pyglet.text.Label(text,
                                   font_name=self.fonts.name,
                                   font_size=self.fonts.size,

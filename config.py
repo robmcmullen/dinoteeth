@@ -2,20 +2,41 @@ import os, sys, glob
 import pyglet
 
 from view import *
-from controller import *
+from model import Menu
+from mplayer import MovieParser
 
+
+class RootMenu(Menu):
+    def __init__(self, config):
+        Menu.__init__(self, "Dinoteeth Media Launcher", config)
+        self.movies = Menu("Movies", config)
+        self.tv = Menu("TV", config)
+        self.photos = Menu("Photos", config)
+        self.games = Menu("Games", config)
+        self.paused = Menu("Paused...", config)
+        for item in [self.movies, self.tv, self.photos, self.games, self.paused]:
+            self.add_item(item)
+        for i in range(50):
+            self.tv.add_item(Menu("Entry #%d" % i, self.config))
+    
+    def parse_dir(self, path):
+        print path
+        MovieParser.add_videos_in_path(self.movies, self.config, path)
+        
 
 class Config(object):
     def __init__(self, args):
         self.layout = None
         self.root = None
-        self.parse_args(args)
         self.default_poster = None
         self.default_mplayer_opts = ["-novm", "-fs", "-utf8"]
         # Use SSA/ASS rendering to enable italics, bold, etc
         self.default_mplayer_opts.extend(["-ass", "-ass-color", "ffffff00", "-ass-font-scale", "1.4"])
+        
+        self.parse_args(args)
     
     def parse_args(self, args):
+        self.root = RootMenu(self)
         if len(args) > 1:
             path = args[1]
         elif os.path.exists("/remote/media2/movies"):
@@ -23,9 +44,7 @@ class Config(object):
         else:
             path = None
         if path:
-            self.root = MovieMenu(self, path)
-        else:
-            self.root = Menu(self)
+            self.root.parse_dir(path)
     
     def get_root(self, window):
         return self.root
