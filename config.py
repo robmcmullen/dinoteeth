@@ -11,6 +11,9 @@ class Config(object):
         self.root = None
         self.parse_args(args)
         self.default_poster = None
+        self.default_mplayer_opts = ["-novm", "-fs", "-utf8"]
+        # Use SSA/ASS rendering to enable italics, bold, etc
+        self.default_mplayer_opts.extend(["-ass", "-ass-color", "ffffff00", "-ass-font-scale", "1.4"])
     
     def parse_args(self, args):
         if len(args) > 1:
@@ -56,7 +59,28 @@ class Config(object):
     def decode_title_text(self, text):
         return text.replace('_n_',' & ').replace('-s_','\'s ').replace('-t_','\'t ').replace('-m_','\'m ').replace('_',' ')
 
+    def shell_escape_path(self, path):
+        escape_chars = [' ', '&', '(', ')']
+        escaped_path = path
+        for c in escape_chars: escaped_path = escaped_path.replace(c, "\\"+c)
+        return escaped_path
 
+    def get_mplayer_opts(self, path):
+        opts = self.default_mplayer_opts[:]
+        root, ext = os.path.splitext(path)
+        subtitle = root + ".sub"
+        if not os.path.exists(subtitle):
+            if path.endswith(".mp4"):
+                # Assuming that .mp4 files are made by me and have subtitles
+                opts.extend(["-slang", "eng"])
+            else:
+                # If there are no subtitles, force closed captioning
+                opts.extend(["-subcc", "1"])
+        else:
+            # use -noautosub to stop subtitles from being displayed
+            #opts.append("-noautosub")
+            pass
+        return opts
 
 def setup(args):
     return Config(args)

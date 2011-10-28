@@ -40,6 +40,19 @@ class Menu(object):
             self.cursor = 0
         elif self.cursor >= self.num_labels():
             self.cursor = self.num_labels() - 1
+    
+    def process_key_press(self, symbol, modifiers, layout):
+        k = pyglet.window.key
+        if symbol == k.RIGHT or symbol == k.ENTER or symbol == k.RETURN:
+            self.process_select()
+        elif symbol == k.LEFT or symbol == k.BACKSPACE:
+            self.process_back()
+    
+    def process_select(self):
+        print "selected"
+    
+    def process_back(self):
+        print "previous menu"
 
 
 class MovieMenu(Menu):
@@ -94,3 +107,7 @@ class MovieMenu(Menu):
     
     def num_labels(self):
         return len(self.videos)
+
+    def process_select(self):
+        video = self.videos[self.cursor]
+        video.play()

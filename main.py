@@ -24,7 +24,11 @@ class MainWindow(pyglet.window.Window):
         self.root.process_motion(motion, self.layout)
         self.flip()
 
-
+    def on_key_press(self, symbol, modifiers):
+        print symbol
+        self.root.process_key_press(symbol, modifiers, self.layout)
+        self.flip()
+        
 if __name__ == "__main__":
     cfg = setup(sys.argv)
     window = MainWindow(cfg)
