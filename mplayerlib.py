@@ -159,12 +159,17 @@ class MPlayer(object):
 
             setattr(MPlayer, cmd_name, _populated_fn)
 
+
+if not hasattr(MPlayer, 'quit'):
+    MPlayer.populate()
+    print dir(MPlayer)
+
+
 if __name__ == '__main__':
     import sys
-    MPlayer.populate()
+    mp = MPlayer(sys.argv[1])
     try:
-        mp = MPlayer(sys.argv[1])
-        print mp._get_stats()
+        print mp._get_current_pos()
         last_stream_pos = 0
         while mp._is_running():
             responses = mp.command("get_property", "stream_pos")
