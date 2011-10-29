@@ -115,6 +115,7 @@ class VerticalMenuRenderer(MenuRenderer):
         label = pyglet.text.Label(text,
                                   font_name=self.fonts.name,
                                   font_size=self.fonts.selected_size,
+                                  bold=False, italic=False,
                                   color=color, x=self.x + 30, y=self.center,
                                   anchor_x='left', anchor_y='center')
         label.draw()
@@ -128,6 +129,7 @@ class VerticalMenuRenderer(MenuRenderer):
             label = pyglet.text.Label(text,
                               font_name=self.fonts.name,
                               font_size=self.fonts.size,
+                              bold=False, italic=True,
                               color=color, x=self.x + 30, y=y,
                               anchor_x='left', anchor_y='center')
             label.draw()
@@ -143,6 +145,7 @@ class VerticalMenuRenderer(MenuRenderer):
             label = pyglet.text.Label(text,
                               font_name=self.fonts.name,
                               font_size=self.fonts.size,
+                              bold=False, italic=True,
                               color=color, x=self.x + 30, y=y,
                               anchor_x='left', anchor_y='center')
             label.draw()
@@ -159,6 +162,7 @@ class TitleRenderer(Renderer):
         label = pyglet.text.Label(text,
                                   font_name=self.fonts.name,
                                   font_size=self.fonts.size,
+                                  bold=True, italic=False,
                                   x=self.x + self.w/2, y=self.y,
                                   anchor_x='center', anchor_y='bottom')
         label.draw()

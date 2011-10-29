@@ -53,7 +53,7 @@ class Config(object):
         return MenuDetail2ColumnLayout(window, self)
     
     def get_font_name(self):
-        return "Droid Sans"
+        return "Helvetica"
     
     def get_font_size(self):
         return 20
@@ -72,7 +72,7 @@ class Config(object):
     
     def get_default_poster(self):
         if self.default_poster is None:
-            self.default_poster = pyglet.image.load("../artwork-not-available.png")
+            self.default_poster = pyglet.image.load("graphics/artwork-not-available.png")
         return self.default_poster
     
     def decode_title_text(self, text):
