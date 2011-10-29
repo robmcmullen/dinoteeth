@@ -32,6 +32,8 @@ class VerticalMenuController(object):
             self.process_select()
         elif symbol == k.LEFT or symbol == k.BACKSPACE:
             self.process_back()
+        elif symbol == k.Q or symbol == k.ESCAPE:
+            self.process_quit()
     
     def process_select(self):
         if self.layout.select_child_menu():
@@ -50,3 +52,6 @@ class VerticalMenuController(object):
             print "menu found"
         else:
             print "already at root"
+
+    def process_quit(self):
+        pyglet.app.exit()
