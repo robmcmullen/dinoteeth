@@ -16,6 +16,17 @@ class RootMenu(Menu):
         self.paused = Menu("Paused...")
         for item in [self.movies, self.tv, self.photos, self.games, self.paused]:
             self.add_item(item)
+        series = Menu("Example Series")
+        self.tv.add_item(series)
+        for i in range(5):
+            season = Menu("Season %d" % (i + 1))
+            series.add_item(season)
+            for j in range(12):
+                episode = Menu("Episode %d" % (j + 1))
+                season.add_item(episode)
+            for j in range(3):
+                episode = Menu("Bonus Feature %d" % (j + 1))
+                season.add_item(episode)
         for i in range(50):
             self.tv.add_item(Menu("Entry #%d" % i))
     
