@@ -3,12 +3,12 @@ import os, sys, glob, time
 import pyglet
 
 from mplayerlib import MPlayer
-from model import Menu
+from model import Menu, MenuDetail
 import utils
 
-class MPlayerMenu(Menu):
+class MPlayerDetail(MenuDetail):
     def __init__(self, pathname):
-        Menu.__init__(self, "")
+        MenuDetail.__init__(self, "")
         self.fullpath = pathname
         self.dirname, self.filename = os.path.split(pathname)
         self.fileroot, self.fileext = os.path.splitext(self.filename)
@@ -16,9 +16,6 @@ class MPlayerMenu(Menu):
         self.detail_image = None
         self.attempted_detail_image_load = False
         self.playable = True
-    
-    def __cmp__(self, other):
-        return cmp(self.title, other.title)
     
     # Overriding get_detail_image to perform lazy image lookup 
     def get_detail_image(self):
@@ -35,7 +32,7 @@ class MPlayerMenu(Menu):
         return self.detail_image
     
     # Placeholder for IMDB lazy lookup
-    def get_details(self):
+    def get_description(self):
         return "Details for %s" % self.title
     
     def play(self, conf):
@@ -98,5 +95,5 @@ class MovieParser(object):
     def add_video(cls, menu, filename):
         """Check to see if the filename is associated with a series
         """
-        video = MPlayerMenu(filename)
-        menu.add_item(video)
+        video = MPlayerDetail(filename)
+        menu.add_item(Menu(video))

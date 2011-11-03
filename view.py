@@ -178,7 +178,7 @@ class DetailRenderer(Renderer):
         if image is None:
             image = self.default_poster
         image.blit(self.x, self.h - image.height, 0)
-        text = item.get_details()
+        text = item.get_description()
         label = pyglet.text.Label(text,
                                   font_name=self.fonts.name,
                                   font_size=self.fonts.size,
