@@ -3,38 +3,11 @@ import os, sys, glob, time
 import pyglet
 
 from mplayerlib import MPlayer
-from model import Menu, MenuDetail
+from model import Menu
+from media import MediaDetail, MovieTitle
 import utils
 
-class MPlayerDetail(MenuDetail):
-    def __init__(self, pathname):
-        MenuDetail.__init__(self, "")
-        self.fullpath = pathname
-        self.dirname, self.filename = os.path.split(pathname)
-        self.fileroot, self.fileext = os.path.splitext(self.filename)
-        self.title = utils.decode_title_text(self.fileroot)
-        self.detail_image = None
-        self.attempted_detail_image_load = False
-        self.playable = True
-    
-    # Overriding get_detail_image to perform lazy image lookup 
-    def get_detail_image(self):
-        if self.detail_image is None and not self.attempted_detail_image_load:
-            imagedir = os.path.join(self.dirname, ".thumbs")
-            for ext in [".jpg", ".png"]:
-                imagepath = os.path.join(imagedir, self.fileroot + ext)
-                print "checking %s" % imagepath
-                if os.path.exists(imagepath):
-                    self.detail_image = pyglet.image.load(imagepath)
-                    print "loaded %s" % imagepath
-                    break
-            self.attempted_detail_image_load = True
-        return self.detail_image
-    
-    # Placeholder for IMDB lazy lookup
-    def get_description(self):
-        return "Details for %s" % self.title
-    
+class MPlayerDetail(MediaDetail):
     def play(self, conf):
         escaped_path = utils.shell_escape_path(self.fullpath)
         opts = conf.get_mplayer_opts(self.fullpath)
@@ -95,5 +68,6 @@ class MovieParser(object):
     def add_video(cls, menu, filename):
         """Check to see if the filename is associated with a series
         """
-        video = MPlayerDetail(filename)
+        title = MovieTitle(filename)
+        video = MPlayerDetail(filename, title)
         menu.add_item(Menu(video))

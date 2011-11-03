@@ -1,12 +1,10 @@
 import os, sys, glob
-import pyglet
 
 
 class MenuDetail(object):
     def __init__(self, title, image=None):
         self.title = title
         self.detail_image = image
-        self.playable = False
     
     # Methods regarding the menu itself
     def get_title(self):
@@ -20,7 +18,7 @@ class MenuDetail(object):
     
     # Media methods
     def is_playable(self):
-        return self.playable
+        return False
     
     def play(self, conf):
         pass
@@ -40,7 +38,7 @@ class Menu(object):
     
     # Proxy methods to the MenuDetail for the menu item itself
     def get_title(self):
-        return self.detail.get_title()
+        return unicode(self.detail.get_title())
     
     def get_detail_image(self):
         return self.detail.get_detail_image()
