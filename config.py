@@ -50,8 +50,8 @@ class Config(object):
         self.root = RootMenu()
         if len(args) > 1:
             path = args[1]
-        elif os.path.exists("/remote/media2/movies"):
-            path = "/remote/media2/movies"
+        elif os.path.exists("/pvr3/dinoteeth/movies"):
+            path = "/pvr3/dinoteeth/movies"
         else:
             path = None
         if path:

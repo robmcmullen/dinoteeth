@@ -70,4 +70,4 @@ class MovieParser(object):
         """
         title = MovieTitle(filename)
         video = MPlayerDetail(filename, title)
-        menu.add_item(Menu(video))
+        menu.add_item_by_title_detail(video)

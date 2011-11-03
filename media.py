@@ -14,6 +14,15 @@ class MediaDetail(MenuDetail):
         self.detail_image = None
         self.attempted_detail_image_load = False
     
+    def get_full_title(self):
+        return unicode(self.title)
+    
+    def get_feature_title(self):
+        return self.title.title
+    
+    def get_episode_name(self):
+        return self.title.episode_name
+    
     # Overriding get_detail_image to perform lazy image lookup 
     def get_detail_image(self):
         if self.detail_image is None and not self.attempted_detail_image_load:
