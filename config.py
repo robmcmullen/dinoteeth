@@ -7,24 +7,26 @@ from mplayer import MovieParser
 
 
 class RootMenu(Menu):
-    def __init__(self, config):
-        Menu.__init__(self, "Dinoteeth Media Launcher", config)
-        self.movies = Menu("Movies", config)
-        self.tv = Menu("TV", config)
-        self.photos = Menu("Photos", config)
-        self.games = Menu("Games", config)
-        self.paused = Menu("Paused...", config)
+    def __init__(self):
+        Menu.__init__(self, "Dinoteeth Media Launcher")
+        self.movies = Menu("Movies")
+        self.tv = Menu("TV")
+        self.photos = Menu("Photos")
+        self.games = Menu("Games")
+        self.paused = Menu("Paused...")
         for item in [self.movies, self.tv, self.photos, self.games, self.paused]:
             self.add_item(item)
         for i in range(50):
-            self.tv.add_item(Menu("Entry #%d" % i, self.config))
+            self.tv.add_item(Menu("Entry #%d" % i))
     
     def parse_dir(self, path):
         print path
-        MovieParser.add_videos_in_path(self.movies, self.config, path)
+        MovieParser.add_videos_in_path(self.movies, path)
         
 
 class Config(object):
+    global_config = None
+    
     def __init__(self, args):
         self.layout = None
         self.root = None
@@ -32,11 +34,9 @@ class Config(object):
         self.default_mplayer_opts = ["-novm", "-fs", "-utf8"]
         # Use SSA/ASS rendering to enable italics, bold, etc
         self.default_mplayer_opts.extend(["-ass", "-ass-color", "ffffff00", "-ass-font-scale", "1.4"])
-        
-        self.parse_args(args)
     
     def parse_args(self, args):
-        self.root = RootMenu(self)
+        self.root = RootMenu()
         if len(args) > 1:
             path = args[1]
         elif os.path.exists("/remote/media2/movies"):
@@ -62,28 +62,19 @@ class Config(object):
         return 26
 
     def get_title_renderer(self, window, box, fonts):
-        return TitleRenderer(window, box, fonts)
+        return TitleRenderer(window, box, fonts, self)
 
     def get_menu_renderer(self, window, box, fonts):
-        return VerticalMenuRenderer(window, box, fonts)
+        return VerticalMenuRenderer(window, box, fonts, self)
 
     def get_detail_renderer(self, window, box, fonts):
-        return DetailRenderer(window, box, fonts)
+        return DetailRenderer(window, box, fonts, self)
     
     def get_default_poster(self):
         if self.default_poster is None:
             self.default_poster = pyglet.image.load("graphics/artwork-not-available.png")
         return self.default_poster
     
-    def decode_title_text(self, text):
-        return text.replace('_n_',' & ').replace('-s_','\'s ').replace('-t_','\'t ').replace('-m_','\'m ').replace('_',' ')
-
-    def shell_escape_path(self, path):
-        escape_chars = [' ', '&', '(', ')']
-        escaped_path = path
-        for c in escape_chars: escaped_path = escaped_path.replace(c, "\\"+c)
-        return escaped_path
-
     def get_mplayer_opts(self, path):
         opts = self.default_mplayer_opts[:]
         root, ext = os.path.splitext(path)
@@ -102,4 +93,10 @@ class Config(object):
         return opts
 
 def setup(args):
-    return Config(args)
+    Config.global_config = Config(args)
+    conf = get_global_config()
+    conf.parse_args(args)
+    return conf
+
+def get_global_config():
+    return Config.global_config

@@ -3,13 +3,9 @@ import pyglet
 
 
 class Menu(object):
-    def __init__(self, title, config, image=None):
+    def __init__(self, title, image=None):
         self.title = title
-        self.config = config
-        if image is None:
-            self.detail_image = self.config.get_default_poster()
-        else:
-            self.detail_image = image
+        self.detail_image = image
         
         self.cursor = 0
         self.children = []
@@ -58,6 +54,6 @@ class Menu(object):
     def is_playable(self):
         return self.playable
     
-    def play(self):
+    def play(self, conf):
         pass
 

@@ -3,8 +3,9 @@ import pyglet
 
 
 class VerticalMenuController(object):
-    def __init__(self, layout):
+    def __init__(self, layout, config):
         self.layout = layout
+        self.config = config
 
     def process_motion(self, motion):
         menu = self.layout.get_menu()
@@ -43,7 +44,7 @@ class VerticalMenuController(object):
             selected = menu.get_selected_item()
             if selected.is_playable():
                 print "playing media"
-                selected.play()
+                selected.play(self.config)
             else:
                 print "not playable"
     

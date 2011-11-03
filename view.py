@@ -57,7 +57,7 @@ class FontSet(object):
 class MenuDetail2ColumnLayout(AbstractLayout):
     def __init__(self, window, config):
         AbstractLayout.__init__(self, window, config)
-        self.controller = VerticalMenuController(self)
+        self.controller = VerticalMenuController(self, config)
         self.fonts = FontSet(config)
         self.compute_layout()
         self.title_renderer = config.get_title_renderer(window, self.title_box, self.fonts)
@@ -81,16 +81,16 @@ class MenuDetail2ColumnLayout(AbstractLayout):
 
 
 class Renderer(object):
-    def __init__(self, window, box, fonts):
+    def __init__(self, window, box, fonts, conf):
         self.window = window
         self.x = box[0]
         self.y = box[1]
         self.w = box[2]
         self.h = box[3]
         self.fonts = fonts
-        self.compute_params()
+        self.compute_params(conf)
         
-    def compute_params(self):
+    def compute_params(self, conf):
         pass
 
 
@@ -100,7 +100,7 @@ class MenuRenderer(Renderer):
 
 
 class VerticalMenuRenderer(MenuRenderer):
-    def compute_params(self):
+    def compute_params(self, conf):
         self.center = self.y + self.h/2
         self.items_in_half = (self.center - self.fonts.selected_size) / self.fonts.size
     
@@ -169,9 +169,14 @@ class TitleRenderer(Renderer):
 
 
 class DetailRenderer(Renderer):
+    def compute_params(self, conf):
+        self.default_poster = conf.get_default_poster()
+        
     def draw(self, menu):
         item = menu.get_selected_item()
         image = item.get_detail_image()
+        if image is None:
+            image = self.default_poster
         image.blit(self.x, self.h - image.height, 0)
         text = item.get_details()
         label = pyglet.text.Label(text,

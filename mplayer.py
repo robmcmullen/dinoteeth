@@ -4,16 +4,17 @@ import pyglet
 
 from mplayerlib import MPlayer
 from model import Menu
-
+import utils
 
 class MPlayerMenu(Menu):
-    def __init__(self, config, pathname):
-        Menu.__init__(self, "", config)
+    def __init__(self, pathname):
+        Menu.__init__(self, "")
         self.fullpath = pathname
         self.dirname, self.filename = os.path.split(pathname)
         self.fileroot, self.fileext = os.path.splitext(self.filename)
-        self.title = self.config.decode_title_text(self.fileroot)
+        self.title = utils.decode_title_text(self.fileroot)
         self.detail_image = None
+        self.attempted_detail_image_load = False
         self.playable = True
     
     def __cmp__(self, other):
@@ -21,7 +22,7 @@ class MPlayerMenu(Menu):
     
     # Overriding get_detail_image to perform lazy image lookup 
     def get_detail_image(self):
-        if self.detail_image is None:
+        if self.detail_image is None and not self.attempted_detail_image_load:
             imagedir = os.path.join(self.dirname, ".thumbs")
             for ext in [".jpg", ".png"]:
                 imagepath = os.path.join(imagedir, self.fileroot + ext)
@@ -30,17 +31,16 @@ class MPlayerMenu(Menu):
                     self.detail_image = pyglet.image.load(imagepath)
                     print "loaded %s" % imagepath
                     break
-            if self.detail_image is None:
-                self.detail_image = self.config.get_default_poster()
+            self.attempted_detail_image_load = True
         return self.detail_image
     
     # Placeholder for IMDB lazy lookup
     def get_details(self):
         return "Details for %s" % self.title
     
-    def play(self):
-        escaped_path = self.config.shell_escape_path(self.fullpath)
-        opts = self.config.get_mplayer_opts(self.fullpath)
+    def play(self, conf):
+        escaped_path = utils.shell_escape_path(self.fullpath)
+        opts = conf.get_mplayer_opts(self.fullpath)
         last_pos = self.play_slave(escaped_path, opts)
     
     def play_slave(self, escaped_path, opts):
@@ -70,7 +70,7 @@ class MovieParser(object):
     verbose = True
     
     @classmethod
-    def add_videos_in_path(cls, menu, config, path):
+    def add_videos_in_path(cls, menu, path):
         videos = glob.glob(os.path.join(path, "*"))
         for video in videos:
             valid = False
@@ -82,7 +82,7 @@ class MovieParser(object):
                             if cls.verbose: print("Skipping dir %s" % video)
                             continue
                     print("Checking dir %s" % video)
-                    cls.add_videos_in_path(menu, config, video)
+                    cls.add_videos_in_path(menu, video)
             elif os.path.isfile(video):
                 print("Checking %s" % video)
                 for ext in cls.video_extensions:
@@ -91,12 +91,12 @@ class MovieParser(object):
                         print ("Found valid media: %s" % video)
                         break
                 if valid:
-                    cls.add_video(menu, config, video)
+                    cls.add_video(menu, video)
         menu.sort_items()
     
     @classmethod
-    def add_video(cls, menu, config, filename):
+    def add_video(cls, menu, filename):
         """Check to see if the filename is associated with a series
         """
-        video = MPlayerMenu(config, filename)
+        video = MPlayerMenu(filename)
         menu.add_item(video)
