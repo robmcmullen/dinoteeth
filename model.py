@@ -67,7 +67,7 @@ class Menu(object):
             raise RuntimeError("add_item requires a Menu object (not MenuDetail)")
         self.children.append(item)
     
-    def add_item_by_title_detail(self, detail):
+    def add_item_by_title_detail(self, detail, submenu_class):
         """Special case: add MediaDetail item using its MovieTitle item and
         sort into sub-menus if necessary
         """
@@ -79,10 +79,11 @@ class Menu(object):
                 print "found existing title %s" % item.get_feature_title()
                 if not item.has_items():
                     # The existing item is not already a submenu, so need
-                    # to move the item's details into a submenu.  This is
-                    # analogous to "reparenting" the item.
-                    item.add_item(Menu(item.detail))
-                    item.detail = Menu(item.detail.get_feature_title())
+                    # to move the item's details into a submenu...
+                    item.add_item(submenu_class(item.detail))
+                    # ...  and replace the detail of the current item with
+                    # a placeholder detail
+                    item.detail = MenuDetail(item.detail.get_feature_title())
                 item.add_item(Menu(detail))
                 added = True
                 break

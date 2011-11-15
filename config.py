@@ -3,12 +3,13 @@ import pyglet
 
 from view import *
 from model import Menu
-from mplayer import MovieParser
-
+from database import DictDatabase
+from mplayer import MPlayerDetail
 
 class RootMenu(Menu):
     def __init__(self):
         Menu.__init__(self, "Dinoteeth Media Launcher")
+        self.db = DictDatabase()
         self.movies = Menu("Movies")
         self.tv = Menu("TV")
         self.photos = Menu("Photos")
@@ -32,7 +33,11 @@ class RootMenu(Menu):
     
     def parse_dir(self, path):
         print path
-        MovieParser.add_videos_in_path(self.movies, path)
+        self.db.scan("Movies", path)
+        for title in self.db.find("Movies"):
+            print title
+            detail = MPlayerDetail(title)
+            self.movies.add_item_by_title_detail(detail, Menu)
         
 
 class Config(object):

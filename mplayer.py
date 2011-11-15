@@ -8,6 +8,9 @@ from media import MediaDetail, MovieTitle
 import utils
 
 class MPlayerDetail(MediaDetail):
+    def __init__(self, title):
+        MediaDetail.__init__(self, title.pathname, title)
+        
     def play(self, conf):
         escaped_path = utils.shell_escape_path(self.fullpath)
         opts = conf.get_mplayer_opts(self.fullpath)
@@ -32,42 +35,3 @@ class MPlayerDetail(MediaDetail):
             print dir(mp)
             mp.quit()
         return last_pos
-
-
-class MovieParser(object):
-    video_extensions = ['.vob', '.mp4', '.avi', '.wmv', '.mov', '.mpg', '.mpeg', '.mpeg4', '.mkv', '.flv']
-    exclude = []
-    verbose = True
-    
-    @classmethod
-    def add_videos_in_path(cls, menu, path):
-        videos = glob.glob(os.path.join(path, "*"))
-        for video in videos:
-            valid = False
-            if os.path.isdir(video):
-                if not video.endswith(".old"):
-                    if self.exclude:
-                        match = cls.exclude.search(video)
-                        if match:
-                            if cls.verbose: print("Skipping dir %s" % video)
-                            continue
-                    print("Checking dir %s" % video)
-                    cls.add_videos_in_path(menu, video)
-            elif os.path.isfile(video):
-                print("Checking %s" % video)
-                for ext in cls.video_extensions:
-                    if video.endswith(ext):
-                        valid = True
-                        print ("Found valid media: %s" % video)
-                        break
-                if valid:
-                    cls.add_video(menu, video)
-        menu.sort_items()
-    
-    @classmethod
-    def add_video(cls, menu, filename):
-        """Check to see if the filename is associated with a series
-        """
-        title = MovieTitle(filename)
-        video = MPlayerDetail(filename, title)
-        menu.add_item_by_title_detail(video)
