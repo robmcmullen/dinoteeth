@@ -1,5 +1,6 @@
 import os, sys, glob
 import pyglet
+from optparse import OptionParser
 
 from view import *
 from model import Menu
@@ -10,34 +11,32 @@ class RootMenu(Menu):
     def __init__(self):
         Menu.__init__(self, "Dinoteeth Media Launcher")
         self.db = DictDatabase()
-        self.movies = Menu("Movies")
-        self.tv = Menu("TV")
-        self.photos = Menu("Photos")
-        self.games = Menu("Games")
-        self.paused = Menu("Paused...")
-        for item in [self.movies, self.tv, self.photos, self.games, self.paused]:
-            self.add_item(item)
-        series = Menu("Example Series")
-        self.tv.add_item(series)
-        for i in range(5):
-            season = Menu("Season %d" % (i + 1))
-            series.add_item(season)
-            for j in range(12):
-                episode = Menu("Episode %d" % (j + 1))
-                season.add_item(episode)
-            for j in range(3):
-                episode = Menu("Bonus Feature %d" % (j + 1))
-                season.add_item(episode)
-        for i in range(50):
-            self.tv.add_item(Menu("Entry #%d" % i))
+        self.category_order = ["Movies", "TV", "Photos", "Games", "Paused..."]
+        self.categories = {}
+        self.aliases = {"series": "TV",
+                        }
     
-    def parse_dir(self, path):
+    def normalize_category(self, category):
+        alias = category.lower()
+        if alias in self.aliases:
+            category = self.aliases[alias]
+        return category
+    
+    def parse_dir(self, path, category):
         print path
-        self.db.scan("Movies", path)
-        for title in self.db.find("Movies"):
-            print title
-            detail = MPlayerDetail(title)
-            self.movies.add_item_by_title_detail(detail, Menu)
+        cat = self.normalize_category(category)
+        self.db.scan(cat, path)
+    
+    def create_menus(self):
+        for cat in self.category_order:
+            menu = Menu(cat)
+            self.categories[cat] = menu
+            self.add_item(menu)
+        for cat, menu in self.categories.iteritems():
+            for title in self.db.find(cat):
+                print title
+                detail = MPlayerDetail(title)
+                menu.add_item_by_title_detail(detail, Menu)
         
 
 class Config(object):
@@ -52,15 +51,22 @@ class Config(object):
         self.default_mplayer_opts.extend(["-ass", "-ass-color", "ffffff00", "-ass-font-scale", "1.4"])
     
     def parse_args(self, args):
+        usage="usage: %prog file [file ...]"
+        parser=OptionParser(usage=usage)
+        parser.add_option("-v", action="store_true", dest="verbose", default=False)
+        parser.add_option("-t", "--test", action="store_true", dest="test", default=False)
+        (options, args) = parser.parse_args()
+    
         self.root = RootMenu()
-        if len(args) > 1:
-            path = args[1]
-        elif os.path.exists("/pvr3/dinoteeth/movies"):
-            path = "/pvr3/dinoteeth/movies"
-        else:
-            path = None
-        if path:
-            self.root.parse_dir(path)
+        if options.test:
+            self.root.parse_dir("test/movies1", "Movies")
+            self.root.parse_dir("test/movies2", "Movies")
+            self.root.parse_dir("test/series1", "TV")
+            self.root.parse_dir("test/series2", "TV")
+        if args:
+            for path in args:
+                self.root.parse_dir(path)
+        self.root.create_menus()
     
     def get_root(self, window):
         return self.root

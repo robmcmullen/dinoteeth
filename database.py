@@ -25,6 +25,8 @@ class DictDatabase(Database):
         MovieParser.add_videos_in_path(cat, path)
     
     def find(self, category, criteria=None):
+        if category not in self.cats:
+            return []
         cat = self.cats[category]
         results = []
         if criteria is None:
