@@ -1,10 +1,12 @@
 import os, sys, glob
 
-from media import MovieTitle
-
+from media import guess_media_info
 
 class Database(object):
-    def __init__(self):
+    def __init__(self, aliases=None):
+        if aliases is None:
+            aliases = dict()
+        self.aliases = aliases
         self.create()
     
     def create(self):
@@ -18,11 +20,21 @@ class DictDatabase(Database):
     def create(self):
         self.cats = {}
     
+    def add(self, guess):
+        category = guess['type']
+        if category is not None:
+            if category in self.aliases:
+                category = self.aliases[category]
+            if category not in self.cats:
+                self.cats[category] = {}
+            
+            self.cats[category][guess['pathname']] = guess
+            print "added: %s" % guess.nice_string()
+    
     def scan(self, category, path):
-        if category not in self.cats:
-            self.cats[category] = {}
-        cat = self.cats[category]
-        MovieParser.add_videos_in_path(cat, path)
+        for video in MovieParser.scan_path(path):
+            guess = guess_media_info(video)
+            self.add(guess)
     
     def find(self, category, criteria=None):
         if category not in self.cats:
@@ -44,7 +56,7 @@ class MovieParser(object):
     verbose = True
     
     @classmethod
-    def add_videos_in_path(cls, cat, path):
+    def scan_path(cls, path):
         videos = glob.glob(os.path.join(path, "*"))
         for video in videos:
             valid = False
@@ -56,7 +68,7 @@ class MovieParser(object):
                             if cls.verbose: print("Skipping dir %s" % video)
                             continue
                     print("Checking dir %s" % video)
-                    cls.add_videos_in_path(cat, video)
+                    yield video
             elif os.path.isfile(video):
                 print("Checking %s" % video)
                 for ext in cls.video_extensions:
@@ -65,11 +77,4 @@ class MovieParser(object):
                         print ("Found valid media: %s" % video)
                         break
                 if valid:
-                    cls.add_video(cat, video)
-    
-    @classmethod
-    def add_video(cls, cat, filename):
-        """Check to see if the filename is associated with a series
-        """
-        title = MovieTitle(filename)
-        cat[title.pathname] = title
+                    yield video

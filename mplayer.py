@@ -9,7 +9,7 @@ import utils
 
 class MPlayerDetail(MediaDetail):
     def __init__(self, title):
-        MediaDetail.__init__(self, title.pathname, title)
+        MediaDetail.__init__(self, title['pathname'], title)
         
     def play(self, conf):
         escaped_path = utils.shell_escape_path(self.fullpath)

@@ -5,16 +5,18 @@ from optparse import OptionParser
 from view import *
 from model import Menu
 from database import DictDatabase
-from mplayer import MPlayerDetail
+from media import getDetail
 
 class RootMenu(Menu):
     def __init__(self):
         Menu.__init__(self, "Dinoteeth Media Launcher")
-        self.db = DictDatabase()
         self.category_order = ["Movies", "TV", "Photos", "Games", "Paused..."]
         self.categories = {}
         self.aliases = {"series": "TV",
+                        "episode": "TV",
+                        "movie": "Movies",
                         }
+        self.db = DictDatabase(self.aliases)
     
     def normalize_category(self, category):
         alias = category.lower()
@@ -35,7 +37,7 @@ class RootMenu(Menu):
         for cat, menu in self.categories.iteritems():
             for title in self.db.find(cat):
                 print title
-                detail = MPlayerDetail(title)
+                detail = getDetail(title)
                 menu.add_item_by_title_detail(detail, Menu)
         
 

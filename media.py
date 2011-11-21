@@ -4,6 +4,9 @@ import pyglet
 from model import MenuDetail
 import utils
 
+from guessit import guess_file_info
+
+
 class MediaDetail(MenuDetail):
     def __init__(self, pathname, title):
         MenuDetail.__init__(self, "")
@@ -42,151 +45,84 @@ class MediaDetail(MenuDetail):
         return "Details for %s" % self.title
     
     def is_playable(self):
+        return False
+
+
+class GuessitDetail(MediaDetail):
+    def __init__(self, guess):
+        MediaDetail.__init__(self, guess['pathname'], "")
+        self.guess = guess
+    
+    def get_extra_title(self):
+        text = []
+        g = self.guess
+        if 'extraNumber' in g:
+            text.append("Bonus Feature %s" % g['extraNumber'])
+        if 'extraTitle' in g:
+            text.append(g['extraTitle'])
+        return unicode(" ".join(text))
+
+class MovieDetail(GuessitDetail):
+    def get_full_title(self):
+        title = [self.guess['title'], self.get_extra_title()]
+        return unicode(" ".join(title))
+    
+    def get_feature_title(self):
+        return self.guess['title']
+    
+    def get_episode_name(self):
+        return self.guess.get('extraTitle', '<none>')
+    
+    def is_playable(self):
         return True
 
+class EpisodeDetail(GuessitDetail):
+    def get_episode_title(self):
+        text = []
+        g = self.guess
+        if 'episodeNumber' in g:
+            text.append("Episode %s" % g['episodeNumber'])
+        if 'title' in g:
+            text.append(g['title'])
+        text.append(self.get_extra_title())
+        return " ".join(text)
+    
+    def get_season_title(self):
+        text = []
+        g = self.guess
+        if 'series' in g:
+            text.append(g['series'])
+        if 'season' in g:
+            text.append("Season %s" % g['season'])
+        return " ".join(text)
 
-class MovieTitle(object):
-    """Class to hold a movie title broken up by its components
+    def get_full_title(self):
+        title = [self.get_season_title(), self.get_episode_title()]
+        return unicode(" ".join(title))
     
-    """
-    regex = re.compile(r"(.+)(([-_][sS]([0-9]+))?([-_][dD]([0-9]+))?([-_][eE]([0-9]+))?)")
-    regex = re.compile(r"([_A-Za-z0-9]+)([-_][eE]?([0-9]+))?")
-    #regex = re.compile(r"(.+)([-_][eE]([0-9]+))$")
-    regex = {
-        'season': re.compile(r"([-_](?:s|season?)([0-9]+))([-_]|$)", re.IGNORECASE),
-        'episode': re.compile(r"([-_]e([0-9]+))([-_]|$)", re.IGNORECASE),
-        'extra': re.compile(r"([-_](?:x|extra_?)([0-9]+))([-_]|$)", re.IGNORECASE),
-        'disc': re.compile(r"([-_](?:d|disc)([0-9]+))([-_]|$)", re.IGNORECASE),
-        'angle': re.compile(r"([-_]angle([0-9]+))([-_]|$)", re.IGNORECASE),
-        'seasonepisode': re.compile(r"([-_]s([0-9]+)e([0-9]+))([-_]|$)", re.IGNORECASE),
-        'crop': re.compile(r"([-_](crop=[0-9:]+))([-_]|$)", re.IGNORECASE),
-        'aspect': re.compile(r"([-_]aspect=([0-9:]+))([-_]|$)", re.IGNORECASE),
-        'episodename': re.compile(r"([-_](gag[-_]reel|(?:[a-z]+[-_])*featurette))([-_]|$)", re.IGNORECASE),
-        }
+    def get_feature_title(self):
+        return self.guess['series']
     
-    def __init__(self, filename, extra_text=""):
-        self.verbose = 0
-        
-        self.pathname = ""
-        self.title = ""
-        self.season = -1
-        self.disc = -1
-        self.episode = -1
-        self.extra = -1
-        self.angle = -1
-        self.episode_name = ""
-        self.crop = ""
-        self.aspect = ""
-        self.extra_text = extra_text
-        
-        self.first_metadata_pos = -1
-        self.parseFilename(filename)
+    def get_episode_name(self):
+        return self.guess.get('title', '<none>')
     
-    def __cmp__(self, other):
-        return cmp((self.sortKey(), self.season, self.disc, self.extra, self.episode, self.angle, self.extra, self.episode_name),
-                   (other.sortKey(), other.season, other.disc, other.extra, other.episode, other.angle, other.episode_name))
-    
-    def sortKey(self):
-        title = self.title.lower()
-        if title.startswith("the "):
-            title = title[4:]
-        if title.startswith("a "):
-            title = title[2:]
-        return title
-    
-    def __str__(self):
-        lines = ["%s" % self.title]
-        if self.season > 0:
-            lines.append("Season %d" % self.season)
-        if self.disc > 0:
-            lines.append("Disc %d" % self.disc)
-        if self.episode > 0:
-            lines.append("Episode %d" % self.episode)
-        if self.extra > 0:
-            lines.append("Bonus Feature %d" % self.extra)
-        if self.angle > 0:
-            lines.append("Angle %d" % self.angle)
-        if self.episode_name:
-            lines.append("%s" % self.episode_name)
-        if self.extra_text:
-            lines.append("%s" % self.extra_text)
-        return " ".join(lines)
-    
-    def isPath(self, path):
-        return path == self.pathname
-    
-    def parseFilename(self, filename):
-        self.pathname = filename
-        root, ext = os.path.splitext(filename)
-        basename = os.path.basename(root)
-        self.first_metadata_pos = len(basename)
-        for scan in ['season', 'episode', 'extra', 'disc', 'angle']:
-            basename = self.parseRegex(basename, scan)
-        basename = self.parseSpecial(basename)
-        basename = self.parseMPlayer(basename)
-        basename = self.parseEpisodeName(basename)
-        self.parseTitle(basename)
-    
-    def parseTitle(self, basename):
-        title = utils.decode_title_text(basename)
-        if title.startswith("Top Gear"):
-            self.episode_name += title[8:].strip()
-            title = "TopGear"
-        self.title = title
-    
-    def parseRegex(self, basename, scan):
-        regex = self.regex[scan]
-        match = regex.search(basename)
-        if match:
-            setattr(self, scan, int(match.group(2)))
-            basename = basename[0:match.start(1)] + basename[match.end(1):]
-            if match.start(1) < self.first_metadata_pos:
-                self.first_metadata_pos = match.start(1)
-            if self.verbose > 0: print("name=%s %s=%s" % (basename, scan, getattr(self, scan)))
-        return basename
-    
-    def parseSpecial(self, basename):
-        regex = self.regex['seasonepisode']
-        match = regex.search(basename)
-        if match:
-            self.season = int(match.group(2))
-            self.episode = int(match.group(3))
-            basename = basename[0:match.start(1)] + basename[match.end(1):]
-            if match.start(1) < self.first_metadata_pos:
-                self.first_metadata_pos = match.start(1)
-            if self.verbose > 0: print("name=%s season=%d episode=%d" % (basename, self.season, self.episode))
-        return basename
-    
-    def parseMPlayer(self, basename):
-        regex = self.regex['crop']
-        match = regex.search(basename)
-        if match:
-            self.crop = match.group(2)
-            basename = basename[0:match.start(1)] + basename[match.end(1):]
-            if match.start(1) < self.first_metadata_pos:
-                self.first_metadata_pos = match.start(1)
-            if self.verbose > 0: print("name=%s crop=%s" % (basename, self.crop))
-        regex = self.regex['aspect']
-        match = regex.search(basename)
-        if match:
-            self.aspect = match.group(2)
-            basename = basename[0:match.start(1)] + basename[match.end(1):]
-            if match.start(1) < self.first_metadata_pos:
-                self.first_metadata_pos = match.start(1)
-            if self.verbose > 0: print("name=%s aspect=%s" % (basename, self.aspect))
-        return basename
-    
-    def addMPlayerOpts(self, opts):
-        if self.crop:
-            opts.extend(["-vf", self.crop])
-        if self.aspect:
-            opts.extend(["-aspect", self.aspect])
-    
-    def parseEpisodeName(self, basename):
-        regex = self.regex['episodename']
-        match = regex.search(basename)
-        if match:
-            if match.start(1) < self.first_metadata_pos:
-                self.first_metadata_pos = match.start(1)
-        self.episode_name = utils.decode_title_text(basename[self.first_metadata_pos:].strip().strip("_").strip("-").strip())
-        return basename[0:self.first_metadata_pos]
+    def is_playable(self):
+        return True
+
+def getDetail(guess):
+    if guess['type'] == 'episode':
+        return EpisodeDetail(guess)
+    elif guess['type'] == 'movie':
+        return MovieDetail(guess)
+    else:
+        return MediaDetail(guess['pathname'], str(guess))
+
+
+def guess_media_info(pathname):
+    filename = pathname.replace('_n_',' & ').replace('-s_','\'s ').replace('-t_','\'t ').replace('-m_','\'m ').replace('--', ': ')
+    guess = guess_file_info(filename, "autodetect", info=['filename'])
+    guess['pathname'] = pathname
+    if guess['type'] == 'movie' and 'title' not in guess:
+        title, _ = os.path.splitext(os.path.basename(filename))
+        guess['title'] = unicode(title)
+    return guess
