@@ -1,11 +1,11 @@
-import os, sys, glob
+import os, sys, glob, re
 import pyglet
 from optparse import OptionParser
 
 from view import *
 from model import Menu
 from database import DictDatabase
-from media import getDetail
+from media import getDetail, guess_media_info
 
 class RootMenu(Menu):
     def __init__(self):
@@ -24,10 +24,9 @@ class RootMenu(Menu):
             category = self.aliases[alias]
         return category
     
-    def parse_dir(self, path, category):
-        print path
-        cat = self.normalize_category(category)
-        self.db.scan(cat, path)
+    def add(self, guess):
+        print guess
+        self.db.add(guess)
     
     def create_menus(self):
         for cat in self.category_order:
@@ -61,14 +60,23 @@ class Config(object):
     
         self.root = RootMenu()
         if options.test:
-            self.root.parse_dir("test/movies1", "Movies")
-            self.root.parse_dir("test/movies2", "Movies")
-            self.root.parse_dir("test/series1", "TV")
-            self.root.parse_dir("test/series2", "TV")
+            self.parse_dir(self.root, "test/movies1", "Movies")
+            self.parse_dir(self.root, "test/movies2", "Movies")
+            self.parse_dir(self.root, "test/series1", "TV")
+            self.parse_dir(self.root, "test/series2", "TV")
         if args:
             for path in args:
-                self.root.parse_dir(path)
+                self.parse_dir(self.root, path)
         self.root.create_menus()
+    
+    def parse_dir(self, root, path, force_category=None):
+        valid = self.get_video_extensions()
+        for filename in iter_dir(path, valid):
+            guess = guess_media_info(filename)
+            root.add(guess)
+
+    def get_video_extensions(self):
+        return ['.vob', '.mp4', '.avi', '.wmv', '.mov', '.mpg', '.mpeg', '.mpeg4', '.mkv', '.flv', '.webm']
     
     def get_root(self, window):
         return self.root
@@ -124,3 +132,35 @@ def setup(args):
 
 def get_global_config():
     return Config.global_config
+
+def iter_dir(path, valid_extensions=None, exclude=None):
+    if exclude is not None:
+        try:
+            exclude = re.compile(exclude)
+        except:
+            print("Invalid regular expression %s" % exclude)
+            pass
+    videos = glob.glob(os.path.join(path, "*"))
+    for video in videos:
+        valid = False
+        if os.path.isdir(video):
+            if not video.endswith(".old"):
+                if exclude:
+                    match = cls.exclude.search(video)
+                    if match:
+                        if cls.verbose: print("Skipping dir %s" % video)
+                        continue
+                print("Checking dir %s" % video)
+                yield video
+        elif os.path.isfile(video):
+            print("Checking %s" % video)
+            if valid_extensions:
+                for ext in valid_extensions:
+                    if video.endswith(ext):
+                        valid = True
+                        print ("Found valid media: %s" % video)
+                        break
+            else:
+                valid = True
+            if valid:
+                yield video
