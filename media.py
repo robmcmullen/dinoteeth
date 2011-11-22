@@ -123,7 +123,7 @@ def normalize_guess(guess):
         guess['title'] = unicode(title)
 
 def guess_media_info(pathname):
-    filename = normalize_filename(pathname)
+    filename = utils.decode_title_text(pathname)
     guess = guess_file_info(filename, "autodetect", info=['filename'])
     return guess
 

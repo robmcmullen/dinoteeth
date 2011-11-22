@@ -5,7 +5,7 @@ from optparse import OptionParser
 from view import *
 from model import Menu
 from database import DictDatabase
-from media import getDetail, guess_media_info
+from media import getDetail, guess_media_info, guess_custom, normalize_guess
 from utils import decode_title_text
 
 class RootMenu(Menu):
@@ -77,7 +77,7 @@ class Config(object):
             filename = decode_title_text(pathname)
             guess = None
             if regexps:
-                guess = guess_custom(filename, custom_regexps)
+                guess = guess_custom(filename, regexps)
             if not guess:
                 guess = guess_media_info(filename)
             guess['pathname'] = pathname
