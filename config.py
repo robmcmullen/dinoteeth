@@ -6,6 +6,7 @@ from view import *
 from model import Menu
 from database import DictDatabase
 from media import getDetail, guess_media_info
+from utils import decode_title_text
 
 class RootMenu(Menu):
     def __init__(self):
@@ -71,12 +72,30 @@ class Config(object):
     
     def parse_dir(self, root, path, force_category=None):
         valid = self.get_video_extensions()
-        for filename in iter_dir(path, valid):
-            guess = guess_media_info(filename)
+        regexps = self.get_custom_video_regexps()
+        for pathname in iter_dir(path, valid):
+            filename = decode_title_text(pathname)
+            guess = None
+            if regexps:
+                guess = guess_custom(filename, custom_regexps)
+            if not guess:
+                guess = guess_media_info(filename)
+            guess['pathname'] = pathname
+            normalize_guess(guess)
             root.add(guess)
 
     def get_video_extensions(self):
         return ['.vob', '.mp4', '.avi', '.wmv', '.mov', '.mpg', '.mpeg', '.mpeg4', '.mkv', '.flv', '.webm']
+    
+    def get_custom_video_regexps(self):
+        return [
+            r"(.+/)*(?P<series>.+)-[Ss](?P<season>[0-9]{1,2})-?[Ee](?P<episodeNumber>[0-9]{1,2})-?(?P<title>.+)?",
+            r"(.+/)*(?P<series>.+)-[Ss](?P<season>[0-9]{1,2})-?[Xx](?P<extraNumber>[0-9]{1,2})-?(?P<title>.+)?",
+            r"(.+/)*(?P<filmSeries>.+)-[Ee](?P<episodeNumber>[0-9]{1,2})(-(?P<title>.+))(-[Xx](?P<extraNumber>[0-9]{1,2}))(-(?P<extraTitle>.+))?",
+            r"(.+/)*(?P<filmSeries>.+)-[Ee](?P<episodeNumber>[0-9]{1,2})(-[Xx](?P<extraNumber>[0-9]{1,2}))(-(?P<extraTitle>.+))?",
+            r"(.+/)*(?P<title>.+)-[Xx](?P<extraNumber>[0-9]{1,2})(-(?P<extraTitle>.+))?",
+            r"(.+/)*(?P<filmSeries>.+)-[Ee](?P<episodeNumber>[0-9]{1,2})(-(?P<title>.+))?",
+            ]
     
     def get_root(self, window):
         return self.root
