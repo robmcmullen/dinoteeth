@@ -27,22 +27,22 @@ class SortableGuess(Guess):
     def decorate(self):
         if self['type'] == 'movie':
             entry = (self.get('title', ""),
-                     -1,
-                     self.get('extraNumber', -1),
+                     9999,
+                     self.get('extraNumber', 9999),
                      self.get('extraTitle', ""),
-                     self)
+                     )
         elif self['type'] == 'episode':
             entry = (self.get('series', ""),
-                     self.get('episodeNumber', -1),
-                     self.get('extraNumber', -1),
+                     self.get('episodeNumber', 9999),
+                     self.get('extraNumber', 9999),
                      self.get('extraTitle', ""),
-                     self)
+                     )
         else:
             entry = (self.get('title', ""),
-                     -1,
-                     -1,
+                     9999,
+                     9999,
                      "",
-                     self)
+                     )
         return entry
     
 

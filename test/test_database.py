@@ -18,6 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+import unittest
 from guessittest import *
 
 from media import guess_custom
@@ -58,14 +59,53 @@ class TestDatabaseMovies1(TestCase):
     def testSort1(self):
         results = self.db.find("movie")
         assert len(results) == 38
-        print "\n".join("%s %s %s" % (r['title'], r.get('extraNumber', ''), r.get('extraTitle', '')) for r in results)
         self.assertEqual(results[0]['title'], "Battle Los Angeles")
         self.assertEqual(results[1]['title'], "Death at a Funeral")
         self.assertEqual(results[22]['title'], "Shaun of the Dead")
         self.assertEqual(results[-1]['title'], "Toy Story 3")
 
 
-suite = allTests(TestDatabaseMovies1)
+class TestDatabaseSeries1(TestCase):
+    def setUp(self):
+        self.config = Config([])
+        self.db = DictDatabase()
+        self.root = RootMenu(self.db)
+        self.config.parse_dir(self.root, "series1")
+        
+    def testFind(self):
+        results = self.db.find("episode")
+        self.assertEqual(len(results), 32)
+    
+    def testFindOne(self):
+        results = self.db.find("movie", lambda s:s['series'] == "The Wire")
+        self.assertEqual(len(results), 0)
+        results = self.db.find("episode", lambda s:s['series'] == "The Wire")
+        self.assertEqual(len(results), 3)
+    
+    def testFindExtra(self):
+        results = self.db.find("episode", lambda s:s['series'] == "The Big Bang Theory" and s['season'] == 1)
+        self.assertEqual(len(results), 4)
+        self.assertEqual(results[0]['season'], 1)
+        self.assertEqual(results[0]['episodeNumber'], 1)
+        self.assertEqual(results[1]['season'], 1)
+        self.assertEqual(results[1]['episodeNumber'], 2)
+        self.assertEqual(results[2]['season'], 1)
+        self.assertEqual(results[2]['episodeNumber'], 3)
+        self.assertEqual(results[3]['season'], 1)
+        self.assertEqual(results[3]['extraNumber'], 1)
+        results = self.db.find("episode", lambda s:s['series'] == "The Big Bang Theory" and s['season'] == 1 and 'extraNumber' not in s)
+        self.assertEqual(len(results), 3)
+        results = self.db.find("episode", lambda s:s['series'] == "The Big Bang Theory" and s['season'] == 1 and 'extraNumber' in s)
+        self.assertEqual(len(results), 1)
+        results = self.db.find("episode", lambda s:s['series'] == "The Big Bang Theory" and s['season'] == 2)
+        self.assertEqual(len(results), 6)
+        self.assertEqual(results[0]['season'], 2)
+        self.assertEqual(results[0]['episodeNumber'], 1)
+        self.assertEqual(results[5]['season'], 2)
+        self.assertEqual(results[5]['extraNumber'], 3)
+
 
 if __name__ == '__main__':
-    TextTestRunner(verbosity=2).run(suite)
+    for case in [TestDatabaseMovies1, TestDatabaseSeries1]:
+        suite = unittest.TestLoader().loadTestsFromTestCase(case)
+        TextTestRunner(verbosity=2).run(suite)
