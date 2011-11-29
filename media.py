@@ -134,7 +134,6 @@ def guess_custom(pathname, regexps):
         match = r.match(filename)
         if match:
             metadata = match.groupdict()
-            print metadata
             for prop, value in metadata.items():
                 if prop in ('season', 'episodeNumber', 'year', 'extraNumber'):
                     if metadata[prop] is not None:
@@ -155,7 +154,6 @@ def guess_custom(pathname, regexps):
                     else:
                         metadata['title'] = metadata['filmSeries']
             guess = Guess(metadata, confidence = 1.0)
-            print guess
             return guess
     return None
 
