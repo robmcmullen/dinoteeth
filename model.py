@@ -30,12 +30,13 @@ class MenuDetail(object):
         pass
 
 class Menu(object):
-    def __init__(self, string_or_detail):
+    def __init__(self, string_or_detail, populate=None):
         if isinstance(string_or_detail, str):
             self.detail = MenuDetail(string_or_detail)
         else:
             self.detail = string_or_detail
-        
+        self.populate_function = populate
+        self.populated = False
         self.cursor = 0
         self.children = []
     
@@ -97,19 +98,32 @@ class Menu(object):
                 item.sort_items()
     
     def get_item(self, i):
+        if not self.populated: self.populate()
         return self.children[i]
     
     def get_selected_item(self):
+        if not self.populated: self.populate()
         return self.children[self.cursor]
         
     def get_items(self):
+        if not self.populated: self.populate()
         return self.children
     
     def num_items(self):
+        if not self.populated: self.populate()
         return len(self.children)
     
     def has_items(self):
+        if not self.populated: self.populate()
         return bool(self.children)
+    
+    def populate(self):
+        if self.populate_function:
+            print "populating %s!" % self.title
+            for item in self.populate_function(self):
+                self.add_item(item)
+            self.sort_items()
+        self.populated = True
     
     def move_cursor(self, delta):
         self.cursor += delta

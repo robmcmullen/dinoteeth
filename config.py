@@ -9,36 +9,45 @@ from media import getDetail, guess_media_info, guess_custom, normalize_guess
 from utils import decode_title_text
 
 class RootMenu(Menu):
-    def __init__(self):
+    def __init__(self, db):
         Menu.__init__(self, "Dinoteeth Media Launcher")
-        self.category_order = ["Movies", "TV", "Photos", "Games", "Paused..."]
+        self.db = db
+        self.category_order = [
+            ("Movies", self.get_movies_root),
+            ("TV", self.get_tv_root),
+            ("Photos", self.get_photos_root),
+            ("Games", self.get_games_root),
+            ("Paused...", self.get_paused),
+            ]
         self.categories = {}
-        self.aliases = {"series": "TV",
-                        "episode": "TV",
-                        "movie": "Movies",
-                        }
-        self.db = DictDatabase(self.aliases)
-    
-    def normalize_category(self, category):
-        alias = category.lower()
-        if alias in self.aliases:
-            category = self.aliases[alias]
-        return category
     
     def add(self, guess):
-        print guess
         self.db.add(guess)
     
     def create_menus(self):
-        for cat in self.category_order:
-            menu = Menu(cat)
+        for cat, populate in self.category_order:
+            menu = Menu(cat, populate=populate)
             self.categories[cat] = menu
             self.add_item(menu)
-        for cat, menu in self.categories.iteritems():
-            for title in self.db.find(cat):
-                print title
-                detail = getDetail(title)
-                menu.add_item_by_title_detail(detail, Menu)
+    
+    def get_movies_root(self, *args):
+        for title in self.db.find("movie"):
+            print title
+            detail = getDetail(title)
+            menu.add_item_by_title_detail(detail, Menu)
+    
+    def get_tv_root(self, *args):
+        pass
+    
+    def get_photos_root(self, *args):
+        pass
+    
+    def get_games_root(self, *args):
+        pass
+    
+    def get_paused(self, *args):
+        pass
+    
         
 
 class Config(object):
@@ -59,16 +68,21 @@ class Config(object):
         parser.add_option("-t", "--test", action="store_true", dest="test", default=False)
         (options, args) = parser.parse_args()
     
-        self.root = RootMenu()
+        db = self.get_database()
+        self.root = RootMenu(db)
         if options.test:
-            self.parse_dir(self.root, "test/movies1", "Movies")
-            self.parse_dir(self.root, "test/movies2", "Movies")
-            self.parse_dir(self.root, "test/series1", "TV")
-            self.parse_dir(self.root, "test/series2", "TV")
+            self.parse_dir(self.root, "test/movies1", "movie")
+            self.parse_dir(self.root, "test/movies2", "movie")
+            self.parse_dir(self.root, "test/series1", "episode")
+            self.parse_dir(self.root, "test/series2", "episode")
         if args:
             for path in args:
                 self.parse_dir(self.root, path)
         self.root.create_menus()
+    
+    def get_database(self):
+        db = DictDatabase()
+        return db
     
     def parse_dir(self, root, path, force_category=None):
         valid = self.get_video_extensions()
@@ -81,7 +95,6 @@ class Config(object):
             if not guess:
                 guess = guess_media_info(filename)
             guess['pathname'] = pathname
-            normalize_guess(guess)
             root.add(guess)
 
     def get_video_extensions(self):
@@ -152,7 +165,7 @@ def setup(args):
 def get_global_config():
     return Config.global_config
 
-def iter_dir(path, valid_extensions=None, exclude=None):
+def iter_dir(path, valid_extensions=None, exclude=None, verbose=False):
     if exclude is not None:
         try:
             exclude = re.compile(exclude)
@@ -167,17 +180,17 @@ def iter_dir(path, valid_extensions=None, exclude=None):
                 if exclude:
                     match = cls.exclude.search(video)
                     if match:
-                        if cls.verbose: print("Skipping dir %s" % video)
+                        if verbose: print("Skipping dir %s" % video)
                         continue
-                print("Checking dir %s" % video)
+                if verbose: print("Checking dir %s" % video)
                 yield video
         elif os.path.isfile(video):
-            print("Checking %s" % video)
+            if verbose: print("Checking %s" % video)
             if valid_extensions:
                 for ext in valid_extensions:
                     if video.endswith(ext):
                         valid = True
-                        print ("Found valid media: %s" % video)
+                        if verbose: print ("Found valid media: %s" % video)
                         break
             else:
                 valid = True
