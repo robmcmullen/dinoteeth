@@ -115,7 +115,7 @@ class Movie(SortableGuess):
         entry = (self.get('title', ""),
                  9999,
                  9999,
-                 self.get('extraNumber', 9999),
+                 self.get('extraNumber', 0),
                  self.get('extraTitle', ""),
                  )
         return entry

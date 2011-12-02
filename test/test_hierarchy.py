@@ -45,6 +45,16 @@ class TestDatabaseHierarchyMovies1(TestCase):
         self.assertEqual(len(h.children[0].children), 5)
         self.assertEqual(h.children[0].children[0]['title'], "Moon")
         self.assertEqual(h.children[0].children[0]['extraNumber'], 1)
+    
+    def testFindChildren2(self):
+        results = self.db.find("movie", lambda s:s['title'] == "The Hunt for Red October")
+        h = results.hierarchy()
+        self.assertEqual(len(h.children), 1)
+        self.assertEqual(len(h.children[0].children), 2)
+        self.assertEqual(h.children[0].children[0]['title'], "The Hunt for Red October")
+        self.assert_('extraNumber' not in h.children[0].children[0])
+        self.assertEqual(h.children[0].children[1]['title'], "The Hunt for Red October")
+        self.assertEqual(h.children[0].children[1]['extraNumber'], 1)
         
 class TestDatabaseHierarchySeries1(TestCase):
     def setUp(self):
