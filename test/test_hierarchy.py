@@ -35,16 +35,16 @@ class TestDatabaseHierarchyMovies1(TestCase):
     def testFind(self):
         results = self.db.find("movie")
         assert len(results) == 38
-        hier = results.hierarchy()
-        self.assertEqual(len(hier), 15)
+        h = results.hierarchy()
+        self.assertEqual(len(h.children), 15)
     
     def testFindChildren1(self):
         results = self.db.find("movie", lambda s:s['title'] == "Moon")
-        hier = results.hierarchy()
-        self.assertEqual(len(hier), 1)
-        self.assertEqual(len(hier[0].children), 5)
-        self.assertEqual(hier[0].children[0]['title'], "Moon")
-        self.assertEqual(hier[0].children[0]['extraNumber'], 1)
+        h = results.hierarchy()
+        self.assertEqual(len(h.children), 1)
+        self.assertEqual(len(h.children[0].children), 5)
+        self.assertEqual(h.children[0].children[0]['title'], "Moon")
+        self.assertEqual(h.children[0].children[0]['extraNumber'], 1)
         
 class TestDatabaseHierarchySeries1(TestCase):
     def setUp(self):
@@ -58,17 +58,17 @@ class TestDatabaseHierarchySeries1(TestCase):
         self.assertEqual(len(results), 32)
         h = results.hierarchy()
         print h
-        self.assertEqual(len(h), 5)
+        self.assertEqual(len(h.children), 5)
     
     def testFindChildren1(self):
         results = self.db.find("episode", lambda s:s['series'] == "The Big Bang Theory")
         self.assertEqual(len(results), 22)
         h = results.hierarchy()
         print h
-        self.assertEqual(len(h), 1)
+        self.assertEqual(len(h.children), 1)
         
         # Look at the series
-        series = h[0]
+        series = h.children[0]
         self.assertEqual(series['series'], "The Big Bang Theory")
         
         # Look at the second season

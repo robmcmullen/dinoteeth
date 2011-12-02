@@ -231,7 +231,7 @@ class GuessResults(list):
                 chain = child.decompose()
                 h.add_chain(chain)
         #print h.str_hierarchy()
-        return h.children
+        return h
 
 
 class DictDatabase(Database):
