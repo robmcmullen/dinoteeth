@@ -99,6 +99,11 @@ class SortableGuess(Guess):
         for node in self.children:
             text.append(node.str_hierarchy())
         return "\n".join(text)
+    
+    # MenuItem methods
+    
+    def get_items(self):
+        return [self.in_context_title]
 
 class Root(SortableGuess):
     def __init__(self, title):
@@ -122,6 +127,26 @@ class Movie(SortableGuess):
     
     def decompose(self):
         return [MovieTitle(self), self]
+    
+    def is_bonus_feature(self):
+        return 'extraNumber' in self or 'extraTitle' in self
+    
+    def get_bonus_title(self):
+        bonus = []
+        if 'extraNumber' in self:
+            bonus.append(str(self['extraNumber']))
+        if 'extraTitle' in self:
+            bonus.append(str(self['extraTitle']))
+        return " ".join(bonus)
+    
+    def get_items(self, previous):
+        if self.is_bonus_feature():
+            bonus = self.get_bonus_title()
+            if previous and previous.is_bonus_feature():
+                return ["  " + bonus]
+            else:
+                return ["Bonus Features", "  " + bonus]
+        return [self.in_context_title, "  Play", "  Resume", "Audio Options", "  Stereo", "  DTS", "  Commentary 1", "Subtitles", "  Closed Captions", "  Subtitles", "  Trivia Track"]
 
 class MovieTitle(Movie):
     def decorate(self):

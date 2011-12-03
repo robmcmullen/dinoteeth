@@ -131,3 +131,35 @@ class Menu(object):
             self.cursor = 0
         elif self.cursor >= self.num_items():
             self.cursor = self.num_items() - 1
+
+class MenuItem(object):
+    def __init__(self, title, action=None):
+        self.title = title
+        self.action = action
+        self.cursor = 0
+        self.children = []
+    
+    def __cmp__(self, other):
+        return cmp(self.title, other.title)
+    
+    def add(self, subitem):
+        self.children.append(subitem)
+    
+    def pprint(self, level=""):
+        print "%s%s" % (level, self.title)
+        for child in self.children:
+            child.pprint(level + "  ")
+    
+    def add_hierarchy(self, guess_parent):
+        children = guess_parent.children
+        prev_child = None
+        for child in children:
+            if child.children:
+                subitem = MenuItem(child.in_context_title, None)
+                self.add(subitem)
+                subitem.add_hierarchy(child)
+            else:
+                for item in child.get_items(prev_child):
+                    subitem = MenuItem(item, None)
+                    self.add(subitem)
+            prev_child = child
