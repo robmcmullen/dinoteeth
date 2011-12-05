@@ -283,15 +283,14 @@ class DictDatabase(Database):
             self.cats[category][guess['pathname']] = guess
     
     def find(self, category, criteria=None):
-        if category not in self.cats:
-            return []
-        cat = self.cats[category]
         results = GuessResults()
-        if criteria is None:
-            criteria = lambda s: True
-        for item in cat.itervalues():
-            valid = criteria(item)
-            if valid:
-                results.append(item)
-        results.sort()
+        if category in self.cats:
+            cat = self.cats[category]
+            if criteria is None:
+                criteria = lambda s: True
+            for item in cat.itervalues():
+                valid = criteria(item)
+                if valid:
+                    results.append(item)
+            results.sort()
         return results

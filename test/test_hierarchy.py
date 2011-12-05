@@ -18,12 +18,24 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-import unittest
-from guessittest import *
+from dinoteeth_test import *
 
 from media import guess_custom
 from config import Config, RootMenu
 from database import DictDatabase
+
+class TestDatabaseGeneral(TestCase):
+    def setUp(self):
+        self.config = Config([])
+        self.db = DictDatabase()
+        self.root = RootMenu(self.db)
+        
+    def testFind(self):
+        results = self.db.find("photos")
+        assert len(results) == 0
+        h = results.hierarchy()
+        self.assertEqual(len(h.children), 0)
+    
 
 class TestDatabaseHierarchyMovies1(TestCase):
     def setUp(self):
@@ -98,6 +110,4 @@ class TestDatabaseHierarchySeries1(TestCase):
 
 
 if __name__ == '__main__':
-    for case in [TestDatabaseHierarchyMovies1, TestDatabaseHierarchySeries1]:
-        suite = unittest.TestLoader().loadTestsFromTestCase(case)
-        TextTestRunner(verbosity=2).run(suite)
+    test_all()
