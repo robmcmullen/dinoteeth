@@ -52,6 +52,11 @@ class SortableGuess(Guess):
     
     def __str__(self):
         return self.canonical_title
+    
+    def pprint(self, level=""):
+        print "%s%s: %s" % (level, str(self.__class__.__name__), str(self))
+        for child in self.children:
+            child.pprint(level + "  ")
 
     def __cmp__(self, other):
         return cmp(self.decorate(), other.decorate())
@@ -84,7 +89,7 @@ class SortableGuess(Guess):
         if chain:
             node = chain[0]
             pos = bisect.bisect_left(self.children, node)
-            if pos != len(self.children) and self.children[pos].canonical_title == node.canonical_title:
+            if pos != len(self.children) and self.children[pos].group_key == node.group_key:
                 #print "Found %s" % node
                 pass
             else:
@@ -111,10 +116,13 @@ class Root(SortableGuess):
         SortableGuess.__init__(self, other)
 
 class Movie(SortableGuess):
-    def add_missing_entries(self):
-        if 'title' not in self:
-            title, _ = os.path.splitext(os.path.basename(self['pathname']))
-            self['title'] = title
+    def canonicalize(self):
+        self.canonical_title = self['title']
+        if self.is_bonus_feature():
+            self.in_context_title = self.get_bonus_title()
+            self.canonical_title += " %s" % self.in_context_title
+        else:
+            self.in_context_title = self.canonical_title
     
     def decorate(self):
         entry = (self.get('title', ""),
