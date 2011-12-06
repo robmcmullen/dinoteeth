@@ -49,20 +49,6 @@ class MenuItem(object):
                 theme = self.get_theme()
                 theme.add_menu_hierarchy(self, hierarchy)
             self.populated = True
-    
-    def add_hierarchy(self, guess_parent):
-        children = guess_parent.children
-        prev_guess = None
-        for guess in children:
-            if guess.children:
-                subitem = MenuItem(guess.in_context_title, media=None)
-                self.add(subitem)
-                subitem.add_hierarchy(guess)
-            else:
-                for item in guess.get_items(prev_guess):
-                    subitem = MenuItem(item, media=item)
-                    self.add(subitem)
-            prev_guess = guess
 
     def get_item(self, i):
         self.do_populate()
