@@ -38,17 +38,17 @@ class MenuTheme(object):
                 if first_bonus:
                     items.append(MenuItem("Bonus Features", enabled=False))
                     first_bonus = False
-                items.append(MenuItem(movie.in_context_title, media=movie))
+                items.append(MenuItem(movie.in_context_title, media=movie, action=movie.play))
             else:
                 items.append(MenuItem(movie.in_context_title, enabled=False))
-                items.append(MenuItem("Play", media=movie))
-                items.append(MenuItem("Resume", media=movie, enabled=False))
+                items.append(MenuItem("Play", media=movie, action=movie.play))
+                items.append(MenuItem("Resume", media=movie, action=movie.resume, enabled=False))
                 items.append(MenuItem("Audio Options", enabled=False))
                 
                 radio = []
                 first = True
                 for options in movie.get_audio_options():
-                    toggle = Toggle(options[1], state=first, radio=radio, user_data=options[0])
+                    toggle = Toggle(options[1], state=first, radio=radio, index=options[0], action=movie.set_audio_options)
                     # Note: radio list is being added to as we go; we're taking
                     # advantage of argument passing by reference so that each
                     # of the toggles will have the same radio list
@@ -60,7 +60,7 @@ class MenuTheme(object):
                 radio = []
                 first = True
                 for options in movie.get_subtitle_options():
-                    toggle = Toggle(options[1], state=first, radio=radio, user_data=options[0])
+                    toggle = Toggle(options[1], state=first, radio=radio, index=options[0], action=movie.set_subtitle_options)
                     radio.append(toggle)
                     items.append(toggle)
                     first = False

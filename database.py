@@ -39,8 +39,11 @@ class MediaObject(Guess):
                 else:
                     self._confidence[k] = -1.0
         self.children = []
-        
+        self.set_defaults()
         self.normalize()
+    
+    def set_defaults(self):
+        pass
     
     def filter_out(self):
         return set()
@@ -116,6 +119,10 @@ class Root(MediaObject):
         MediaObject.__init__(self, other)
 
 class Movie(MediaObject):
+    def set_defaults(self):
+        self.audio = None
+        self.subtitles = None
+    
     def canonicalize(self):
         self.canonical_title = self['title']
         if self.is_bonus_feature():
@@ -155,6 +162,10 @@ class Movie(MediaObject):
                 (3, "Director's Commentary"),
                 ]
     
+    def set_audio_options(self, index=-1, **kwargs):
+        self.audio = index
+        print "FIXME: audio index = %s" % self.audio
+    
     def get_subtitle_options(self):
         # Just a placeholder for now; not sure of the format and how the user
         # is going to select one of the options.
@@ -162,6 +173,16 @@ class Movie(MediaObject):
                 (2, "Closed Captions [en]"),
                 (3, "Trivia Track"),
                 ]
+    
+    def set_subtitle_options(self, index=-1, **kwargs):
+        self.subtitle = index
+        print "FIXME: subtitle index = %s" % self.subtitle
+    
+    def play(self, config=None):
+        print "FIXME: Playing %s" % self
+    
+    def resume(self, config=None):
+        print "FIXME: Resuming %s" % self
 
 class MovieTitle(Movie):
     def decorate(self):

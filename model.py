@@ -2,7 +2,7 @@ import os, sys, glob, bisect
 
 
 class MenuItem(object):
-    def __init__(self, title, enabled=True, action=None, populate=None, media=None, theme=None, user_data=None):
+    def __init__(self, title, enabled=True, action=None, populate=None, media=None, theme=None, **kwargs):
         self.title = title
         self.enabled = enabled
         self.action = action
@@ -11,7 +11,6 @@ class MenuItem(object):
         self.theme = theme
         self.parent = None
         self.populated = False
-        self.user_data = user_data
         self.cursor = 0
         self.children = []
     
@@ -35,11 +34,12 @@ class MenuItem(object):
                 raise RuntimeError("Theme not found in menu hierarchy")
         return item.theme
     
-    def do_action(self):
-        print "action!"
-        self.do_populate()
-        if self.action:
-            self.action()
+    def do_action(self, **kwargs):
+        if self.enabled:
+            print "action!"
+            self.do_populate()
+            if self.action:
+                self.action(**kwargs)
     
     def do_populate(self):
         if not self.populated:
@@ -133,20 +133,23 @@ class MenuItem(object):
         return False
 
 class Toggle(MenuItem):
-    def __init__(self, title, state=False, radio=None, **kwargs):
+    def __init__(self, title, state=False, radio=None, index=0, **kwargs):
         MenuItem.__init__(self, title, **kwargs)
         self.state = state
         self.radio_group = radio
+        self.index = index
         
     def set_radio_group(self, radio_group):
         self.radio_group = radio_group
     
-    def do_action(self):
+    def do_action(self, **kwargs):
         if self.enabled:
             if self.radio_group:
                 self.do_action_radio()
             else:
                 self.do_action_toggle()
+            if self.action:
+                self.action(index=self.index, **kwargs)
     
     def do_action_toggle(self, state=None):
         if state is not None:
