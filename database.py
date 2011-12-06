@@ -107,7 +107,7 @@ class SortableGuess(Guess):
     
     # MenuItem methods
     
-    def get_items(self):
+    def get_items(self, previous):
         return [self.in_context_title]
 
 class Root(SortableGuess):
