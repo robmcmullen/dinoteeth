@@ -113,33 +113,46 @@ class VerticalMenuRenderer(MenuRenderer):
     def get_page_scroll_unit(self):
         return self.items_in_half
     
-    def draw(self, menu):
-        item = menu.get_selected_item()
+    def draw_item(self, item, y, selected=False):
         text = item.title
-        # Render center item in larger font
+        if selected:
+            size = self.fonts.selected_size
+            italic = False
+        else:
+            size = self.fonts.size
+            italic = True
+        x = self.x + 30
+        color = self.get_color(item)
+        if item.is_toggle():
+            if item.state:
+                label = pyglet.text.Label("*",
+                                          font_name=self.fonts.name,
+                                          font_size=size,
+                                          bold=False, italic=italic,
+                                          color=color,
+                                          x=x, y=y,
+                                          anchor_x='left', anchor_y='center')
+                label.draw()
+            x += 30
         label = pyglet.text.Label(text,
                                   font_name=self.fonts.name,
-                                  font_size=self.fonts.selected_size,
-                                  bold=False, italic=False,
-                                  color=self.get_color(item),
-                                  x=self.x + 30, y=self.center,
+                                  font_size=size,
+                                  bold=False, italic=italic,
+                                  color=color,
+                                  x=x, y=y,
                                   anchor_x='left', anchor_y='center')
         label.draw()
+    
+    def draw(self, menu):
+        item = menu.get_selected_item()
+        self.draw_item(item, self.center, True)
         
         y = self.center + self.fonts.selected_size
         i = menu.cursor - 1
         limit = max(0, menu.cursor - self.items_in_half)
         while i >= limit:
             item = menu.get_item(i)
-            text = item.title
-            label = pyglet.text.Label(text,
-                              font_name=self.fonts.name,
-                              font_size=self.fonts.size,
-                              bold=False, italic=True,
-                              color=self.get_color(item),
-                              x=self.x + 30, y=y,
-                              anchor_x='left', anchor_y='center')
-            label.draw()
+            self.draw_item(item, y, False)
             y += self.fonts.size
             i -= 1
             
@@ -148,15 +161,7 @@ class VerticalMenuRenderer(MenuRenderer):
         limit = min(menu.num_items() - 1, menu.cursor + self.items_in_half)
         while i <= limit:
             item = menu.get_item(i)
-            text = item.title
-            label = pyglet.text.Label(text,
-                              font_name=self.fonts.name,
-                              font_size=self.fonts.size,
-                              bold=False, italic=True,
-                              color=self.get_color(item),
-                              x=self.x + 30, y=y,
-                              anchor_x='left', anchor_y='center')
-            label.draw()
+            self.draw_item(item, y, False)
             y -= self.fonts.size
             i += 1
 

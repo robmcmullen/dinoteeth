@@ -128,6 +128,9 @@ class MenuItem(object):
     
     def get_media_object(self):
         return self.media
+    
+    def is_toggle(self):
+        return False
 
 class Toggle(MenuItem):
     def __init__(self, title, state=False, radio=None, **kwargs):
@@ -155,3 +158,6 @@ class Toggle(MenuItem):
         for toggle in self.radio_group:
             toggle.do_action_toggle(False)
         self.do_action_toggle(True)
+    
+    def is_toggle(self):
+        return True
