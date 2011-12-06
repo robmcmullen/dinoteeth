@@ -107,8 +107,8 @@ class MediaObject(Guess):
     
     # MenuItem methods
     
-    def get_items(self, previous):
-        return [self.in_context_title]
+    def add_to_menu(self, theme, parent_menu):
+        return theme.add_simple_menu(self, parent_menu)
 
 class Root(MediaObject):
     def __init__(self, title):
@@ -147,14 +147,21 @@ class Movie(MediaObject):
             bonus.append(str(self['extraTitle']))
         return " ".join(bonus)
     
-    def get_items(self, previous):
-        if self.is_bonus_feature():
-            bonus = self.get_bonus_title()
-            if previous and previous.is_bonus_feature():
-                return ["  " + bonus]
-            else:
-                return ["Bonus Features", "  " + bonus]
-        return [self.in_context_title, "  Play", "  Resume", "Audio Options", "  Stereo", "  DTS", "  Commentary 1", "Subtitles", "  Closed Captions", "  Subtitles", "  Trivia Track"]
+    def get_audio_options(self):
+        # Just a placeholder for now; not sure of the format and how the user
+        # is going to select one of the options.
+        return [(1, "Stereo"),
+                (2, "DTS"),
+                (3, "Director's Commentary"),
+                ]
+    
+    def get_subtitle_options(self):
+        # Just a placeholder for now; not sure of the format and how the user
+        # is going to select one of the options.
+        return [(1, "Subtitles [en]"),
+                (2, "Closed Captions [en]"),
+                (3, "Trivia Track"),
+                ]
 
 class MovieTitle(Movie):
     def decorate(self):
@@ -168,6 +175,9 @@ class MovieTitle(Movie):
     
     def decompose(self):
         return [self]
+    
+    def add_to_menu(self, theme, parent_menu):
+        return theme.add_movie_title_to_menu(self, parent_menu)
 
 class MovieSeries(Movie):
     pass

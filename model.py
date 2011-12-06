@@ -2,13 +2,16 @@ import os, sys, glob, bisect
 
 
 class MenuItem(object):
-    def __init__(self, title, enabled=True, action=None, populate=None, media=None):
+    def __init__(self, title, enabled=True, action=None, populate=None, media=None, theme=None, user_data=None):
         self.title = title
         self.enabled = enabled
         self.action = action
         self.populate = populate
         self.media = media
+        self.theme = theme
+        self.parent = None
         self.populated = False
+        self.user_data = user_data
         self.cursor = 0
         self.children = []
     
@@ -17,11 +20,20 @@ class MenuItem(object):
     
     def add(self, subitem):
         self.children.append(subitem)
+        subitem.parent = self
     
     def pprint(self, level=""):
         print "%s%s" % (level, self.title)
         for child in self.children:
             child.pprint(level + "  ")
+    
+    def get_theme(self):
+        item = self
+        while item.theme is None:
+            item = item.parent
+            if item is None:
+                raise RuntimeError("Theme not found in menu hierarchy")
+        return item.theme
     
     def do_action(self):
         print "action!"
@@ -34,7 +46,8 @@ class MenuItem(object):
             if self.populate:
                 print "populating!"
                 hierarchy = self.populate()
-                self.add_hierarchy(hierarchy)
+                theme = self.get_theme()
+                theme.add_menu_hierarchy(self, hierarchy)
             self.populated = True
     
     def add_hierarchy(self, guess_parent):
@@ -42,12 +55,12 @@ class MenuItem(object):
         prev_guess = None
         for guess in children:
             if guess.children:
-                subitem = MenuItem(guess.in_context_title, None)
+                subitem = MenuItem(guess.in_context_title, media=None)
                 self.add(subitem)
                 subitem.add_hierarchy(guess)
             else:
                 for item in guess.get_items(prev_guess):
-                    subitem = MenuItem(item, None)
+                    subitem = MenuItem(item, media=item)
                     self.add(subitem)
             prev_guess = guess
 
@@ -82,10 +95,10 @@ class MenuItem(object):
         return self.media
 
 class Toggle(MenuItem):
-    def __init__(self, title, state=False):
-        MenuItem.__init__(self, title)
+    def __init__(self, title, state=False, radio=None, **kwargs):
+        MenuItem.__init__(self, title, **kwargs)
         self.state = state
-        self.radio_group = None
+        self.radio_group = radio
         
     def set_radio_group(self, radio_group):
         self.radio_group = radio_group

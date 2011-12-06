@@ -6,11 +6,12 @@ from view import *
 from model import MenuItem
 from database import DictDatabase
 from media import guess_media_info, guess_custom, normalize_guess
+from theme import MenuTheme
 from utils import decode_title_text
 
 class RootMenu(MenuItem):
-    def __init__(self, db):
-        MenuItem.__init__(self, "Dinoteeth Media Launcher")
+    def __init__(self, db, menu_theme):
+        MenuItem.__init__(self, "Dinoteeth Media Launcher", theme=menu_theme)
         self.db = db
         self.category_order = [
             ("Movies", self.get_movies_root),
@@ -65,7 +66,8 @@ class Config(object):
         (options, args) = parser.parse_args()
     
         db = self.get_database()
-        self.root = RootMenu(db)
+        theme = self.get_menu_theme()
+        self.root = RootMenu(db, theme)
         if options.test:
             self.parse_dir(self.root, "test/movies1", "movie")
             self.parse_dir(self.root, "test/movies2", "movie")
@@ -129,6 +131,9 @@ class Config(object):
 
     def get_detail_renderer(self, window, box, fonts):
         return DetailRenderer(window, box, fonts, self)
+    
+    def get_menu_theme(self):
+        return MenuTheme()
     
     def get_default_poster(self):
         if self.default_poster is None:
