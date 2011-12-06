@@ -98,6 +98,11 @@ class MenuRenderer(Renderer):
     def get_page_scroll_unit(self):
         return 10
 
+    def get_color(self, item):
+        color = (0, 255, 0, 255)
+        if not item.enabled:
+            color = [c/2 for c in color]
+        return color
 
 class VerticalMenuRenderer(MenuRenderer):
     def compute_params(self, conf):
@@ -108,7 +113,6 @@ class VerticalMenuRenderer(MenuRenderer):
         return self.items_in_half
     
     def draw(self, menu):
-        color = (0, 255, 0, 255)
         item = menu.get_selected_item()
         text = item.title
         # Render center item in larger font
@@ -116,7 +120,8 @@ class VerticalMenuRenderer(MenuRenderer):
                                   font_name=self.fonts.name,
                                   font_size=self.fonts.selected_size,
                                   bold=False, italic=False,
-                                  color=color, x=self.x + 30, y=self.center,
+                                  color=self.get_color(item),
+                                  x=self.x + 30, y=self.center,
                                   anchor_x='left', anchor_y='center')
         label.draw()
         
@@ -130,7 +135,8 @@ class VerticalMenuRenderer(MenuRenderer):
                               font_name=self.fonts.name,
                               font_size=self.fonts.size,
                               bold=False, italic=True,
-                              color=color, x=self.x + 30, y=y,
+                              color=self.get_color(item),
+                              x=self.x + 30, y=y,
                               anchor_x='left', anchor_y='center')
             label.draw()
             y += self.fonts.size
@@ -146,7 +152,8 @@ class VerticalMenuRenderer(MenuRenderer):
                               font_name=self.fonts.name,
                               font_size=self.fonts.size,
                               bold=False, italic=True,
-                              color=color, x=self.x + 30, y=y,
+                              color=self.get_color(item),
+                              x=self.x + 30, y=y,
                               anchor_x='left', anchor_y='center')
             label.draw()
             y -= self.fonts.size
