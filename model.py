@@ -90,6 +90,41 @@ class MenuItem(object):
             self.cursor = 0
         elif self.cursor >= self.num_items():
             self.cursor = self.num_items() - 1
+        self.verify_cursor(delta)
+    
+    def is_selectable(self):
+        return self.enabled
+    
+    def verify_cursor(self, delta):
+        """Verify that the cursor isn't over a non-selectable menu item
+        
+        """
+        if delta >= 0:
+            delta = 1
+        else:
+            delta = -1
+        first = True
+        while not self.children[self.cursor].is_selectable():
+            self.cursor += delta
+            if self.cursor < 0:
+                self.cursor = 0
+                
+                # bounce the other way if reached the top of the list
+                delta = 1
+                if not first:
+                    break
+                first = False
+            elif self.cursor >= self.num_items():
+                self.cursor = self.num_items() - 1
+                
+                # bounce the other way if reached the bottom of the list
+                delta = -1
+                if not first:
+                    break
+                first = False
+            
+    def activate_menu(self):
+        self.move_cursor(0)
     
     def get_media_object(self):
         return self.media

@@ -29,6 +29,7 @@ class AbstractLayout(object):
         menu = self.get_menu()
         selected = menu.get_selected_item()
         if selected.has_items():
+            selected.activate_menu()
             self.hierarchy.append(selected)
             return True
         return False
