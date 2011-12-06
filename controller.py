@@ -42,8 +42,8 @@ class VerticalMenuController(object):
         else:
             menu = self.layout.get_menu()
             selected = menu.get_selected_item()
-            media = selected.detail
-            if media.is_playable():
+            media = selected.get_media_object()
+            if media and media.is_playable():
                 print "playing media"
                 media.play(self.config)
             else:

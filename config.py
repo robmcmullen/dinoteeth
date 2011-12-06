@@ -3,52 +3,48 @@ import pyglet
 from optparse import OptionParser
 
 from view import *
-from model import Menu
+from model import MenuItem
 from database import DictDatabase
-from media import getDetail, guess_media_info, guess_custom, normalize_guess
+from media import guess_media_info, guess_custom, normalize_guess
 from utils import decode_title_text
 
-class RootMenu(Menu):
+class RootMenu(MenuItem):
     def __init__(self, db):
-        Menu.__init__(self, "Dinoteeth Media Launcher")
+        MenuItem.__init__(self, "Dinoteeth Media Launcher")
         self.db = db
         self.category_order = [
             ("Movies", self.get_movies_root),
             ("TV", self.get_tv_root),
-            ("Photos", self.get_photos_root),
-            ("Games", self.get_games_root),
-            ("Paused...", self.get_paused),
+            ("Photos", self.get_empty_root),
+            ("Games", self.get_empty_root),
+            ("Paused...", self.get_empty_root),
             ]
         self.categories = {}
     
-    def add(self, guess):
+    def add_guess(self, guess):
         self.db.add(guess)
     
     def create_menus(self):
         for cat, populate in self.category_order:
-            menu = Menu(cat, populate=populate)
-            self.categories[cat] = menu
-            self.add_item(menu)
+            menu = MenuItem(cat, populate=populate)
+            self.add(menu)
     
     def get_movies_root(self, *args):
-        for title in self.db.find("movie"):
-            print title
-            detail = getDetail(title)
-            menu.add_item_by_title_detail(detail, Menu)
+        results = self.db.find("movie")
+        h = results.hierarchy()
+        print h
+        return h
     
     def get_tv_root(self, *args):
-        pass
+        results = self.db.find("episode")
+        h = results.hierarchy()
+        return h
     
-    def get_photos_root(self, *args):
-        pass
-    
-    def get_games_root(self, *args):
-        pass
-    
-    def get_paused(self, *args):
-        pass
-    
-        
+    def get_empty_root(self, *args):
+        results = self.db.find("nothing")
+        h = results.hierarchy()
+        return h
+
 
 class Config(object):
     global_config = None
@@ -95,7 +91,7 @@ class Config(object):
             if not guess:
                 guess = guess_media_info(filename)
             guess['pathname'] = pathname
-            root.add(guess)
+            root.add_guess(guess)
 
     def get_video_extensions(self):
         return ['.vob', '.mp4', '.avi', '.wmv', '.mov', '.mpg', '.mpeg', '.mpeg4', '.mkv', '.flv', '.webm']

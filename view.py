@@ -110,7 +110,7 @@ class VerticalMenuRenderer(MenuRenderer):
     def draw(self, menu):
         color = (0, 255, 0, 255)
         item = menu.get_selected_item()
-        text = item.get_full_title()
+        text = item.title
         # Render center item in larger font
         label = pyglet.text.Label(text,
                                   font_name=self.fonts.name,
@@ -125,7 +125,7 @@ class VerticalMenuRenderer(MenuRenderer):
         limit = max(0, menu.cursor - self.items_in_half)
         while i >= limit:
             item = menu.get_item(i)
-            text = item.get_full_title()
+            text = item.title
             label = pyglet.text.Label(text,
                               font_name=self.fonts.name,
                               font_size=self.fonts.size,
@@ -141,7 +141,7 @@ class VerticalMenuRenderer(MenuRenderer):
         limit = min(menu.num_items() - 1, menu.cursor + self.items_in_half)
         while i <= limit:
             item = menu.get_item(i)
-            text = item.get_full_title()
+            text = item.title
             label = pyglet.text.Label(text,
                               font_name=self.fonts.name,
                               font_size=self.fonts.size,
@@ -157,7 +157,7 @@ class TitleRenderer(Renderer):
     def draw(self, hierarchy):
         title = []
         for menu in hierarchy:
-            title.append(menu.get_feature_title())
+            title.append(menu.title)
         text = " > ".join(title)
         label = pyglet.text.Label(text,
                                   font_name=self.fonts.name,
@@ -173,12 +173,15 @@ class DetailRenderer(Renderer):
         self.default_poster = conf.get_default_poster()
         
     def draw(self, menu):
+        # item = menu.get_media_object()
         item = menu.get_selected_item()
-        image = item.get_detail_image()
-        if image is None:
-            image = self.default_poster
+#        image = item.get_detail_image()
+#        if image is None:
+#            image = self.default_poster
+        image = self.default_poster
         image.blit(self.x, self.h - image.height, 0)
-        text = item.get_description()
+#        text = item.get_description()
+        text = "FIXME: description goes here..."
         label = pyglet.text.Label(text,
                                   font_name=self.fonts.name,
                                   font_size=self.fonts.size,

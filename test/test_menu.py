@@ -19,10 +19,10 @@ class TestMenuMovies1(TestCase):
         results = self.db.find("movie")
         assert len(results) == 38
         h = results.hierarchy()
+        h.pprint()
         self.assertEqual(len(h.children), 15)
-        menu = MenuItem("Movies")
+        menu = self.root
         menu.add_hierarchy(h)
-        menu.pprint()
         self.assertEqual(len(menu.children), 15)
         self.assertEqual(menu.children[9].title, "The Hunt for Red October")
         self.assertEqual(menu.children[9].children[0].title, "The Hunt for Red October")
