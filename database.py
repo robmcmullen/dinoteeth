@@ -13,7 +13,7 @@ class Database(object):
         pass
 
 
-class SortableGuess(Guess):
+class MediaObject(Guess):
     @classmethod
     def convertGuess(cls, g):
         guess = None
@@ -110,12 +110,12 @@ class SortableGuess(Guess):
     def get_items(self, previous):
         return [self.in_context_title]
 
-class Root(SortableGuess):
+class Root(MediaObject):
     def __init__(self, title):
         other = Guess(title=title, type='root')
-        SortableGuess.__init__(self, other)
+        MediaObject.__init__(self, other)
 
-class Movie(SortableGuess):
+class Movie(MediaObject):
     def canonicalize(self):
         self.canonical_title = self['title']
         if self.is_bonus_feature():
@@ -172,7 +172,7 @@ class MovieTitle(Movie):
 class MovieSeries(Movie):
     pass
 
-class SeriesEpisode(SortableGuess):
+class SeriesEpisode(MediaObject):
     def decorate(self):
         entry = (self.get('series', ""),
                  self.get('season', 9999),
@@ -246,7 +246,7 @@ class Season(SeriesEpisode):
         return [Series(self), self]
 
 
-class GuessResults(list):
+class MediaResults(list):
     def __str__(self):
         text = [str(s) for s in self]
         return "\n".join(text)
@@ -272,7 +272,7 @@ class DictDatabase(Database):
         self.cats = {}
     
     def add(self, g):
-        guess = SortableGuess.convertGuess(g)
+        guess = MediaObject.convertGuess(g)
         category = guess['type']
         if category is not None:
             if category in self.aliases:
@@ -283,7 +283,7 @@ class DictDatabase(Database):
             self.cats[category][guess['pathname']] = guess
     
     def find(self, category, criteria=None):
-        results = GuessResults()
+        results = MediaResults()
         if category in self.cats:
             cat = self.cats[category]
             if criteria is None:
