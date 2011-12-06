@@ -7,6 +7,7 @@ from model import MenuItem
 from database import DictDatabase
 from media import guess_media_info, guess_custom, normalize_guess
 from theme import MenuTheme
+from mplayer import MPlayerClient
 from utils import decode_title_text
 
 class RootMenu(MenuItem):
@@ -139,6 +140,9 @@ class Config(object):
         if self.default_poster is None:
             self.default_poster = pyglet.image.load("graphics/artwork-not-available.png")
         return self.default_poster
+    
+    def get_media_client(self):
+        return MPlayerClient(self)
     
     def get_mplayer_opts(self, path):
         opts = self.default_mplayer_opts[:]

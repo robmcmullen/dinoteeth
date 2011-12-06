@@ -1,20 +1,17 @@
-import os, sys, glob, time
-
-import pyglet
+import os, sys, time
 
 from mplayerlib import MPlayer
-from model import Menu
-from media import MediaDetail, MovieTitle
 import utils
 
-class MPlayerDetail(MediaDetail):
-    def __init__(self, title):
-        MediaDetail.__init__(self, title['pathname'], title)
+class MPlayerClient(object):
+    def __init__(self, config):
+        self.config = config
         
-    def play(self, conf):
-        escaped_path = utils.shell_escape_path(self.fullpath)
-        opts = conf.get_mplayer_opts(self.fullpath)
+    def play(self, path, audio=None, subtitle=None):
+        escaped_path = utils.shell_escape_path(path)
+        opts = self.config.get_mplayer_opts(path)
         last_pos = self.play_slave(escaped_path, opts)
+        return last_pos
     
     def play_slave(self, escaped_path, opts):
         last_pos = 0

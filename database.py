@@ -121,7 +121,7 @@ class Root(MediaObject):
 class Movie(MediaObject):
     def set_defaults(self):
         self.audio = None
-        self.subtitles = None
+        self.subtitle = None
     
     def canonicalize(self):
         self.canonical_title = self['title']
@@ -179,7 +179,8 @@ class Movie(MediaObject):
         print "FIXME: subtitle index = %s" % self.subtitle
     
     def play(self, config=None):
-        print "FIXME: Playing %s" % self
+        client = config.get_media_client()
+        last_pos = client.play(self['pathname'], self.audio, self.subtitle)
     
     def resume(self, config=None):
         print "FIXME: Resuming %s" % self
