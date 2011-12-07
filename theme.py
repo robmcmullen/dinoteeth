@@ -20,7 +20,7 @@ class MenuTheme(object):
         """Default menu handler that simply adds the title and doesn't process
         any children.
         """
-        menu = MenuItem(media.canonical_title)
+        menu = MenuItem(media.in_context_title)
         parent_menu.add(menu)
         return menu, False
 
@@ -73,3 +73,15 @@ class MenuTheme(object):
             items.append(toggle)
             first = False
         return items
+
+    def add_movie_options_to_menu(self, movie, parent_menu):
+        """Add Movie (or SeriesEpisode) object to menu
+
+        """
+        title_menu = MenuItem(movie.in_context_title)
+        parent_menu.add(title_menu)
+        
+        items = self.get_movie_options(movie)
+        for item in items:
+            title_menu.add(item)
+        return parent_menu, True

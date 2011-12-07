@@ -118,30 +118,11 @@ class Root(MediaObject):
         other = Guess(title=title, type='root')
         MediaObject.__init__(self, other)
 
-class Movie(MediaObject):
+
+class Playable(object):
     def set_defaults(self):
         self.audio = None
         self.subtitle = None
-    
-    def canonicalize(self):
-        self.canonical_title = self['title']
-        if self.is_bonus_feature():
-            self.in_context_title = self.get_bonus_title()
-            self.canonical_title += " %s" % self.in_context_title
-        else:
-            self.in_context_title = self.canonical_title
-    
-    def decorate(self):
-        entry = (self.get('title', ""),
-                 9999,
-                 9999,
-                 self.get('extraNumber', 0),
-                 self.get('extraTitle', ""),
-                 )
-        return entry
-    
-    def decompose(self):
-        return [MovieTitle(self), self]
     
     def is_bonus_feature(self):
         return 'extraNumber' in self or 'extraTitle' in self
@@ -185,6 +166,28 @@ class Movie(MediaObject):
     def resume(self, config=None):
         print "FIXME: Resuming %s" % self
 
+
+class Movie(Playable, MediaObject):
+    def canonicalize(self):
+        self.canonical_title = self['title']
+        if self.is_bonus_feature():
+            self.in_context_title = self.get_bonus_title()
+            self.canonical_title += " %s" % self.in_context_title
+        else:
+            self.in_context_title = self.canonical_title
+    
+    def decorate(self):
+        entry = (self.get('title', ""),
+                 9999,
+                 9999,
+                 self.get('extraNumber', 0),
+                 self.get('extraTitle', ""),
+                 )
+        return entry
+    
+    def decompose(self):
+        return [MovieTitle(self), self]
+
 class MovieTitle(Movie):
     def decorate(self):
         entry = (self.get('title', ""),
@@ -204,7 +207,8 @@ class MovieTitle(Movie):
 class MovieSeries(Movie):
     pass
 
-class SeriesEpisode(MediaObject):
+
+class SeriesBase(MediaObject):
     def decorate(self):
         entry = (self.get('series', ""),
                  self.get('season', 9999),
@@ -221,13 +225,17 @@ class SeriesEpisode(MediaObject):
         if 'series' not in self:
             title, _ = os.path.splitext(os.path.basename(self['pathname']))
             self['series'] = title
-            
+
+class SeriesEpisode(Playable, SeriesBase):
     def canonicalize(self):
         self.in_context_title = "Episode %d %s" % (self['episodeNumber'], self.get('episodeTitle',""))
         self.canonical_title = "%s Season %d %s" % (self['series'], self['season'], self.in_context_title)
     
     def decompose(self):
         return [Series(self), Season(self), self]
+    
+    def add_to_menu(self, theme, parent_menu):
+        return theme.add_movie_options_to_menu(self, parent_menu)
 
 class SeriesBonus(SeriesEpisode):
     def canonicalize(self):
@@ -237,7 +245,7 @@ class SeriesBonus(SeriesEpisode):
     def decompose(self):
         return [Series(self), Season(self), self]
 
-class Series(SeriesEpisode):
+class Series(SeriesBase):
     def filter_out(self):
         return set(['pathname', 'season', 'episodeNumber', 'title', 'extraNumber', 'extraTitle'])
     
@@ -257,7 +265,7 @@ class Series(SeriesEpisode):
     def decompose(self):
         return [self]
 
-class Season(SeriesEpisode):
+class Season(SeriesBase):
     def filter_out(self):
         return set(['pathname', 'episodeNumber', 'title', 'extraNumber', 'extraTitle'])
     
