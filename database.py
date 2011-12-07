@@ -18,7 +18,10 @@ class MediaObject(Guess):
     def convertGuess(cls, g):
         guess = None
         if g['type'] == 'movie':
-            guess = Movie(g)
+            if 'extraNumber' in g:
+                guess = MovieBonus(g)
+            else:
+                guess = Movie(g)
         elif g['type'] == 'episode':
             if 'episodeNumber' in g:
                 guess = SeriesEpisode(g)
@@ -125,15 +128,18 @@ class Playable(object):
         self.subtitle = None
     
     def is_bonus_feature(self):
-        return 'extraNumber' in self or 'extraTitle' in self
+        return False
     
     def get_bonus_title(self):
-        bonus = []
+        bonus = "Untitled Bonus Feature"
         if 'extraNumber' in self:
-            bonus.append(str(self['extraNumber']))
-        if 'extraTitle' in self:
-            bonus.append(str(self['extraTitle']))
-        return " ".join(bonus)
+            if 'extraTitle' not in self:
+                bonus = "Bonus Feature %s" % str(self['extraNumber'])
+            else:
+                bonus = "#%s: %s" % (str(self['extraNumber']), str(self['extraTitle']))
+        elif 'extraTitle' in self:
+            bonus = str(self['extraTitle'])
+        return bonus
     
     def get_audio_options(self):
         # Just a placeholder for now; not sure of the format and how the user
@@ -170,11 +176,27 @@ class Playable(object):
 class Movie(Playable, MediaObject):
     def canonicalize(self):
         self.canonical_title = self['title']
-        if self.is_bonus_feature():
-            self.in_context_title = self.get_bonus_title()
-            self.canonical_title += " %s" % self.in_context_title
-        else:
-            self.in_context_title = self.canonical_title
+        self.in_context_title = self.canonical_title
+    
+    def decorate(self):
+        entry = (self.get('title', ""),
+                 9999,
+                 9999,
+                 0,
+                 "",
+                 )
+        return entry
+    
+    def decompose(self):
+        return [MovieTitle(self), self]
+
+class MovieBonus(Movie):
+    def is_bonus_feature(self):
+        return True
+    
+    def canonicalize(self):
+        self.in_context_title = self.get_bonus_title()
+        self.canonical_title = "%s %s" % (self['title'], self.in_context_title)
     
     def decorate(self):
         entry = (self.get('title', ""),
@@ -184,9 +206,6 @@ class Movie(Playable, MediaObject):
                  self.get('extraTitle', ""),
                  )
         return entry
-    
-    def decompose(self):
-        return [MovieTitle(self), self]
 
 class MovieTitle(Movie):
     def decorate(self):
@@ -238,8 +257,11 @@ class SeriesEpisode(Playable, SeriesBase):
         return theme.add_movie_options_to_menu(self, parent_menu)
 
 class SeriesBonus(SeriesEpisode):
+    def is_bonus_feature(self):
+        return True
+    
     def canonicalize(self):
-        self.in_context_title = "Bonus Feature %d %s" % (self['extraNumber'], self.get('extraTitle',""))
+        self.in_context_title = self.get_bonus_title()
         self.canonical_title = "%s Season %d %s" % (self['series'], self['season'], self.in_context_title)
     
     def decompose(self):
