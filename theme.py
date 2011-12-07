@@ -40,6 +40,8 @@ class MenuTheme(object):
                     first_bonus = False
                 submenu = MenuItem(movie.in_context_title, media=movie, action=movie.play)
                 items.append(submenu)
+                for item in self.get_movie_options(movie):
+                    submenu.add(item)
             else:
                 items.extend(self.get_movie_options(movie))
             for item in items:
