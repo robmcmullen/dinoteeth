@@ -7,7 +7,7 @@ from model import MenuItem
 from database import DictDatabase
 from media import guess_media_info, guess_custom, normalize_guess
 from theme import MenuTheme
-from mplayer import MPlayerClient
+from mplayer import MPlayerClient, MPlayerInfo
 from utils import decode_title_text
 
 class RootMenu(MenuItem):
@@ -80,8 +80,12 @@ class Config(object):
         self.root.create_menus()
     
     def get_database(self):
-        db = DictDatabase()
+        scanner = self.get_metadata_scanner()
+        db = DictDatabase(media_scanner=scanner)
         return db
+    
+    def get_metadata_scanner(self):
+        return MPlayerInfo
     
     def parse_dir(self, root, path, force_category=None):
         valid = self.get_video_extensions()

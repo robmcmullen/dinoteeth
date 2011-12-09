@@ -147,6 +147,15 @@ class MediaObject(Guess):
     
     def add_to_menu(self, theme, parent_menu):
         return theme.add_simple_menu(self, parent_menu)
+    
+    # Metadata scanner
+    
+    def scan(self, scanner):
+        metadata = scanner(self['pathname'])
+        print "Scanned %s" % metadata.filename
+        print metadata.audio
+        print metadata.subtitles
+        self.scanned_metadata = metadata
 
 class Root(MediaObject):
     def __init__(self, title):
@@ -174,24 +183,26 @@ class Playable(object):
         return bonus
     
     def get_audio_options(self):
-        # Just a placeholder for now; not sure of the format and how the user
-        # is going to select one of the options.
-        return [(1, "Stereo"),
-                (2, "DTS"),
-                (3, "Director's Commentary"),
-                ]
+        options = []
+        for audio in self.scanned_metadata.iter_audio():
+            options.append((audio.id, audio.name))
+        if not options:
+            # "No audio" is not an option by default; only if there really is
+            # no audio available in the media
+            options.append((-1, "No audio"))
+        return options
     
     def set_audio_options(self, index=-1, **kwargs):
         self.audio = index
         print "FIXME: audio index = %s" % self.audio
     
     def get_subtitle_options(self):
-        # Just a placeholder for now; not sure of the format and how the user
-        # is going to select one of the options.
-        return [(1, "Subtitles [en]"),
-                (2, "Closed Captions [en]"),
-                (3, "Trivia Track"),
-                ]
+        # Unlike audio, "No subtitles" should always be an option in case
+        # people don't want to view subtitles
+        options = [(-1, "No subtitles")]
+        for subtitle in self.scanned_metadata.iter_subtitles():
+            options.append((subtitle.id, subtitle.name))
+        return options
     
     def set_subtitle_options(self, index=-1, **kwargs):
         self.subtitle = index

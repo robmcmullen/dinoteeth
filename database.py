@@ -2,10 +2,11 @@ from media import MediaObject, MediaResults
 
 
 class Database(object):
-    def __init__(self, aliases=None):
+    def __init__(self, aliases=None, media_scanner=None):
         if aliases is None:
             aliases = dict()
         self.aliases = aliases
+        self.media_scanner = media_scanner
         self.create()
     
     def create(self):
@@ -17,15 +18,16 @@ class DictDatabase(Database):
         self.cats = {}
     
     def add(self, g):
-        guess = MediaObject.convertGuess(g)
-        category = guess['type']
+        media = MediaObject.convertGuess(g)
+        media.scan(self.media_scanner)
+        category = media['type']
         if category is not None:
             if category in self.aliases:
                 category = self.aliases[category]
             if category not in self.cats:
                 self.cats[category] = {}
             
-            self.cats[category][guess['pathname']] = guess
+            self.cats[category][media['pathname']] = media
     
     def find(self, category, criteria=None):
         results = MediaResults()

@@ -87,3 +87,12 @@ class MPlayerInfo(object):
                     track.lang = value
             except ValueError:
                 pass
+    
+    def iter_audio(self):
+        for id in self.audio_order:
+            yield self.audio[id]
+    
+    def iter_subtitles(self):
+        for id in self.subtitles_order:
+            yield self.subtitles[id]
+    
