@@ -183,6 +183,8 @@ class MPlayerInfo(object):
         for line in output.splitlines():
             if line.startswith("ID_"):
                 key, value = line.split("=", 1)
+                if value.startswith("\"") and value.endswith("\""):
+                    value = value[1:-1]
                 setattr(self, key, value)
 
 
