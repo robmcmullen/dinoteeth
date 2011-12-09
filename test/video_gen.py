@@ -38,7 +38,7 @@ def encode(filebase, bitrate, fps):
     print output
     return output
 
-def merge(video, audio_args, output):
+def merge(video, audio_args, subtitle_args, output):
     try:
         os.unlink(output)
     except OSError:
@@ -47,8 +47,13 @@ def merge(video, audio_args, output):
             "-o", output,
             video,
             ]
+    extra_args = []
     if audio_args:
-        args.extend(audio_args)
+        extra_args.extend(audio_args)
+    if subtitle_args:
+        extra_args.extend(subtitle_args)
+    if extra_args:
+        args.extend(extra_args)
         print args
         p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = p.communicate()
@@ -61,6 +66,18 @@ def get_audio(files, user_names, user_langs):
     args = []
     if files:
         names = ["Audio Track #%d" % (i+1) for i in range(len(files))]
+        names[0:len(user_names)] = user_names
+        langs = ["und" for i in range(len(files))]
+        langs[0:len(user_langs)] = user_langs
+        for file, name, lang in zip(files, names, langs):
+            args.extend(["--track-name", "0:%s" % name, "--language", "0:%s" % lang, file])
+        print args
+    return args
+
+def get_subtitles(files, user_names, user_langs):
+    args = []
+    if files:
+        names = ["Subtitle #%d" % (i+1) for i in range(len(files))]
         names[0:len(user_names)] = user_names
         langs = ["und" for i in range(len(files))]
         langs[0:len(user_langs)] = user_langs
@@ -85,14 +102,18 @@ if __name__ == "__main__":
     parser.add_option("-h", action="store", type="int", dest="height", default=50, help="Frame height")
     parser.add_option("-b", action="store", type="int", dest="bitrate", default=8000, help="Video bitrate")
     parser.add_option("-r", action="store", type="int", dest="fps", default=10, help="Frames per second")
-    parser.add_option("-a", action="append", dest="audio_files", default=[], help="Audio file to merge")
-    parser.add_option("-n", action="append", dest="audio_names", default=[], help="Name of corresponding audio file")
-    parser.add_option("-l", action="append", dest="audio_langs", default=[], help="Language (ISO639-1 or ISO639-2 code) of corresponding audio file")
+    parser.add_option("-a", "--audio", action="append", dest="audio_files", default=[], help="Audio file to merge")
+    parser.add_option("--an", action="append", dest="audio_names", default=[], help="Name of corresponding audio file")
+    parser.add_option("--al", action="append", dest="audio_langs", default=[], help="Language (ISO639-1 or ISO639-2 code) of corresponding audio file")
+    parser.add_option("-s", "--subtitle", action="append", dest="subtitle_files", default=[], help="Subtitle file to merge")
+    parser.add_option("--sn", action="append", dest="subtitle_names", default=[], help="Name of corresponding subtitle file")
+    parser.add_option("--sl", action="append", dest="subtitle_langs", default=[], help="Language (ISO639-1 or ISO639-2 code) of corresponding subtitle file")
     parser.add_option("-o", action="store", dest="output", default="output.mkv", help="Output filename")
     
     (options, args) = parser.parse_args()
     filebase = create_images(options.frames, options.width, options.height)
     video = encode(filebase, options.bitrate, options.fps)
     audio_args = get_audio(options.audio_files, options.audio_names, options.audio_langs)
-    merge(video, audio_args, options.output)
+    subtitle_args = get_subtitles(options.subtitle_files, options.subtitle_names, options.subtitle_langs)
+    merge(video, audio_args, subtitle_args, options.output)
     clean(filebase)

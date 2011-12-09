@@ -6,7 +6,7 @@ Modifications by Rob McMullen
 """
 import os, os.path, select, time, subprocess
 
-from media import AudioTrack
+from media import AudioTrack, SubtitleTrack
 
 class MPlayer(object):
     """ A class to access a slave mplayer process
@@ -183,28 +183,41 @@ class MPlayerInfo(object):
         self.output = output
         self.audio_order = []
         self.audio = {}
-        current_audio = None
+        self.subtitles_order = []
+        self.subtitles = {}
+        current = {'subtitle': None,
+                   'audio': None,
+                   }
         for line in output.splitlines():
             if line.startswith("ID_"):
                 key, value = line.split("=", 1)
                 if value.startswith("\"") and value.endswith("\""):
                     value = value[1:-1]
+                setattr(self, key, value)
                 if key == "ID_AUDIO_ID":
                     id = int(value)
                     self.audio_order.append(id)
-                    current_audio = AudioTrack(id)
-                    self.audio[id] = current_audio
-                if current_audio and key.startswith("ID_AID_"):
-                    root = "ID_AID_%d_" % current_audio.id
-                    try:
-                        _, subkey = key.split(root)
-                        if subkey == "NAME":
-                            current_audio.name = value
-                        elif subkey == "LANG":
-                            current_audio.lang = value
-                    except ValueError:
-                        pass
-                setattr(self, key, value)
+                    current['audio'] = AudioTrack(id)
+                    self.audio[id] = current['audio']
+                if key == "ID_SUBTITLE_ID":
+                    id = int(value)
+                    self.subtitles_order.append(id)
+                    current['subtitle'] = SubtitleTrack(id)
+                    self.subtitles[id] = current['subtitle']
+                self.process_details(key, value, current['audio'], "ID_AID_")
+                self.process_details(key, value, current['subtitle'], "ID_SID_")
+    
+    def process_details(self, key, value, track, key_root):
+        if track and key.startswith(key_root):
+            root = "%s%d_" % (key_root, track.id)
+            try:
+                _, subkey = key.split(root)
+                if subkey == "NAME":
+                    track.name = value
+                elif subkey == "LANG":
+                    track.lang = value
+            except ValueError:
+                pass
 
 
 if __name__ == '__main__':

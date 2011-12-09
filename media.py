@@ -369,3 +369,12 @@ class AudioTrack(object):
         self.name = name
         self.lang = lang
         self.codec = codec
+
+class SubtitleTrack(object):
+    def __init__(self, id, lang="en", format="unknown", name=None):
+        self.id = id
+        if name is None:
+            name = "Subtitle %d" % id
+        self.name = name
+        self.lang = lang
+        self.format = format
