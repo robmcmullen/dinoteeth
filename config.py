@@ -151,18 +151,7 @@ class Config(object):
     def get_mplayer_opts(self, path):
         opts = self.default_mplayer_opts[:]
         root, ext = os.path.splitext(path)
-        subtitle = root + ".sub"
-        if not os.path.exists(subtitle):
-            if path.endswith(".mp4"):
-                # Assuming that .mp4 files are made by me and have subtitles
-                opts.extend(["-slang", "eng"])
-            else:
-                # If there are no subtitles, force closed captioning
-                opts.extend(["-subcc", "1"])
-        else:
-            # use -noautosub to stop subtitles from being displayed
-            #opts.append("-noautosub")
-            pass
+        # do something with path if desired
         return opts
 
 def setup(args):

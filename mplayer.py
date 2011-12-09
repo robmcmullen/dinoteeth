@@ -11,8 +11,22 @@ class MPlayerClient(object):
     def play(self, path, audio=None, subtitle=None):
         escaped_path = utils.shell_escape_path(path)
         opts = self.config.get_mplayer_opts(path)
+        self.audio_opts(opts, audio)
+        self.subtitle_opts(opts, subtitle)
         last_pos = self.play_slave(escaped_path, opts)
         return last_pos
+    
+    def audio_opts(self, opts, id):
+        if id is not None:
+            opts.extend(["-aid", str(id)])
+    
+    def subtitle_opts(self, opts, id):
+        print "Subtitles: %s" % id
+        if id is not None:
+            if id < 0:
+                opts.extend(["-noautosub", "-nosub"])
+            else:
+                opts.extend(["-sid", str(id)])
     
     def play_slave(self, escaped_path, opts):
         last_pos = 0
