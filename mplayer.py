@@ -75,6 +75,13 @@ class MPlayerInfo(object):
                     self.subtitles[id] = current['subtitle']
                 self.process_details(key, value, current['audio'], "ID_AID_")
                 self.process_details(key, value, current['subtitle'], "ID_SID_")
+        self.normalize()
+    
+    def normalize(self):
+        if hasattr(self, "ID_LENGTH"):
+            self.length = float(self.ID_LENGTH)
+        else:
+            self.length = 0.0
     
     def process_details(self, key, value, track, key_root):
         if track and key.startswith(key_root):
