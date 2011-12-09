@@ -38,22 +38,17 @@ def encode(filebase, bitrate, fps):
     print output
     return output
 
-def merge(video, audio_files, audio_names, audio_langs, output):
+def merge(video, audio_args, output):
     try:
         os.unlink(output)
     except OSError:
         pass
-    if audio_files:
-        args = ["mkvmerge",
-                "-o", output,
-                video,
-                ]
-        names = ["Audio Track #%d" % (i+1) for i in range(len(audio_files))]
-        names[0:len(audio_names)] = audio_names
-        langs = ["und" for i in range(len(audio_files))]
-        langs[0:len(audio_langs)] = audio_langs
-        for file, name, lang in zip(audio_files, names, langs):
-            args.extend(["--track-name", "0:%s" % name, "--language", "0:%s" % lang, file])
+    args = ["mkvmerge",
+            "-o", output,
+            video,
+            ]
+    if audio_args:
+        args.extend(audio_args)
         print args
         p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = p.communicate()
@@ -61,6 +56,18 @@ def merge(video, audio_files, audio_names, audio_langs, output):
         print stderr
     else:
         os.rename(video, output)
+
+def get_audio(files, user_names, user_langs):
+    args = []
+    if files:
+        names = ["Audio Track #%d" % (i+1) for i in range(len(files))]
+        names[0:len(user_names)] = user_names
+        langs = ["und" for i in range(len(files))]
+        langs[0:len(user_langs)] = user_langs
+        for file, name, lang in zip(files, names, langs):
+            args.extend(["--track-name", "0:%s" % name, "--language", "0:%s" % lang, file])
+        print args
+    return args
 
 def clean(filebase):
     for name in glob.glob("%s*" % filebase):
@@ -86,5 +93,6 @@ if __name__ == "__main__":
     (options, args) = parser.parse_args()
     filebase = create_images(options.frames, options.width, options.height)
     video = encode(filebase, options.bitrate, options.fps)
-    merge(video, options.audio_files, options.audio_names, options.audio_langs, options.output)
+    audio_args = get_audio(options.audio_files, options.audio_names, options.audio_langs)
+    merge(video, audio_args, options.output)
     clean(filebase)
