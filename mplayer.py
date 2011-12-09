@@ -29,6 +29,5 @@ class MPlayerClient(object):
             print("Couldn't start movie!")
             raise
         finally:
-            print dir(mp)
             mp.quit()
         return last_pos

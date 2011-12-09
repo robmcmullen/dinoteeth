@@ -32,6 +32,10 @@ class MPlayer(object):
     exe_name = 'mplayer' if os.sep == '/' else 'mplayer.exe'
 
     def __init__(self, filename, *opts):
+        if not hasattr(MPlayer, 'quit'):
+            MPlayer.populate()
+            #print dir(MPlayer)
+            
         self.filename = filename
         args = [self.exe_name]
         if opts:
@@ -159,10 +163,6 @@ class MPlayer(object):
 
             setattr(MPlayer, cmd_name, _populated_fn)
 
-
-if not hasattr(MPlayer, 'quit'):
-    MPlayer.populate()
-    print dir(MPlayer)
 
 
 if __name__ == '__main__':
