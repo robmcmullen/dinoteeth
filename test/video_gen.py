@@ -51,7 +51,7 @@ def merge(video, audio_files, audio_names, output):
         names = ["Audio Track #%d" % (i+1) for i in range(len(audio_files))]
         names[0:len(audio_names)] = audio_names
         for f,n in zip(audio_files, names):
-            args.extend(["--track-name", '0:"%s"' % n, f])
+            args.extend(["--track-name", "0:%s" % n, f])
         print args
         p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = p.communicate()
