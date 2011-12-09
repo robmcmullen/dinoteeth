@@ -65,6 +65,8 @@ class MenuTheme(object):
             radio.append(toggle)
             items.append(toggle)
             first = False
+        if radio:
+            radio[0].initialize_action()
         items.append(MenuItem("Subtitles", enabled=False))
         
         radio = []
@@ -74,6 +76,8 @@ class MenuTheme(object):
             radio.append(toggle)
             items.append(toggle)
             first = False
+        if radio:
+            radio[0].initialize_action()
         return items
 
     def add_movie_options_to_menu(self, movie, parent_menu):

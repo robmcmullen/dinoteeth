@@ -148,5 +148,12 @@ class Toggle(MenuItem):
             toggle.do_action_toggle(False)
         self.do_action_toggle(True)
     
+    def initialize_action(self):
+        if self.action:
+            for toggle in self.radio_group:
+                if toggle.state:
+                    self.action(index=toggle.index)
+                    break
+    
     def is_toggle(self):
         return True
