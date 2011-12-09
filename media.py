@@ -208,6 +208,9 @@ class Playable(object):
         self.subtitle = index
         print "FIXME: subtitle index = %s" % self.subtitle
     
+    def get_runtime(self):
+        return utils.time_format(self.scanned_metadata.length)
+    
     def play(self, config=None):
         client = config.get_media_client()
         last_pos = client.play(self['pathname'], self.audio, self.subtitle)

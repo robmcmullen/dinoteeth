@@ -9,3 +9,8 @@ def shell_escape_path(path):
     escaped_path = path
     for c in escape_chars: escaped_path = escaped_path.replace(c, "\\"+c)
     return escaped_path
+
+def time_format(seconds):
+    m, s = divmod(seconds, 60)
+    h, m = divmod(m, 60)
+    return "%d:%02d:%02d" % (h, m, s)

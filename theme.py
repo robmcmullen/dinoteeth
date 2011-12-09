@@ -51,7 +51,7 @@ class MenuTheme(object):
     def get_movie_options(self, movie):
         items = []
         items.append(MenuItem(movie.in_context_title, enabled=False))
-        items.append(MenuItem("Play", media=movie, action=movie.play))
+        items.append(MenuItem("Play (%s)" % movie.get_runtime(), media=movie, action=movie.play))
         items.append(MenuItem("Resume", media=movie, action=movie.resume, enabled=False))
         items.append(MenuItem("Audio Options", enabled=False))
         
