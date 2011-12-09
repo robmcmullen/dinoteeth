@@ -164,6 +164,27 @@ class MPlayer(object):
             setattr(MPlayer, cmd_name, _populated_fn)
 
 
+class MPlayerInfo(object):
+    identify_args = ["-vo", "null", "-ao", "null", "-identify", "-frames", "0"]
+    
+    def __init__(self, filename, *opts):
+        self.filename = filename
+        args = [MPlayer.exe_name]
+        args.extend(self.identify_args)
+        if opts:
+            args.extend(opts)
+        args.append(filename)
+        p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, errors = p.communicate()
+        self.process_output(output)
+    
+    def process_output(self, output):
+        self.output = output
+        for line in output.splitlines():
+            if line.startswith("ID_"):
+                key, value = line.split("=", 1)
+                setattr(self, key, value)
+
 
 if __name__ == '__main__':
     import sys
