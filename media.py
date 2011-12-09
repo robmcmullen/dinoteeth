@@ -359,3 +359,13 @@ class MediaResults(list):
                 h.add_chain(chain)
         #print h.str_hierarchy()
         return h
+
+
+class AudioTrack(object):
+    def __init__(self, id, lang="en", codec="unknown", name=None):
+        self.id = id
+        if name is None:
+            name = "Audio Track %d" % id
+        self.name = name
+        self.lang = lang
+        self.codec = codec

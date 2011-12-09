@@ -38,7 +38,7 @@ def encode(filebase, bitrate, fps):
     print output
     return output
 
-def merge(video, audio_files, audio_names, output):
+def merge(video, audio_files, audio_names, audio_langs, output):
     try:
         os.unlink(output)
     except OSError:
@@ -50,8 +50,10 @@ def merge(video, audio_files, audio_names, output):
                 ]
         names = ["Audio Track #%d" % (i+1) for i in range(len(audio_files))]
         names[0:len(audio_names)] = audio_names
-        for f,n in zip(audio_files, names):
-            args.extend(["--track-name", "0:%s" % n, f])
+        langs = ["und" for i in range(len(audio_files))]
+        langs[0:len(audio_langs)] = audio_langs
+        for file, name, lang in zip(audio_files, names, langs):
+            args.extend(["--track-name", "0:%s" % name, "--language", "0:%s" % lang, file])
         print args
         p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = p.communicate()
@@ -78,10 +80,11 @@ if __name__ == "__main__":
     parser.add_option("-r", action="store", type="int", dest="fps", default=10, help="Frames per second")
     parser.add_option("-a", action="append", dest="audio_files", default=[], help="Audio file to merge")
     parser.add_option("-n", action="append", dest="audio_names", default=[], help="Name of corresponding audio file")
+    parser.add_option("-l", action="append", dest="audio_langs", default=[], help="Language (ISO639-1 or ISO639-2 code) of corresponding audio file")
     parser.add_option("-o", action="store", dest="output", default="output.mkv", help="Output filename")
     
     (options, args) = parser.parse_args()
     filebase = create_images(options.frames, options.width, options.height)
     video = encode(filebase, options.bitrate, options.fps)
-    merge(video, options.audio_files, options.audio_names, options.output)
+    merge(video, options.audio_files, options.audio_names, options.audio_langs, options.output)
     clean(filebase)

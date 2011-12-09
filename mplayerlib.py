@@ -6,6 +6,7 @@ Modifications by Rob McMullen
 """
 import os, os.path, select, time, subprocess
 
+from media import AudioTrack
 
 class MPlayer(object):
     """ A class to access a slave mplayer process
@@ -180,11 +181,29 @@ class MPlayerInfo(object):
     
     def process_output(self, output):
         self.output = output
+        self.audio_order = []
+        self.audio = {}
+        current_audio = None
         for line in output.splitlines():
             if line.startswith("ID_"):
                 key, value = line.split("=", 1)
                 if value.startswith("\"") and value.endswith("\""):
                     value = value[1:-1]
+                if key == "ID_AUDIO_ID":
+                    id = int(value)
+                    self.audio_order.append(id)
+                    current_audio = AudioTrack(id)
+                    self.audio[id] = current_audio
+                if current_audio and key.startswith("ID_AID_"):
+                    root = "ID_AID_%d_" % current_audio.id
+                    try:
+                        _, subkey = key.split(root)
+                        if subkey == "NAME":
+                            current_audio.name = value
+                        elif subkey == "LANG":
+                            current_audio.lang = value
+                    except ValueError:
+                        pass
                 setattr(self, key, value)
 
 
