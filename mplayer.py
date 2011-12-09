@@ -1,7 +1,8 @@
-import os, sys, time
+import os, sys, time, subprocess
 
 from mplayerlib import MPlayer
 import utils
+from media import AudioTrack, SubtitleTrack
 
 class MPlayerClient(object):
     def __init__(self, config):
@@ -31,3 +32,58 @@ class MPlayerClient(object):
         finally:
             mp.quit()
         return last_pos
+
+
+class MPlayerInfo(object):
+    identify_args = ["-vo", "null", "-ao", "null", "-identify", "-frames", "0"]
+    
+    def __init__(self, filename, *opts):
+        self.filename = filename
+        args = [MPlayer.exe_name]
+        args.extend(self.identify_args)
+        if opts:
+            args.extend(opts)
+        args.append(filename)
+        p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, errors = p.communicate()
+        self.process_output(output)
+    
+    def process_output(self, output):
+        self.output = output
+        self.audio_order = []
+        self.audio = {}
+        self.subtitles_order = []
+        self.subtitles = {}
+        current = {'subtitle': None,
+                   'audio': None,
+                   }
+        for line in output.splitlines():
+            if line.startswith("ID_"):
+                key, value = line.split("=", 1)
+                if value.startswith("\"") and value.endswith("\""):
+                    value = value[1:-1]
+                setattr(self, key, value)
+                if key == "ID_AUDIO_ID":
+                    id = int(value)
+                    self.audio_order.append(id)
+                    current['audio'] = AudioTrack(id)
+                    self.audio[id] = current['audio']
+                if key == "ID_SUBTITLE_ID":
+                    id = int(value)
+                    self.subtitles_order.append(id)
+                    current['subtitle'] = SubtitleTrack(id)
+                    self.subtitles[id] = current['subtitle']
+                self.process_details(key, value, current['audio'], "ID_AID_")
+                self.process_details(key, value, current['subtitle'], "ID_SID_")
+    
+    def process_details(self, key, value, track, key_root):
+        if track and key.startswith(key_root):
+            root = "%s%d_" % (key_root, track.id)
+            try:
+                _, subkey = key.split(root)
+                if subkey == "NAME":
+                    track.name = value
+                elif subkey == "LANG":
+                    track.lang = value
+            except ValueError:
+                pass

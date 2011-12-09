@@ -3,7 +3,7 @@
 
 from dinoteeth_test import *
 
-from mplayerlib import *
+from mplayer import *
 
 class TestMPlayerIdentify(TestCase):
     def setUp(self):
