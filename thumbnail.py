@@ -81,7 +81,7 @@ class ThumbnailFactory(object):
             return None
         if img.size[0] <= self.size[0] and img.size[1] <= self.size[1]:
             return imgpath
-        img.thumbnail(self.size)
+        img = self._get_rotated_thumbnail(img)
         
         uri = self._path_to_uri(imgpath)
         thumbpath = self._uri_to_thumbpath(uri)
@@ -109,6 +109,27 @@ class ThumbnailFactory(object):
             return None
         return thumbpath
 
+    def _get_rotated_thumbnail(self, img):
+        """If image is rotated according to EXIF data, rotate the thumbnail
+        before returning.
+        
+        http://www.impulseadventure.com/photo/exif-orientation.html
+        """
+        orientation = 1
+        if hasattr(img, '_getexif'):
+            exif = img._getexif()
+            if exif != None:
+                orientation = exif[0x0112]
+        img.thumbnail(self.size)
+        
+        if orientation == 6:
+            img = img.transpose(Image.ROTATE_270)
+        elif orientation == 3:
+            img = img.transpose(Image.ROTATE_180)
+        elif orientation == 8:
+            img = img.transpose(Image.ROTATE_90)
+        
+        return img
 
     def _path_to_uri(self, path):
         uri = 'file://' + pathname2url(os.path.abspath(path))
