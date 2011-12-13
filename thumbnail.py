@@ -95,7 +95,8 @@ class ThumbnailFactory(object):
         info.add_text("Thumb::URI", uri)
         info.add_text("Thumb::MTime", mtime)
         info.add_text("Thumb::Size", size)
-        info.add_text("Thumb::Mimetype", mime)
+        if mime:
+            info.add_text("Thumb::Mimetype", mime)
         info.add_text("Thumb::Image::Width", width)
         info.add_text("Thumb::Image::Height", height)
         info.add_text("Software", "Dinoteeth")
