@@ -23,6 +23,9 @@ class RootMenu(MenuItem):
             ]
         self.categories = {}
     
+    def up_to_date(self, pathname):
+        return self.db.is_current(pathname)
+    
     def add_guess(self, guess):
         self.db.add(guess)
     
@@ -46,6 +49,9 @@ class RootMenu(MenuItem):
         results = self.db.find("nothing")
         h = results.hierarchy()
         return h
+    
+    def save_state(self):
+        self.db.saveStateToFile()
 
 
 class Config(object):
@@ -64,12 +70,13 @@ class Config(object):
         parser=OptionParser(usage=usage)
         parser.add_option("-v", action="store_true", dest="verbose", default=False)
         parser.add_option("-t", "--test", action="store_true", dest="test", default=False)
-        (options, args) = parser.parse_args()
+        parser.add_option("-d", "--database", action="store", dest="database", default="dinoteeth.db")
+        (self.options, args) = parser.parse_args()
     
         db = self.get_database()
         theme = self.get_menu_theme()
         self.root = RootMenu(db, theme)
-        if options.test:
+        if self.options.test:
             self.parse_dir(self.root, "test/movies1", "movie")
             self.parse_dir(self.root, "test/movies2", "movie")
             self.parse_dir(self.root, "test/series1", "episode")
@@ -82,6 +89,7 @@ class Config(object):
     def get_database(self):
         scanner = self.get_metadata_scanner()
         db = DictDatabase(media_scanner=scanner)
+        db.loadStateFromFile(self.options.database)
         return db
     
     def get_metadata_scanner(self):
@@ -91,14 +99,15 @@ class Config(object):
         valid = self.get_video_extensions()
         regexps = self.get_custom_video_regexps()
         for pathname in iter_dir(path, valid):
-            filename = decode_title_text(pathname)
-            guess = None
-            if regexps:
-                guess = guess_custom(filename, regexps)
-            if not guess:
-                guess = guess_media_info(filename)
-            guess['pathname'] = pathname
-            root.add_guess(guess)
+            if not root.up_to_date(pathname):
+                filename = decode_title_text(pathname)
+                guess = None
+                if regexps:
+                    guess = guess_custom(filename, regexps)
+                if not guess:
+                    guess = guess_media_info(filename)
+                guess['pathname'] = pathname
+                root.add_guess(guess)
 
     def get_video_extensions(self):
         return ['.vob', '.mp4', '.avi', '.wmv', '.mov', '.mpg', '.mpeg', '.mpeg4', '.mkv', '.flv', '.webm']
@@ -153,6 +162,10 @@ class Config(object):
         root, ext = os.path.splitext(path)
         # do something with path if desired
         return opts
+    
+    def save_state(self):
+        self.root.save_state()
+
 
 def setup(args):
     Config.global_config = Config(args)

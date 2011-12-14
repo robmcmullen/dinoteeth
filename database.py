@@ -1,8 +1,10 @@
-from media import MediaObject, MediaResults
+import os
 
+from media import MediaObject, MediaResults
+from serializer import PickleSerializerMixin
 
 class Database(object):
-    def __init__(self, aliases=None, media_scanner=None):
+    def __init__(self, aliases=None, media_scanner=None, **kwargs):
         if aliases is None:
             aliases = dict()
         self.aliases = aliases
@@ -13,9 +15,34 @@ class Database(object):
         pass
 
 
-class DictDatabase(Database):
+class DictDatabase(Database, PickleSerializerMixin):
+    def __init__(self, **kwargs):
+        PickleSerializerMixin.__init__(self, **kwargs)
+        Database.__init__(self, **kwargs)
+        
     def create(self):
+        self.createVersion1()
+    
+    def createVersion1(self):
         self.cats = {}
+    
+    def packVersion1(self):
+        return self.cats
+    
+    def unpackVersion1(self, data):
+        self.cats = data
+    
+    def is_current(self, pathname):
+        media = self.find_any_category(pathname)
+        if not media:
+            return False
+        return media.mtime == os.stat(pathname).st_mtime
+    
+    def find_any_category(self, pathname):
+        for category in self.cats.iterkeys():
+            if pathname in self.cats[category]:
+                return self.cats[category][pathname]
+        return None
     
     def add(self, g):
         media = MediaObject.convertGuess(g)

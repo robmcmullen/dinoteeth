@@ -51,4 +51,5 @@ class VerticalMenuController(object):
             print "already at root"
 
     def process_quit(self):
+        self.config.save_state()
         pyglet.app.exit()
