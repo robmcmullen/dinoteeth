@@ -5,10 +5,11 @@ from optparse import OptionParser
 from view import *
 from model import MenuItem
 from database import DictDatabase
-from media import guess_media_info, guess_custom, normalize_guess
+from media import guess_media_info, guess_custom, normalize_guess, MediaObject
 from theme import MenuTheme
 from mplayer import MPlayerClient, MPlayerInfo
 from utils import decode_title_text
+from metadata import MovieMetadataDatabase
 
 class RootMenu(MenuItem):
     def __init__(self, db, menu_theme):
@@ -71,9 +72,12 @@ class Config(object):
         parser.add_option("-v", action="store_true", dest="verbose", default=False)
         parser.add_option("-t", "--test", action="store_true", dest="test", default=False)
         parser.add_option("-d", "--database", action="store", dest="database", default="dinoteeth.db")
+        parser.add_option("-m", "--metadata-database", action="store", dest="metadata_database", default="dinoteeth-metadata.db")
         (self.options, args) = parser.parse_args()
     
         db = self.get_database()
+        mdb = self.get_metadata_database()
+        MediaObject.setMetadataDatabase(mdb)
         theme = self.get_menu_theme()
         self.root = RootMenu(db, theme)
         if self.options.test:
@@ -94,6 +98,11 @@ class Config(object):
     
     def get_metadata_scanner(self):
         return MPlayerInfo
+    
+    def get_metadata_database(self):
+        mdb = MovieMetadataDatabase()
+        mdb.loadStateFromFile(self.options.metadata_database)
+        return mdb
     
     def parse_dir(self, root, path, force_category=None):
         valid = self.get_video_extensions()

@@ -186,19 +186,21 @@ class DetailRenderer(Renderer):
         self.default_poster = conf.get_default_poster()
         
     def draw(self, menu):
-        # item = menu.get_media_object()
+        print menu
         item = menu.get_selected_item()
+        print item
+        details = item.get_details(self)
 #        image = item.get_detail_image()
 #        if image is None:
 #            image = self.default_poster
         image = self.default_poster
         image.blit(self.x, self.h - image.height, 0)
-#        text = item.get_description()
-        text = "FIXME: description goes here..."
+        text = details['description']
         label = pyglet.text.Label(text,
                                   font_name=self.fonts.name,
                                   font_size=self.fonts.size,
                                   x=self.x + image.width + 10, y=self.h,
-                                  anchor_x='left', anchor_y='top')
+                                  anchor_x='left', anchor_y='top',
+                                  width=self.w - image.width - 10, multiline=True)
         label.draw()
 

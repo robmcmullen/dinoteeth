@@ -46,6 +46,8 @@ def guess_custom(pathname, regexps):
     return None
 
 class MediaObject(Guess):
+    metadata_db = None
+    
     @classmethod
     def convertGuess(cls, g):
         guess = None
@@ -63,6 +65,10 @@ class MediaObject(Guess):
             raise RuntimeError("Unsupported guess type %s" % g['type'])
         return guess
     
+    @classmethod
+    def setMetadataDatabase(cls, db):
+        cls.metadata_db = db
+    
     def __init__(self, other):
         Guess.__init__(self)
         ignore = self.filter_out()
@@ -78,6 +84,10 @@ class MediaObject(Guess):
             self.mtime = os.stat(self['pathname']).st_mtime
         else:
             self.mtime = -1
+        if isinstance(other, MediaObject):
+            self.imdb_id = other.imdb_id
+        else:
+            self.imdb_id = None
         self.set_defaults()
         self.normalize()
     
@@ -160,6 +170,35 @@ class MediaObject(Guess):
         print metadata.audio
         print metadata.subtitles
         self.scanned_metadata = metadata
+    
+    # Metadata utilities
+    
+    def get_details(self, renderer):
+        print "details for %s" % self.canonical_title
+        try:
+            m = self.metadata_db.lookup(self.imdb_id)
+        except KeyError:
+            raise 
+        m['description'] = m['overview']
+        genres = ", ".join(sorted(m['categories']['genre'].keys()))
+        directors = ", ".join([p['name'] for p in m['cast']['director']])
+        actors = ", ".join([p['name'] for p in m['cast']['actor']])
+        m['description'] = """%s
+        
+Year: %s
+Rated: %s
+Released: %s
+Genre: %s
+Directed by: %s
+Actors: %s
+Runtime: %s
+IMDB Rating: %s
+
+Plot: %s""" % (self.canonical_title, "unknown", m['certification'],
+               m['released'], genres, directors, actors, m['runtime'],
+               m['rating'], m['overview'])
+        return m
+
 
 class Root(MediaObject):
     def __init__(self, title):

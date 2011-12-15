@@ -2,7 +2,7 @@ import os, sys, glob, bisect
 
 
 class MenuItem(object):
-    def __init__(self, title, enabled=True, action=None, populate=None, media=None, theme=None, **kwargs):
+    def __init__(self, title, enabled=True, action=None, populate=None, media=None, theme=None, metadata=None, **kwargs):
         self.title = title
         self.enabled = enabled
         self.action = action
@@ -10,6 +10,7 @@ class MenuItem(object):
         self.media = media
         self.theme = theme
         self.parent = None
+        self.metadata = metadata
         self.populated = False
         self.cursor = 0
         self.children = []
@@ -117,6 +118,25 @@ class MenuItem(object):
     
     def is_toggle(self):
         return False
+    
+    def get_details(self, renderer):
+        """Return a dict that represents the detail to be used by the specified
+        renderer
+        """
+        # Find metadata in parents if not specified in this menu item
+        metadata = self.metadata
+        parent = self.parent
+        while parent and not metadata:
+            metadata = parent.metadata
+            parent = parent.parent
+        try:
+            if metadata:
+                return metadata.get_details(renderer)
+        except KeyError:
+            pass
+        return {
+            'description': "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris id tincidunt dui. Sed sagittis egestas turpis id mattis. Maecenas sed dolor sem, in lobortis nisl. Donec sit amet diam id risus cursus egestas eu vitae lectus. Suspendisse semper fringilla purus, et tincidunt augue sollicitudin sed. Mauris euismod tincidunt lorem, ac imperdiet mauris lobortis nec. Quisque dignissim ipsum est, eu mattis ligula. Vestibulum in rutrum arcu. ",
+            }
 
 class Toggle(MenuItem):
     def __init__(self, title, state=False, radio=None, index=0, **kwargs):
