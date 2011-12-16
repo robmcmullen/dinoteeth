@@ -8,7 +8,7 @@ from database import DictDatabase
 from media import guess_media_info, guess_custom, normalize_guess, MediaObject
 from theme import MenuTheme
 from mplayer import MPlayerClient, MPlayerInfo
-from utils import decode_title_text
+from utils import decode_title_text, ArtworkLoader
 from metadata import UnifiedMetadataDatabase, UnifiedMetadata
 
 class RootMenu(MenuItem):
@@ -76,6 +76,7 @@ class Config(object):
         parser.add_option("-t", "--test", action="store_true", dest="test", default=False)
         parser.add_option("-d", "--database", action="store", dest="database", default="dinoteeth.db")
         parser.add_option("-m", "--metadata-database", action="store", dest="metadata_database", default="dinoteeth-unified-metadata.db")
+        parser.add_option("-i", "--image-dir", action="store", dest="image_dir", default="test/posters")
         (self.options, args) = parser.parse_args()
     
         db = self.get_database()
@@ -161,10 +162,8 @@ class Config(object):
     def get_menu_theme(self):
         return MenuTheme()
     
-    def get_default_poster(self):
-        if self.default_poster is None:
-            self.default_poster = pyglet.image.load("graphics/artwork-not-available.png")
-        return self.default_poster
+    def get_artwork_loader(self):
+        return ArtworkLoader(self.options.image_dir, "graphics/artwork-not-available.png")
     
     def get_media_client(self):
         return MPlayerClient(self)

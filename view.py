@@ -183,17 +183,14 @@ class TitleRenderer(Renderer):
 
 class DetailRenderer(Renderer):
     def compute_params(self, conf):
-        self.default_poster = conf.get_default_poster()
+        self.artwork_loader = conf.get_artwork_loader()
         
     def draw(self, menu):
         print menu
         item = menu.get_selected_item()
         print item
         m = item.get_metadata(self)
-#        image = item.get_detail_image()
-#        if image is None:
-#            image = self.default_poster
-        image = self.default_poster
+        image = self.artwork_loader.get_poster(m['imdb_id'])
         image.blit(self.x, self.h - image.height, 0)
         genres = u", ".join(m['genres'])
         directors = u", ".join(m['directors'])
