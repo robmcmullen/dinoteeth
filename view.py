@@ -189,13 +189,40 @@ class DetailRenderer(Renderer):
         print menu
         item = menu.get_selected_item()
         print item
-        details = item.get_details(self)
+        m = item.get_metadata(self)
 #        image = item.get_detail_image()
 #        if image is None:
 #            image = self.default_poster
         image = self.default_poster
         image.blit(self.x, self.h - image.height, 0)
-        text = details['description']
+        genres = u", ".join(m['genres'])
+        directors = u", ".join(m['directors'])
+        for a in m['producers']:
+            print repr(a), type(a)
+        print m['producers']
+        producers = u", ".join(m['producers'])
+        writers = u", ".join(m['writers'])
+        actors = u", ".join(m['actors'])
+        music = u", ".join(m['music'])
+        title = m['title']
+        if m['year']:
+            title += u" (%s)" % m['year']
+        text = u"""%s
+        
+Rated: %s
+Released: %s
+Genre: %s
+Directed by: %s
+Produced by: %s
+Written by: %s
+Music by: %s
+Actors: %s
+Runtime: %s
+Rating: %s/10
+
+Plot: %s""" % (title, m['mpaa'],
+               m['released'], genres, directors, producers, writers, music, actors, m['runtime'],
+               m['rating'], m['description'])
         label = pyglet.text.Label(text,
                                   font_name=self.fonts.name,
                                   font_size=self.fonts.size,

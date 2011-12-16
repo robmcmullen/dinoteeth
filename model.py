@@ -119,7 +119,7 @@ class MenuItem(object):
     def is_toggle(self):
         return False
     
-    def get_details(self, renderer):
+    def get_metadata(self, renderer):
         """Return a dict that represents the detail to be used by the specified
         renderer
         """
@@ -129,14 +129,10 @@ class MenuItem(object):
         while parent and not metadata:
             metadata = parent.metadata
             parent = parent.parent
-        try:
-            if metadata:
-                return metadata.get_details(renderer)
-        except KeyError:
-            pass
-        return {
-            'description': "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris id tincidunt dui. Sed sagittis egestas turpis id mattis. Maecenas sed dolor sem, in lobortis nisl. Donec sit amet diam id risus cursus egestas eu vitae lectus. Suspendisse semper fringilla purus, et tincidunt augue sollicitudin sed. Mauris euismod tincidunt lorem, ac imperdiet mauris lobortis nec. Quisque dignissim ipsum est, eu mattis ligula. Vestibulum in rutrum arcu. ",
-            }
+        
+        # Metadata must exist in root menu, or this will return None and
+        # probably fail further up the chain.
+        return metadata
 
 class Toggle(MenuItem):
     def __init__(self, title, state=False, radio=None, index=0, **kwargs):

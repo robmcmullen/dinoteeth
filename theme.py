@@ -28,7 +28,7 @@ class MenuTheme(object):
         """Add MovieTitle object to menu
 
         """
-        title_menu = MenuItem(movie_title.canonical_title, metadata=movie_title)
+        title_menu = MenuItem(movie_title.canonical_title, metadata=movie_title.metadata)
         parent_menu.add(title_menu)
         
         first_bonus = True
@@ -84,7 +84,7 @@ class MenuTheme(object):
         """Add Movie (or SeriesEpisode) object to menu
 
         """
-        title_menu = MenuItem(movie.in_context_title, metadata=movie)
+        title_menu = MenuItem(movie.in_context_title, metadata=movie.metadata)
         parent_menu.add(title_menu)
         
         items = self.get_movie_options(movie)

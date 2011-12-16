@@ -86,8 +86,10 @@ class MediaObject(Guess):
             self.mtime = -1
         if isinstance(other, MediaObject):
             self.imdb_id = other.imdb_id
+            self.metadata = other.metadata
         else:
             self.imdb_id = None
+            self.metadata = None
         self.set_defaults()
         self.normalize()
     
@@ -170,34 +172,6 @@ class MediaObject(Guess):
         print metadata.audio
         print metadata.subtitles
         self.scanned_metadata = metadata
-    
-    # Metadata utilities
-    
-    def get_details(self, renderer):
-        print "details for %s" % self.canonical_title
-        try:
-            m = self.metadata_db.lookup(self.imdb_id)
-        except KeyError:
-            raise 
-        m['description'] = m['overview']
-        genres = ", ".join(sorted(m['categories']['genre'].keys()))
-        directors = ", ".join([p['name'] for p in m['cast']['director']])
-        actors = ", ".join([p['name'] for p in m['cast']['actor']])
-        m['description'] = """%s
-        
-Year: %s
-Rated: %s
-Released: %s
-Genre: %s
-Directed by: %s
-Actors: %s
-Runtime: %s
-IMDB Rating: %s
-
-Plot: %s""" % (self.canonical_title, "unknown", m['certification'],
-               m['released'], genres, directors, actors, m['runtime'],
-               m['rating'], m['overview'])
-        return m
 
 
 class Root(MediaObject):

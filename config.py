@@ -9,12 +9,15 @@ from media import guess_media_info, guess_custom, normalize_guess, MediaObject
 from theme import MenuTheme
 from mplayer import MPlayerClient, MPlayerInfo
 from utils import decode_title_text
-from metadata import MovieMetadataDatabase
+from metadata import UnifiedMetadataDatabase, UnifiedMetadata
 
 class RootMenu(MenuItem):
     def __init__(self, db, menu_theme):
         MenuItem.__init__(self, "Dinoteeth Media Launcher", theme=menu_theme)
         self.db = db
+        self.metadata = MediaObject.metadata_db.get_blank_metadata()
+        self.metadata['description'] = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris id tincidunt dui. Sed sagittis egestas turpis id mattis. Maecenas sed dolor sem, in lobortis nisl. Donec sit amet diam id risus cursus egestas eu vitae lectus. Suspendisse semper fringilla purus, et tincidunt augue sollicitudin sed. Mauris euismod tincidunt lorem, ac imperdiet mauris lobortis nec. Quisque dignissim ipsum est, eu mattis ligula. Vestibulum in rutrum arcu. "
+        
         self.category_order = [
             ("Movies", self.get_movies_root),
             ("TV", self.get_tv_root),
@@ -72,7 +75,7 @@ class Config(object):
         parser.add_option("-v", action="store_true", dest="verbose", default=False)
         parser.add_option("-t", "--test", action="store_true", dest="test", default=False)
         parser.add_option("-d", "--database", action="store", dest="database", default="dinoteeth.db")
-        parser.add_option("-m", "--metadata-database", action="store", dest="metadata_database", default="dinoteeth-metadata.db")
+        parser.add_option("-m", "--metadata-database", action="store", dest="metadata_database", default="dinoteeth-unified-metadata.db")
         (self.options, args) = parser.parse_args()
     
         db = self.get_database()
@@ -100,7 +103,7 @@ class Config(object):
         return MPlayerInfo
     
     def get_metadata_database(self):
-        mdb = MovieMetadataDatabase()
+        mdb = UnifiedMetadataDatabase()
         mdb.loadStateFromFile(self.options.metadata_database)
         return mdb
     
