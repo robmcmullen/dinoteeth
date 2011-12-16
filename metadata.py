@@ -3,7 +3,7 @@
 Get TMDB/IMDB metadata for movies in the database
 """
 
-import os, os.path, sys, glob
+import os, os.path, sys, glob, urllib
 
 from PIL import Image
 import imdb
@@ -253,13 +253,46 @@ class MovieMetadataDatabase(MetadataDatabase):
             print "%s not a movie ID" % imdb_id
             ifilm = None
         return ifilm
-            
-#            filename = biggest.split("/")[-1]
-#            (name, extension) = os.path.splitext(filename)
-#            local_thumb = thumb + extension
-#            if not os.path.exists(local_thumb):
-#                local_file = open(local_thumb, "wb")
-#                local_file.write(urllib.urlopen(biggest).read())
-#                local_file.close()
-#                print local_thumb
-#                time.sleep(60)
+    
+    def fetch_poster(self, movie, root_dir):
+        named_image, _ = os.path.splitext(os.path.basename(movie['pathname']))
+        image = os.path.join(root_dir, named_image + ".jpg")
+        if os.path.exists(image):
+            newname = os.path.join(root_dir, "%s-poster.jpg" % movie.imdb_id)
+            print "renaming %s -> %s" % (image, newname)
+            os.rename(image, newname)
+            return
+        return self.fetch_poster_tmdb(movie.imdb_id, root_dir)
+    
+    def fetch_poster_tmdb(self, imdb_id, root_dir):
+        try:
+            tfilm = self.db_tmdb[imdb_id]
+        except KeyError:
+            print "%s not in database!" % imdb_id
+            return
+        found = None
+        for poster in tfilm['images'].posters:
+            for key, value in poster.items():
+                if key not in ['id', 'type']:
+                    print key, value
+                    if value.startswith("http"):
+                        found = value
+                        break
+            for key in ['w342', 'mid', 'original']:
+                if key in poster:
+                    found = poster[key]
+                    break
+            if found:
+                break
+        filename = found.split("/")[-1]
+        (name, extension) = os.path.splitext(filename)
+        local_thumb = os.path.join(root_dir, "%s-poster%s" % (imdb_id, extension))
+        print local_thumb
+        if not os.path.exists(local_thumb) or os.stat(local_thumb)[6] == 0:
+            print "Downloading %s poster: %s" % (tfilm['name'], found)
+            local_file = open(local_thumb, "wb")
+            local_file.write(urllib.urlopen(found).read())
+            local_file.close()
+            print "Downloaded %s poster: %s" % (tfilm['name'], local_thumb)
+        else:
+            print "Found %s poster: %s" % (tfilm['name'], local_thumb)

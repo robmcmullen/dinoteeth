@@ -31,8 +31,9 @@ if __name__ == "__main__":
     parser.add_option("--batch-metadata-database", action="store", dest="bdb", default="dinoteeth-batch-metadata.db")
     parser.add_option("-m", "--metadata-database", action="store", dest="mdb", default="dinoteeth-unified-metadata.db")
     parser.add_option("-d", "--database", action="store", dest="database", default="dinoteeth.db")
-    parser.add_option("-i", "--image_dir", action="store", dest="imagedir", default="test/metadata")
+    parser.add_option("-i", "--image-dir", action="store", dest="image_dir", default="test/posters")
     parser.add_option("-r", "--regenerate", action="store_true", dest="regenerate", default=False)
+    parser.add_option("-p", "--posters", action="store_true", dest="posters", default=False)
     (options, args) = parser.parse_args()
     print options
 
@@ -53,6 +54,13 @@ if __name__ == "__main__":
             mdb.regenerate(movie, bdb)
         mdb.saveStateToFile()
         db.saveStateToFile()
+    elif options.posters:
+        if not os.path.exists(options.image_dir):
+            os.mkdir(options.image_dir)
+        results = db.find("movie")
+        print results
+        for movie in results:
+            bdb.fetch_poster(movie, options.image_dir)
     else:
         results = db.find("movie")
         print results
