@@ -3,11 +3,35 @@ import os
 from media import MediaObject, MediaResults
 from serializer import PickleSerializerMixin
 
+
+class MediaScanner(object):
+    def __init__(self, filename):
+        self.filename = filename
+        self.reset()
+    
+    def reset(self):
+        self.audio_order = []
+        self.audio = {}
+        self.subtitles_order = []
+        self.subtitles = {}
+        self.length = 0.0
+    
+    def iter_audio(self):
+        for id in self.audio_order:
+            yield self.audio[id]
+    
+    def iter_subtitles(self):
+        for id in self.subtitles_order:
+            yield self.subtitles[id]
+
+
 class Database(object):
     def __init__(self, aliases=None, media_scanner=None, **kwargs):
         if aliases is None:
             aliases = dict()
         self.aliases = aliases
+        if media_scanner is None:
+            media_scanner = MediaScanner
         self.media_scanner = media_scanner
         self.create()
     

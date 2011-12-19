@@ -3,6 +3,7 @@ import os, sys, time, subprocess
 from mplayerlib import MPlayer
 import utils
 from media import AudioTrack, SubtitleTrack
+from database import MediaScanner
 
 class MPlayerClient(object):
     def __init__(self, config):
@@ -48,11 +49,11 @@ class MPlayerClient(object):
         return last_pos
 
 
-class MPlayerInfo(object):
+class MPlayerInfo(MediaScanner):
     identify_args = ["-vo", "null", "-ao", "null", "-identify", "-frames", "0"]
     
     def __init__(self, filename, *opts):
-        self.filename = filename
+        MediaScanner.__init__(self, filename)
         args = [MPlayer.exe_name]
         args.extend(self.identify_args)
         if opts:
@@ -64,10 +65,7 @@ class MPlayerInfo(object):
     
     def process_output(self, output):
         self.output = output
-        self.audio_order = []
-        self.audio = {}
-        self.subtitles_order = []
-        self.subtitles = {}
+        self.reset()
         current = {'subtitle': None,
                    'audio': None,
                    }
@@ -108,12 +106,3 @@ class MPlayerInfo(object):
                     track.lang = value
             except ValueError:
                 pass
-    
-    def iter_audio(self):
-        for id in self.audio_order:
-            yield self.audio[id]
-    
-    def iter_subtitles(self):
-        for id in self.subtitles_order:
-            yield self.subtitles[id]
-    
