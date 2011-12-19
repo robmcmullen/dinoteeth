@@ -22,7 +22,7 @@ import unittest
 from guessittest import *
 
 from media import guess_custom
-from config import Config,
+from config import Config
 from database import DictDatabase
 
 class TestDatabaseMovies1(TestCase):
