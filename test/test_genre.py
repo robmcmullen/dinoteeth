@@ -33,14 +33,28 @@ class TestDatabaseGenre1(TestCase):
     def testFind(self):
         results = self.db.find("movie")
         assert len(results) == 38
-        for movie in results:
-            print movie['title'], movie.metadata.get('genres', None)
     
     def testFindOne(self):
         results = self.db.find("movie", lambda s:s.has_metadata('genres', 'Comedy'))
         self.assertEquals(len(results), 6)
-        for movie in results:
-            print movie['title'], movie.metadata.get('genres', None)
+        results = self.db.find("movie", lambda s:s.has_metadata('genres', 'Adventure'))
+        self.assertEquals(len(results), 8)
+        results = self.db.find("movie", lambda s:s.has_metadata('genres', 'Biography'))
+        self.assertEquals(len(results), 1)
+    
+    def testFindAllGenres(self):
+        results = self.db.find("movie")
+        genres = results.all_metadata('genres')
+        self.assertEquals(len(genres), 13)
+    
+    def testFindAllDirectors(self):
+        results = self.db.find("movie")
+        people = results.all_metadata('directors')
+        self.assertEquals(len(people), 12)
+        results = self.db.find("movie", lambda s:s.has_metadata('directors', 'Edgar Wright'))
+        self.assertEquals(len(results), 1)
+        self.assertEquals(results[0]['title'], "Shaun of the Dead")
+        
 
 
 if __name__ == '__main__':

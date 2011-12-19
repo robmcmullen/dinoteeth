@@ -89,7 +89,7 @@ class MediaObject(Guess):
             self.metadata = other.metadata
         else:
             self.imdb_id = None
-            self.metadata = None
+            self.metadata = {}
         self.set_defaults()
         self.normalize()
     
@@ -176,7 +176,7 @@ class MediaObject(Guess):
     # Textual metadata support routines for info returned from IMDB, etc.
     
     def has_metadata(self, category, value):
-        if self.metadata is not None and category in self.metadata:
+        if category in self.metadata:
             c = self.metadata[category]
             if isinstance(c, list):
                 return value in c
@@ -401,6 +401,21 @@ class MediaResults(list):
                 h.add_chain(chain)
         #print h.str_hierarchy()
         return h
+    
+    def all_metadata(self, category):
+        """Return a set containing the union of all metadata of the specific
+        category
+        
+        """
+        union = set()
+        for media in self:
+            if category in media.metadata:
+                values = media.metadata[category]
+                if isinstance(values, list):
+                    union.update(values)
+                else:
+                    union.add(values)
+        return union
 
 
 class AudioTrack(object):
