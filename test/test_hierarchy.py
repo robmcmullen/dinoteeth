@@ -21,14 +21,13 @@
 from dinoteeth_test import *
 
 from media import guess_custom
-from config import Config, RootMenu
+from config import Config
 from database import DictDatabase
 
 class TestDatabaseGeneral(TestCase):
     def setUp(self):
         self.config = Config([])
         self.db = DictDatabase()
-        self.root = RootMenu(self.db)
         
     def testFind(self):
         results = self.db.find("photos")
@@ -41,8 +40,7 @@ class TestDatabaseHierarchyMovies1(TestCase):
     def setUp(self):
         self.config = Config([])
         self.db = DictDatabase()
-        self.root = RootMenu(self.db)
-        self.config.parse_dir(self.root, "movies1")
+        self.config.parse_dir(self.db, "movies1")
         
     def testFind(self):
         results = self.db.find("movie")
@@ -72,8 +70,7 @@ class TestDatabaseHierarchySeries1(TestCase):
     def setUp(self):
         self.config = Config([])
         self.db = DictDatabase()
-        self.root = RootMenu(self.db)
-        self.config.parse_dir(self.root, "series1")
+        self.config.parse_dir(self.db, "series1")
         
     def testFind(self):
         results = self.db.find("episode")

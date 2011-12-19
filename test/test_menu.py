@@ -4,7 +4,7 @@
 from dinoteeth_test import *
 
 from media import guess_custom
-from config import Config, RootMenu
+from config import Config
 from database import DictDatabase
 from model import MenuItem
 
@@ -12,8 +12,7 @@ class TestMenuMovies1(TestCase):
     def setUp(self):
         self.config = Config([])
         self.db = DictDatabase()
-        self.root = RootMenu(self.db)
-        self.config.parse_dir(self.root, "movies1")
+        self.config.parse_dir(self.db, "movies1")
         
     def testMenu1(self):
         results = self.db.find("movie")

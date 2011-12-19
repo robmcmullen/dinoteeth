@@ -47,6 +47,11 @@ if __name__ == "__main__":
     mdb = UnifiedMetadataDatabase()
     mdb.loadStateFromFile(options.mdb)
     
+    if args:
+        for path in args:
+            c.parse_dir(db, path)
+        db.saveStateToFile()
+    
     if options.regenerate:
         results = db.find("movie")
         print results

@@ -27,12 +27,6 @@ class RootMenu(MenuItem):
             ]
         self.categories = {}
     
-    def up_to_date(self, pathname):
-        return self.db.is_current(pathname)
-    
-    def add_guess(self, guess):
-        self.db.add(guess)
-    
     def create_menus(self):
         for cat, populate in self.category_order:
             menu = MenuItem(cat, populate=populate)
@@ -85,13 +79,13 @@ class Config(object):
         theme = self.get_menu_theme()
         self.root = RootMenu(db, theme)
         if self.options.test:
-            self.parse_dir(self.root, "test/movies1", "movie")
-            self.parse_dir(self.root, "test/movies2", "movie")
-            self.parse_dir(self.root, "test/series1", "episode")
-            self.parse_dir(self.root, "test/series2", "episode")
+            self.parse_dir(db, "test/movies1", "movie")
+            self.parse_dir(db, "test/movies2", "movie")
+            self.parse_dir(db, "test/series1", "episode")
+            self.parse_dir(db, "test/series2", "episode")
         if args:
             for path in args:
-                self.parse_dir(self.root, path)
+                self.parse_dir(db, path)
         self.root.create_menus()
     
     def get_database(self):
@@ -108,11 +102,11 @@ class Config(object):
         mdb.loadStateFromFile(self.options.metadata_database)
         return mdb
     
-    def parse_dir(self, root, path, force_category=None):
+    def parse_dir(self, db, path, force_category=None):
         valid = self.get_video_extensions()
         regexps = self.get_custom_video_regexps()
         for pathname in iter_dir(path, valid):
-            if not root.up_to_date(pathname):
+            if not db.is_current(pathname):
                 filename = decode_title_text(pathname)
                 guess = None
                 if regexps:
@@ -120,7 +114,7 @@ class Config(object):
                 if not guess:
                     guess = guess_media_info(filename)
                 guess['pathname'] = pathname
-                root.add_guess(guess)
+                db.add(guess)
 
     def get_video_extensions(self):
         return ['.vob', '.mp4', '.avi', '.wmv', '.mov', '.mpg', '.mpeg', '.mpeg4', '.mkv', '.flv', '.webm']
