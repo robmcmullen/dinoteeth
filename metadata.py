@@ -146,8 +146,8 @@ class UnifiedMetadataDatabase(MetadataDatabase):
     
     def add_info(self, movie, movie_database):
         imdb_id = movie.imdb_id
-        if imdb_id in self.db:
-            print "Already have metadata for %s" % movie.canonical_title
+        if imdb_id is not None and imdb_id in self.db:
+            print "Already have metadata for %s: imdb_id=%s" % (movie.canonical_title, movie.imdb_id)
             metadata = self.db[imdb_id]
             movie.metadata = metadata
             printdict(metadata)
