@@ -164,7 +164,7 @@ class MediaObject(Guess):
     def add_to_menu(self, theme, parent_menu):
         return theme.add_simple_menu(self, parent_menu)
     
-    # Metadata scanner
+    # Metadata scanner for info determined from the file itself
     
     def scan(self, scanner):
         metadata = scanner(self['pathname'])
@@ -172,6 +172,17 @@ class MediaObject(Guess):
         print metadata.audio
         print metadata.subtitles
         self.scanned_metadata = metadata
+    
+    # Textual metadata support routines for info returned from IMDB, etc.
+    
+    def has_metadata(self, category, value):
+        if self.metadata is not None and category in self.metadata:
+            c = self.metadata[category]
+            if isinstance(c, list):
+                return value in c
+            else:
+                return c == value
+        return False
 
 
 class Root(MediaObject):
