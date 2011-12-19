@@ -197,32 +197,35 @@ class DetailRenderer(Renderer):
         for a in m['producers']:
             print repr(a), type(a)
         print m['producers']
-        producers = u", ".join(m['producers'])
+        producers = u", ".join(m['producers'][0:3])
         writers = u", ".join(m['writers'])
         actors = u", ".join(m['actors'])
         music = u", ".join(m['music'])
         title = m['title']
         if m['year']:
             title += u" (%s)" % m['year']
-        text = u"""%s
-        
-Rated: %s
-Released: %s
-Genre: %s
-Directed by: %s
-Produced by: %s
-Written by: %s
-Music by: %s
-Actors: %s
-Runtime: %s
-Rating: %s/10
-
-Plot: %s""" % (title, m['mpaa'],
+        text = u"""<b>%s</b>
+<br>
+<br><b>Rated:</b> %s
+<br><b>Released:</b> %s
+<br><b>Genre:</b> %s
+<br><b>Directed by:</b> %s
+<br><b>Produced by:</b> %s
+<br><b>Written by:</b> %s
+<br><b>Music by:</b> %s
+<br><b>Actors:</b> %s
+<br><b>Runtime:</b> %s
+<br><b>Rating:</b> %s/10
+<br>
+<br><b>Plot:</b> %s""" % (title, m['mpaa'],
                m['released'], genres, directors, producers, writers, music, actors, m['runtime'],
                m['rating'], m['description'])
-        label = pyglet.text.Label(text,
-                                  font_name=self.fonts.name,
-                                  font_size=self.fonts.size,
+        text = "<font face='%s' size='%s' color='rgb(255,255,255)'>%s</font>" % (self.fonts.name, self.fonts.size, text)
+        text = "<font face='%s' size='%s' color='#FFFFFF'>%s</font>" % (self.fonts.name, self.fonts.size, text)
+#        label = pyglet.text.Label(text,
+#                                  font_name=self.fonts.name,
+#                                  font_size=self.fonts.size,
+        label = pyglet.text.HTMLLabel(text,
                                   x=self.x + image.width + 10, y=self.h,
                                   anchor_x='left', anchor_y='top',
                                   width=self.w - image.width - 10, multiline=True)
