@@ -80,16 +80,14 @@ class MediaObject(Guess):
                 else:
                     self._confidence[k] = -1.0
         self.children = []
-        if 'pathname' in self:
-            self.mtime = os.stat(self['pathname']).st_mtime
-        else:
-            self.mtime = -1
         if isinstance(other, MediaObject):
             self.imdb_id = other.imdb_id
             self.metadata = other.metadata
+            self.scanned_metadata = other.scanned_metadata
         else:
             self.imdb_id = None
             self.metadata = {}
+            self.scanned_metadata = None
         self.set_defaults()
         self.normalize()
     

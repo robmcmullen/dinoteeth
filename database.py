@@ -9,12 +9,19 @@ class MediaScanner(object):
         self.filename = filename
         self.reset()
     
+    def __str__(self):
+        return "%s: %d audio tracks, %d subtitles, length=%s, mtime=%d" % (self.filename, len(self.audio_order), len(self.subtitles_order), self.length, self.mtime)
+    
     def reset(self):
         self.audio_order = []
         self.audio = {}
         self.subtitles_order = []
         self.subtitles = {}
         self.length = 0.0
+        if os.path.exists(self.filename):
+            self.mtime = os.stat(self.filename).st_mtime
+        else:
+            self.mtime = -1
     
     def iter_audio(self):
         for id in self.audio_order:
@@ -60,7 +67,7 @@ class DictDatabase(Database, PickleSerializerMixin):
         media = self.find_any_category(pathname)
         if not media:
             return False
-        return media.mtime == os.stat(pathname).st_mtime
+        return media.scanned_metadata.mtime == os.stat(pathname).st_mtime
     
     def find_any_category(self, pathname):
         for category in self.cats.iterkeys():
