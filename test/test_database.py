@@ -60,7 +60,7 @@ class TestDatabaseMovies1(TestCase):
         assert len(results) == 38
         self.assertEqual(results[0]['title'], "Battle Los Angeles")
         self.assertEqual(results[1]['title'], "Death at a Funeral")
-        self.assertEqual(results[22]['title'], "Shaun of the Dead")
+        self.assertEqual(results[25]['title'], "Shaun of the Dead")
         self.assertEqual(results[-1]['title'], "Toy Story 3")
     
     def testFindFranchise1(self):
