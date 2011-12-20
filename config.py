@@ -82,7 +82,7 @@ class Config(object):
         parser.add_option("-v", action="store_true", dest="verbose", default=False)
         parser.add_option("-t", "--test", action="store_true", dest="test", default=False)
         parser.add_option("-d", "--database", action="store", dest="database", default="dinoteeth.db")
-        parser.add_option("-m", "--metadata-database", action="store", dest="metadata_database", default="dinoteeth-unified-metadata.db")
+        parser.add_option("-m", "--metadata-database", action="store", dest="metadata_database", default="dinoteeth.umdb")
         parser.add_option("-i", "--image-dir", action="store", dest="image_dir", default="test/posters")
         (self.options, args) = parser.parse_args()
     
