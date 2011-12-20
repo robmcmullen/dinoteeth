@@ -64,7 +64,6 @@ class MPlayerInfo(MediaScanner):
         self.process_output(output)
     
     def process_output(self, output):
-        self.output = output
         self.reset()
         current = {'subtitle': None,
                    'audio': None,
