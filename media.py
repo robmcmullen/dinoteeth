@@ -26,7 +26,7 @@ def guess_custom(pathname, regexps):
                 if prop in ('season', 'episodeNumber', 'year', 'extraNumber'):
                     if metadata[prop] is not None:
                         metadata[prop] = int(metadata[prop])
-                if prop in ('title', 'extraTitle', 'series', 'filmSeries'):
+                if prop in ('title', 'extraTitle', 'series', 'franchise'):
                     if metadata[prop]:
                         metadata[prop] = utils.decode_title_text(metadata[prop])
                     else:
@@ -35,12 +35,12 @@ def guess_custom(pathname, regexps):
                 metadata['type'] = 'episode'
             else:
                 metadata['type'] = 'movie'
-            if 'filmSeries' in metadata:
+            if 'franchise' in metadata:
                 if 'title' not in metadata:
                     if 'episodeNumber' in metadata and metadata['episodeNumber'] > 1:
-                        metadata['title'] = "%s %d" % (metadata['filmSeries'], metadata['episodeNumber'])
+                        metadata['title'] = "%s %d" % (metadata['franchise'], metadata['episodeNumber'])
                     else:
-                        metadata['title'] = metadata['filmSeries']
+                        metadata['title'] = metadata['franchise']
             guess = Guess(metadata, confidence = 1.0)
             return guess
     return None
@@ -168,9 +168,9 @@ class MediaObject(Guess):
     
     def scan(self, scanner):
         metadata = scanner(self['pathname'])
-        print "Scanned %s" % metadata.filename
-        print metadata.audio
-        print metadata.subtitles
+#        print "Scanned %s" % metadata.filename
+#        print metadata.audio
+#        print metadata.subtitles
         self.scanned_metadata = metadata
     
     # Textual metadata support routines for info returned from IMDB, etc.

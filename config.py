@@ -136,10 +136,10 @@ class Config(object):
         return [
             r"(.+/)*(?P<series>.+)-[Ss](?P<season>[0-9]{1,2})-?[Ee](?P<episodeNumber>[0-9]{1,2})-?(?P<title>.+)?",
             r"(.+/)*(?P<series>.+)-[Ss](?P<season>[0-9]{1,2})-?[Xx](?P<extraNumber>[0-9]{1,2})-?(?P<title>.+)?",
-            r"(.+/)*(?P<filmSeries>.+)-[Ee](?P<episodeNumber>[0-9]{1,2})(-(?P<title>.+))(-[Xx](?P<extraNumber>[0-9]{1,2}))(-(?P<extraTitle>.+))?",
-            r"(.+/)*(?P<filmSeries>.+)-[Ee](?P<episodeNumber>[0-9]{1,2})(-[Xx](?P<extraNumber>[0-9]{1,2}))(-(?P<extraTitle>.+))?",
+            r"(.+/)*(?P<franchise>.+)-[Ff](?P<episodeNumber>[0-9]{1,2})(-(?P<title>.+))(-[Xx](?P<extraNumber>[0-9]{1,2}))(-(?P<extraTitle>.+))?",
+            r"(.+/)*(?P<franchise>.+)-[Ff](?P<episodeNumber>[0-9]{1,2})(-[Xx](?P<extraNumber>[0-9]{1,2}))(-(?P<extraTitle>.+))?",
             r"(.+/)*(?P<title>.+)-[Xx](?P<extraNumber>[0-9]{1,2})(-(?P<extraTitle>.+))?",
-            r"(.+/)*(?P<filmSeries>.+)-[Ee](?P<episodeNumber>[0-9]{1,2})(-(?P<title>.+))?",
+            r"(.+/)*(?P<franchise>.+)-[Ff](?P<episodeNumber>[0-9]{1,2})(-(?P<title>.+))?",
             ]
     
     def get_root(self, window):

@@ -62,6 +62,13 @@ class TestDatabaseMovies1(TestCase):
         self.assertEqual(results[1]['title'], "Death at a Funeral")
         self.assertEqual(results[22]['title'], "Shaun of the Dead")
         self.assertEqual(results[-1]['title'], "Toy Story 3")
+    
+    def testFindFranchise1(self):
+        results = self.db.find("movie", lambda s:s.get('franchise') == "Toy Story")
+        assert len(results) == 3
+        self.assertEqual(results[0]['title'], "Toy Story")
+        self.assertEqual(results[1]['title'], "Toy Story 2")
+        self.assertEqual(results[2]['title'], "Toy Story 3")
 
 
 class TestDatabaseSeries1(TestCase):
