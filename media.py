@@ -384,16 +384,11 @@ class Season(SeriesBase):
 
 class MediaResults(list):
     def __str__(self):
-        text = [str(s) for s in self]
+        text = ["%d: %s" % (i, str(s)) for i,s in enumerate(self)]
         return "\n".join(text)
     
     def hierarchy(self):
-        name_groups = {}
-        for guess in self:
-            t = guess.group_key
-            if t not in name_groups:
-                name_groups[t] = []
-            name_groups[t].append(guess)
+        name_groups = self.get_name_groups()
         h = Root("root")
         for guesses in name_groups.itervalues():
             for child in guesses:
@@ -401,6 +396,20 @@ class MediaResults(list):
                 h.add_chain(chain)
         #print h.str_hierarchy()
         return h
+    
+    def get_name_groups(self):
+        """Return a dict keyed on [media].group_key containing a list
+        of all media with that group key
+        """
+        if not hasattr(self, '_name_groups'):
+            name_groups = {}
+            for guess in self:
+                t = guess.group_key
+                if t not in name_groups:
+                    name_groups[t] = []
+                name_groups[t].append(guess)
+            self._name_groups = name_groups
+        return self._name_groups
     
     def all_metadata(self, category):
         """Return a set containing the union of all metadata of the specific
@@ -418,10 +427,13 @@ class MediaResults(list):
         return union
     
     def subset_by_metadata(self, category, value):
+        name_groups = self.get_name_groups()
         subset = MediaResults()
+        found_groups = set()
         for media in self:
-            if media.has_metadata(category, value):
-                subset.append(media)
+            if media.has_metadata(category, value) and media.group_key not in found_groups:
+                found_groups.add(media.group_key)
+                subset.extend(name_groups[media.group_key])
         return subset
 
 
