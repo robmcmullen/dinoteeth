@@ -284,15 +284,18 @@ class MovieMetadataDatabase(MetadataDatabase):
                     break
             if found:
                 break
-        filename = found.split("/")[-1]
-        (name, extension) = os.path.splitext(filename)
-        local_thumb = os.path.join(root_dir, "%s-poster%s" % (imdb_id, extension))
-        print local_thumb
-        if not os.path.exists(local_thumb) or os.stat(local_thumb)[6] == 0:
-            print "Downloading %s poster: %s" % (tfilm['name'], found)
-            local_file = open(local_thumb, "wb")
-            local_file.write(urllib.urlopen(found).read())
-            local_file.close()
-            print "Downloaded %s poster: %s" % (tfilm['name'], local_thumb)
+        if found:
+            filename = found.split("/")[-1]
+            (name, extension) = os.path.splitext(filename)
+            local_thumb = os.path.join(root_dir, "%s-poster%s" % (imdb_id, extension))
+            print local_thumb
+            if not os.path.exists(local_thumb) or os.stat(local_thumb)[6] == 0:
+                print "Downloading %s poster: %s" % (safeprint(tfilm['name']), found)
+                local_file = open(local_thumb, "wb")
+                local_file.write(urllib.urlopen(found).read())
+                local_file.close()
+                print "Downloaded %s poster: %s" % (safeprint(tfilm['name']), local_thumb)
+            else:
+                print "Found %s poster: %s" % (safeprint(tfilm['name']), local_thumb)
         else:
-            print "Found %s poster: %s" % (tfilm['name'], local_thumb)
+            print "No poster for %s" % safeprint(tfilm['name'])
