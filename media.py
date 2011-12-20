@@ -416,6 +416,13 @@ class MediaResults(list):
                 else:
                     union.add(values)
         return union
+    
+    def subset_by_metadata(self, category, value):
+        subset = MediaResults()
+        for media in self:
+            if media.has_metadata(category, value):
+                subset.append(media)
+        return subset
 
 
 class AudioTrack(object):

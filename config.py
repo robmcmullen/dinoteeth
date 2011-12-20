@@ -19,7 +19,7 @@ class RootMenu(MenuItem):
         self.metadata['description'] = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris id tincidunt dui. Sed sagittis egestas turpis id mattis. Maecenas sed dolor sem, in lobortis nisl. Donec sit amet diam id risus cursus egestas eu vitae lectus. Suspendisse semper fringilla purus, et tincidunt augue sollicitudin sed. Mauris euismod tincidunt lorem, ac imperdiet mauris lobortis nec. Quisque dignissim ipsum est, eu mattis ligula. Vestibulum in rutrum arcu. "
         
         self.category_order = [
-            ("Movies", self.get_movies_root),
+#            ("Movies", self.get_movies_genres),
             ("TV", self.get_tv_root),
             ("Photos", self.get_empty_root),
             ("Games", self.get_empty_root),
@@ -28,9 +28,22 @@ class RootMenu(MenuItem):
         self.categories = {}
     
     def create_menus(self):
+        self.create_movies_genres()
         for cat, populate in self.category_order:
             menu = MenuItem(cat, populate=populate)
             self.add(menu)
+    
+    def create_movies_genres(self, *args):
+        menu = MenuItem("Movies")
+        self.add(menu)
+        results = self.db.find("movie")
+        entry = MenuItem("All", populate=self.get_movies_root)
+        menu.add(entry)
+        genres = sorted(list(results.all_metadata('genres')))
+        for genre in genres:
+            subset = results.subset_by_metadata('genres', genre)
+            entry = MenuItem(genre, populate=subset.hierarchy)
+            menu.add(entry)
     
     def get_movies_root(self, *args):
         results = self.db.find("movie")
