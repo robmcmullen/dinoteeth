@@ -2,7 +2,7 @@ import os, sys, glob
 import pyglet
 
 def decode_title_text(text):
-    return text.replace('_n_',' & ').replace('-s_','\'s ').replace('-t_','\'t ').replace('-m_','\'m ').replace('_',' ')
+    return text.replace('_n_',' & ').replace('-s_','\'s ').replace('-t_','\'t ').replace('-m_','\'m ').replace('.._',': ').replace('.,_','; ').replace('_',' ')
 
 def shell_escape_path(path):
     escape_chars = [' ', '&', '(', ')']
