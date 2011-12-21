@@ -47,6 +47,7 @@ def guess_custom(pathname, regexps):
 
 class MediaObject(Guess):
     metadata_db = None
+    ignore_leading_articles = set()
     
     @classmethod
     def convertGuess(cls, g):
@@ -68,6 +69,10 @@ class MediaObject(Guess):
     @classmethod
     def setMetadataDatabase(cls, db):
         cls.metadata_db = db
+    
+    @classmethod
+    def setIgnoreLeadingArticles(cls, articles):
+        cls.ignore_leading_articles = set(articles)
     
     def __init__(self, other):
         Guess.__init__(self)
@@ -101,6 +106,7 @@ class MediaObject(Guess):
         self.add_missing_entries()
         self.calc_group_key()
         self.canonicalize()
+        self.calc_sort_key()
     
     def __str__(self):
         return self.canonical_title
@@ -111,7 +117,7 @@ class MediaObject(Guess):
             child.pprint(level + "  ")
 
     def __cmp__(self, other):
-        return cmp(self.decorate(), other.decorate())
+        return cmp(self.sort_key, other.sort_key)
 
     def add_missing_entries(self):
         if 'title' not in self:
@@ -126,13 +132,24 @@ class MediaObject(Guess):
         self.canonical_title = self['title']
 
     def decorate(self):
-        entry = (self.get('title', ""),
+        entry = (self.sort_title,
                  9999,
                  9999,
                  9999,
                  "",
                  )
         return entry
+    
+    def calc_sort_key(self):
+        title = self.canonical_title
+        t = title.lower()
+        for article in self.ignore_leading_articles:
+            a = "%s " % article.lower()
+            if t.startswith(a):
+                title = title[len(a):] + ", %s" % title[0:len(article)]
+                break
+        self.sort_title = title
+        self.sort_key = self.decorate()
     
     def decompose(self):
         raise RuntimeError
@@ -251,7 +268,7 @@ class Movie(Playable, MediaObject):
         self.in_context_title = self.canonical_title
     
     def decorate(self):
-        entry = (self.get('title', ""),
+        entry = (self.sort_title,
                  9999,
                  9999,
                  0,
@@ -281,7 +298,7 @@ class MovieBonus(Movie):
 
 class MovieTitle(Movie):
     def decorate(self):
-        entry = (self.get('title', ""),
+        entry = (self.sort_title,
                  9999,
                  9999,
                  9999,
