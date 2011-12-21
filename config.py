@@ -37,7 +37,7 @@ class RootMenu(MenuItem):
     
     def create_movies_genres(self, *args):
         menu = MenuItem("Movies")
-        menu.metadata = {'special': 'movies'}
+        menu.metadata = {'special': 'movie'}
         self.add(menu)
         results = self.db.find("movie")
         entry = MenuItem("All", populate=self.get_movies_root)

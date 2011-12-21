@@ -2,7 +2,7 @@ import os, sys, glob
 import pyglet
 
 from controller import *
-
+from thumbnail import PygletThumbnailFactory
 
 class AbstractLayout(object):
     def __init__(self, window, config):
@@ -185,6 +185,8 @@ class DetailRenderer(Renderer):
     def compute_params(self, conf):
         self.artwork_loader = conf.get_artwork_loader()
         self.batch_cache = {}
+        self.db = conf.db
+        self.thumbs = PygletThumbnailFactory()
         
     def draw(self, menu):
         item = menu.get_selected_item()
@@ -198,6 +200,26 @@ class DetailRenderer(Renderer):
         if 'image' in m:
             image = self.artwork_loader.get_image(m['image'])
             image.blit(self.x, self.h - image.height, 0)
+        else:
+            self.draw_thumbnails(m['special'])
+    
+    def draw_thumbnails(self, category):
+        results = self.db.find(category)
+        x = self.x
+        y = self.y + self.h
+        border = 4
+        for movie in results:
+            id = movie.metadata['imdb_id']
+            imgpath = self.artwork_loader.get_poster_filename(id)
+            if imgpath is not None:
+                thumb_image = self.thumbs.get_image(imgpath)
+                if x + thumb_image.width + border + border > self.x + self.w:
+                    x = self.x
+                    y -= thumb_image.height + border + border
+                if y < self.y:
+                    break
+                thumb_image.blit(x + border, y - thumb_image.height - border, 0)
+                x += thumb_image.width + border + border
     
     def draw_media(self, item, m):
         id = m['imdb_id']
