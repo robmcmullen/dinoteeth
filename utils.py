@@ -37,23 +37,32 @@ class ArtworkLoader(object):
             self.default_poster = pyglet.image.load("graphics/artwork-not-available.png")
         return self.default_poster
     
-    def get_poster(self, imdb_id):
+    def get_poster_filename(self, imdb_id):
         if imdb_id in self.cache:
-            return self.cache[imdb_id]
+            return self.cache[imdb_id][0]
         elif imdb_id is not None:
             filename = os.path.join(self.poster_dir, imdb_id + ".jpg")
             if os.path.exists(filename):
+                return filename
+        return None
+    
+    def get_poster(self, imdb_id):
+        if imdb_id in self.cache:
+            return self.cache[imdb_id][1]
+        elif imdb_id is not None:
+            filename = self.get_poster_filename(imdb_id)
+            if filename is not None:
                 poster = pyglet.image.load(filename)
-                self.cache[imdb_id] = poster
+                self.cache[imdb_id] = (filename, poster)
                 return poster
         return self.get_default_poster()
     
     def get_image(self, imagepath):
         if imagepath in self.cache:
-            return self.cache[imagepath]
+            return self.cache[imagepath][1]
         filename = os.path.join(self.base_dir, imagepath)
         if os.path.exists(filename):
             image = pyglet.image.load(filename)
-            self.cache[imagepath] = image
+            self.cache[imagepath] = (filename, image)
             return image
         return self.get_default_poster()
