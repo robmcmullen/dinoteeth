@@ -15,8 +15,10 @@ class RootMenu(MenuItem):
     def __init__(self, db, menu_theme):
         MenuItem.__init__(self, "Dinoteeth Media Launcher", theme=menu_theme)
         self.db = db
-        self.metadata = MediaObject.metadata_db.get_blank_metadata()
-        self.metadata['description'] = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris id tincidunt dui. Sed sagittis egestas turpis id mattis. Maecenas sed dolor sem, in lobortis nisl. Donec sit amet diam id risus cursus egestas eu vitae lectus. Suspendisse semper fringilla purus, et tincidunt augue sollicitudin sed. Mauris euismod tincidunt lorem, ac imperdiet mauris lobortis nec. Quisque dignissim ipsum est, eu mattis ligula. Vestibulum in rutrum arcu. "
+        self.metadata = {
+            'special': 'root',
+            'image': '../../graphics/background-merged.jpg',
+            }
         
         self.category_order = [
 #            ("Movies", self.get_movies_genres),
@@ -35,9 +37,11 @@ class RootMenu(MenuItem):
     
     def create_movies_genres(self, *args):
         menu = MenuItem("Movies")
+        menu.metadata = {'special': 'movies'}
         self.add(menu)
         results = self.db.find("movie")
         entry = MenuItem("All", populate=self.get_movies_root)
+        entry.metadata = menu.metadata
         menu.add(entry)
         genres = sorted(list(results.all_metadata('genres')))
         for genre in genres:

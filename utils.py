@@ -37,3 +37,13 @@ class ArtworkLoader(object):
                 self.cache[imdb_id] = poster
                 return poster
         return self.get_default_poster()
+    
+    def get_image(self, imagepath):
+        if imagepath in self.cache:
+            return self.cache[imagepath]
+        filename = os.path.join(self.base_dir, imagepath)
+        if os.path.exists(filename):
+            image = pyglet.image.load(filename)
+            self.cache[imagepath] = image
+            return image
+        return self.get_default_poster()

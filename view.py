@@ -188,6 +188,17 @@ class DetailRenderer(Renderer):
     def draw(self, menu):
         item = menu.get_selected_item()
         m = item.get_metadata(self)
+        if 'special' in m:
+            self.draw_special(item, m)
+        else:
+            self.draw_media(item, m)
+    
+    def draw_special(self, item, m):
+        if 'image' in m:
+            image = self.artwork_loader.get_image(m['image'])
+            image.blit(self.x, self.h - image.height, 0)
+    
+    def draw_media(self, item, m):
         image = self.artwork_loader.get_poster(m['imdb_id'])
         image.blit(self.x, self.h - image.height, 0)
         if item.batch is None:
