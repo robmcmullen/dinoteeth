@@ -24,38 +24,25 @@ from metadata import MovieMetadataDatabase, UnifiedMetadataDatabase
 from config import Config
 
 if __name__ == "__main__":
-    usage="usage: %prog CMD [options] file [files...]"
-    parser=OptionParser(usage=usage)
-    parser.add_option("-v", action="store_true", dest="verbose", default=False)
-    parser.add_option("-o", action="store", dest="output", default="index.html")
+    from config import Config
+    parser = Config.get_arg_parser()
     parser.add_option("--batch-metadata-database", action="store", dest="bdb", default="dinoteeth.bdb")
-    parser.add_option("-m", "--metadata-database", action="store", dest="umdb", default="dinoteeth.umdb")
-    parser.add_option("-d", "--database", action="store", dest="database", default="dinoteeth.db")
-    parser.add_option("-i", "--image-dir", action="store", dest="image_dir", default="test/posters")
     parser.add_option("-r", "--regenerate", action="store_true", dest="regenerate", default=False)
     parser.add_option("-p", "--posters", action="store_true", dest="posters", default=False)
     parser.add_option("-f", "--fetch", action="store_true", dest="fetch", default=False)
-    (options, args) = parser.parse_args()
-    print options
-
-    from config import Config
-    c = Config(args)
-    c.options = options
-    db = c.get_database()
-    print db
-        
-    if args:
-        for path in args:
-            c.parse_dir(db, path)
-        db.saveStateToFile()
     
-    umdb = UnifiedMetadataDatabase()
-    umdb.loadStateFromFile(options.umdb)
+    c = Config(sys.argv, parser)
+    db = c.db
+    umdb = c.umdb
+    options = c.options
     
     if options.regenerate:
+        bdb = MovieMetadataDatabase()
+        bdb.loadStateFromFile(options.bdb)
         results = db.find("movie")
         for i, movie in enumerate(results):
             print "%d: %s" % (i, movie)
+            movie.normalize()
             umdb.regenerate(movie, bdb)
         umdb.saveStateToFile()
         db.saveStateToFile()

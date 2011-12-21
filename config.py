@@ -68,37 +68,50 @@ class RootMenu(MenuItem):
 class Config(object):
     global_config = None
     
-    def __init__(self, args):
+    def __init__(self, args, parser=None):
         self.layout = None
         self.root = None
         self.default_poster = None
         self.default_mplayer_opts = ["-novm", "-fs", "-utf8"]
         # Use SSA/ASS rendering to enable italics, bold, etc
         self.default_mplayer_opts.extend(["-ass", "-ass-color", "ffffff00", "-ass-font-scale", "1.4"])
+        if parser is None:
+            parser = self.get_arg_parser()
+        self.parse_args(args, parser)
     
-    def parse_args(self, args):
+    @classmethod
+    def get_arg_parser(self):
         usage="usage: %prog file [file ...]"
         parser=OptionParser(usage=usage)
         parser.add_option("-v", action="store_true", dest="verbose", default=False)
         parser.add_option("-t", "--test", action="store_true", dest="test", default=False)
         parser.add_option("-d", "--database", action="store", dest="database", default="dinoteeth.db")
-        parser.add_option("-m", "--metadata-database", action="store", dest="metadata_database", default="dinoteeth.umdb")
+        parser.add_option("-m", "--metadata-database", action="store", dest="umdb", default="dinoteeth.umdb")
         parser.add_option("-i", "--image-dir", action="store", dest="image_dir", default="test/posters")
-        (self.options, args) = parser.parse_args()
+        return parser
     
-        db = self.get_database()
-        mdb = self.get_metadata_database()
-        MediaObject.setMetadataDatabase(mdb)
-        theme = self.get_menu_theme()
-        self.root = RootMenu(db, theme)
+    def parse_args(self, args, parser):
+        self.parser = parser
+        (self.options, self.args) = self.parser.parse_args()
+    
+        self.db = self.get_database()
+        self.umdb = self.get_metadata_database()
+        MediaObject.setMetadataDatabase(self.umdb)
+        MediaObject.setIgnoreLeadingArticles(self.get_leading_articles())
+        self.theme = self.get_menu_theme()
         if self.options.test:
-            self.parse_dir(db, "test/movies1", "movie")
-            self.parse_dir(db, "test/movies2", "movie")
-            self.parse_dir(db, "test/series1", "episode")
-            self.parse_dir(db, "test/series2", "episode")
-        if args:
-            for path in args:
-                self.parse_dir(db, path)
+            self.parse_dir(self.db, "test/movies1", "movie")
+            self.parse_dir(self.db, "test/movies2", "movie")
+            self.parse_dir(self.db, "test/series1", "episode")
+            self.parse_dir(self.db, "test/series2", "episode")
+            self.db.saveStateToFile()
+        if self.args:
+            for path in self.args:
+                self.parse_dir(self.db, path)
+            self.db.saveStateToFile()
+    
+    def create_root(self):
+        self.root = RootMenu(self.db, self.theme)
         self.root.create_menus()
     
     def get_database(self):
@@ -111,9 +124,9 @@ class Config(object):
         return MPlayerInfo
     
     def get_metadata_database(self):
-        mdb = UnifiedMetadataDatabase()
-        mdb.loadStateFromFile(self.options.metadata_database)
-        return mdb
+        umdb = UnifiedMetadataDatabase()
+        umdb.loadStateFromFile(self.options.umdb)
+        return umdb
     
     def parse_dir(self, db, path, force_category=None):
         valid = self.get_video_extensions()
@@ -128,6 +141,7 @@ class Config(object):
                     guess = guess_media_info(filename)
                 guess['pathname'] = pathname
                 db.add(guess)
+        self.db.saveStateToFile()
 
     def get_video_extensions(self):
         return ['.vob', '.mp4', '.avi', '.wmv', '.mov', '.mpg', '.mpeg', '.mpeg4', '.mkv', '.flv', '.webm']
@@ -181,6 +195,9 @@ class Config(object):
         # do something with path if desired
         return opts
     
+    def get_leading_articles(self):
+        return ["a", "an", "the"]
+    
     def save_state(self):
         self.root.save_state()
 
@@ -188,7 +205,7 @@ class Config(object):
 def setup(args):
     Config.global_config = Config(args)
     conf = get_global_config()
-    conf.parse_args(args)
+    conf.create_root()
     return conf
 
 def get_global_config():
