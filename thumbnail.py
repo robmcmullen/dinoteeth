@@ -118,9 +118,12 @@ class ThumbnailFactory(object):
         """
         orientation = 1
         if hasattr(img, '_getexif'):
-            exif = img._getexif()
-            if exif != None and 0x0112 in exif:
-                orientation = exif[0x0112]
+            try:
+                exif = img._getexif()
+                if exif != None and 0x0112 in exif:
+                    orientation = exif[0x0112]
+            except:
+                pass
         img.thumbnail(self.size)
         
         if orientation == 6:
