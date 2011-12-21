@@ -186,25 +186,25 @@ class DetailRenderer(Renderer):
         self.artwork_loader = conf.get_artwork_loader()
         
     def draw(self, menu):
-        print menu
         item = menu.get_selected_item()
-        print item
         m = item.get_metadata(self)
         image = self.artwork_loader.get_poster(m['imdb_id'])
         image.blit(self.x, self.h - image.height, 0)
-        genres = u", ".join(m['genres'])
-        directors = u", ".join(m['directors'])
-        for a in m['producers']:
-            print repr(a), type(a)
-        print m['producers']
-        producers = u", ".join(m['producers'][0:3])
-        writers = u", ".join(m['writers'])
-        actors = u", ".join(m['actors'])
-        music = u", ".join(m['music'])
-        title = m['title']
-        if m['year']:
-            title += u" (%s)" % m['year']
-        text = u"""<b>%s</b>
+        if item.batch is None:
+            item.batch = pyglet.graphics.Batch()
+            genres = u", ".join(m['genres'])
+            directors = u", ".join(m['directors'])
+            for a in m['producers']:
+                print repr(a), type(a)
+            print m['producers']
+            producers = u", ".join(m['producers'][0:3])
+            writers = u", ".join(m['writers'])
+            actors = u", ".join(m['actors'])
+            music = u", ".join(m['music'])
+            title = m['title']
+            if m['year']:
+                title += u" (%s)" % m['year']
+            text = u"""<b>%s</b>
 <br>
 <br><b>Rated:</b> %s
 <br><b>Released:</b> %s
@@ -218,16 +218,18 @@ class DetailRenderer(Renderer):
 <br><b>Rating:</b> %s/10
 <br>
 <br><b>Plot:</b> %s""" % (title, m['mpaa'],
-               m['released'], genres, directors, producers, writers, music, actors, m['runtime'],
-               m['rating'], m['description'])
-        text = "<font face='%s' size='%s' color='rgb(255,255,255)'>%s</font>" % (self.fonts.name, self.fonts.size, text)
-        text = "<font face='%s' size='%s' color='#FFFFFF'>%s</font>" % (self.fonts.name, self.fonts.size, text)
+                          m['released'], genres, directors, producers,
+                          writers, music, actors, m['runtime'],
+                          m['rating'], m['description'])
+            text = "<font face='%s' size='%s' color='rgb(255,255,255)'>%s</font>" % (self.fonts.name, self.fonts.size, text)
+            text = "<font face='%s' size='%s' color='#FFFFFF'>%s</font>" % (self.fonts.name, self.fonts.size, text)
 #        label = pyglet.text.Label(text,
 #                                  font_name=self.fonts.name,
 #                                  font_size=self.fonts.size,
-        label = pyglet.text.HTMLLabel(text,
-                                  x=self.x + image.width + 10, y=self.h,
-                                  anchor_x='left', anchor_y='top',
-                                  width=self.w - image.width - 10, multiline=True)
-        label.draw()
+            label = pyglet.text.HTMLLabel(text,
+                                          x=self.x + image.width + 10, y=self.h,
+                                          anchor_x='left', anchor_y='top',
+                                          width=self.w - image.width - 10, multiline=True,
+                                          batch=item.batch)
+        item.batch.draw()
 
