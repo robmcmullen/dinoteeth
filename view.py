@@ -184,6 +184,7 @@ class TitleRenderer(Renderer):
 class DetailRenderer(Renderer):
     def compute_params(self, conf):
         self.artwork_loader = conf.get_artwork_loader()
+        self.batch_cache = {}
         
     def draw(self, menu):
         item = menu.get_selected_item()
@@ -199,10 +200,11 @@ class DetailRenderer(Renderer):
             image.blit(self.x, self.h - image.height, 0)
     
     def draw_media(self, item, m):
-        image = self.artwork_loader.get_poster(m['imdb_id'])
+        id = m['imdb_id']
+        image = self.artwork_loader.get_poster(id)
         image.blit(self.x, self.h - image.height, 0)
-        if item.batch is None:
-            item.batch = pyglet.graphics.Batch()
+        if id not in self.batch_cache:
+            batch = pyglet.graphics.Batch()
             genres = u", ".join(m['genres'])
             directors = u", ".join(m['directors'])
             for a in m['producers']:
@@ -241,6 +243,7 @@ class DetailRenderer(Renderer):
                                           x=self.x + image.width + 10, y=self.h,
                                           anchor_x='left', anchor_y='top',
                                           width=self.w - image.width - 10, multiline=True,
-                                          batch=item.batch)
-        item.batch.draw()
+                                          batch=batch)
+            self.batch_cache[id] = batch
+        self.batch_cache[id].draw()
 

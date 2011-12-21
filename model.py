@@ -14,7 +14,6 @@ class MenuItem(object):
         self.populated = False
         self.cursor = 0
         self.children = []
-        self.batch = None
     
     def __cmp__(self, other):
         return cmp(self.title, other.title)
