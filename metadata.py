@@ -258,7 +258,7 @@ class MovieMetadataDatabase(MetadataDatabase):
         named_image, _ = os.path.splitext(os.path.basename(movie['pathname']))
         image = os.path.join(root_dir, named_image + ".jpg")
         if os.path.exists(image):
-            newname = os.path.join(root_dir, "%s-poster.jpg" % movie.imdb_id)
+            newname = os.path.join(root_dir, "%s.jpg" % movie.imdb_id)
             print "renaming %s -> %s" % (image, newname)
             os.rename(image, newname)
             return
@@ -287,7 +287,7 @@ class MovieMetadataDatabase(MetadataDatabase):
         if found:
             filename = found.split("/")[-1]
             (name, extension) = os.path.splitext(filename)
-            local_thumb = os.path.join(root_dir, "%s-poster%s" % (imdb_id, extension))
+            local_thumb = os.path.join(root_dir, "%s%s" % (imdb_id, extension))
             print local_thumb
             if not os.path.exists(local_thumb) or os.stat(local_thumb)[6] == 0:
                 print "Downloading %s poster: %s" % (safeprint(tfilm['name']), found)

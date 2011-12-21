@@ -18,9 +18,19 @@ def time_format(seconds):
 class ArtworkLoader(object):
     def __init__(self, base_dir, default_poster, cache_size=100):
         self.base_dir = base_dir
+        self.poster_dir = os.path.join(self.base_dir, "posters")
+        self.thumbnail_dir = os.path.join(self.base_dir, "thumbnails")
         self.cache = {}
         self.default_poster_path = default_poster
         self.default_poster = None
+        self.check_dirs()
+    
+    def check_dirs(self):
+        if not os.path.exists(self.base_dir):
+            os.mkdir(self.base_dir)
+        for dir in [self.poster_dir, self.thumbnail_dir]:
+            if not os.path.exists(dir):
+                os.mkdir(dir)
     
     def get_default_poster(self):
         if self.default_poster is None:
@@ -31,7 +41,7 @@ class ArtworkLoader(object):
         if imdb_id in self.cache:
             return self.cache[imdb_id]
         elif imdb_id is not None:
-            filename = os.path.join(self.base_dir, imdb_id + "-poster.jpg")
+            filename = os.path.join(self.poster_dir, imdb_id + ".jpg")
             if os.path.exists(filename):
                 poster = pyglet.image.load(filename)
                 self.cache[imdb_id] = poster

@@ -91,7 +91,7 @@ class Config(object):
         parser.add_option("-t", "--test", action="store_true", dest="test", default=False)
         parser.add_option("-d", "--database", action="store", dest="database", default="dinoteeth.db")
         parser.add_option("-m", "--metadata-database", action="store", dest="umdb", default="dinoteeth.umdb")
-        parser.add_option("-i", "--image-dir", action="store", dest="image_dir", default="test/posters")
+        parser.add_option("-i", "--image-dir", action="store", dest="image_dir", default="test/graphics")
         return parser
     
     def parse_args(self, args, parser):

@@ -22,6 +22,7 @@ addImportPath('..')
 
 from metadata import MovieMetadataDatabase, UnifiedMetadataDatabase
 from config import Config
+from utils import ArtworkLoader
 
 if __name__ == "__main__":
     from config import Config
@@ -49,12 +50,11 @@ if __name__ == "__main__":
     elif options.posters:
         bdb = MovieMetadataDatabase()
         bdb.loadStateFromFile(options.bdb)
-        if not os.path.exists(options.image_dir):
-            os.mkdir(options.image_dir)
+        loader = ArtworkLoader(options.image_dir)
         results = db.find("movie")
         for i, movie in enumerate(results):
             print "%d: %s" % (i, movie)
-            bdb.fetch_poster(movie, options.image_dir)
+            bdb.fetch_poster(movie, loader.poster_dir)
     elif options.fetch:
         bdb = MovieMetadataDatabase()
         bdb.loadStateFromFile(options.bdb)
