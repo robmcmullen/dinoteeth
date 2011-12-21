@@ -147,6 +147,15 @@ class ThumbnailFactory(object):
         thumbpath = os.path.join(self.basedir, md5hash + '.png')
         return thumbpath
 
+class PygletThumbnailFactory(ThumbnailFactory):
+    def get_image(self, imgpath):
+        import pyglet
+        
+        thumbpath = self.get_thumbnail_file(imgpath)
+        image = pyglet.image.load(thumbpath)
+        return image
+
+
 if __name__ == "__main__":
     f = ThumbnailFactory("test/thumbnails/normal")
     print f.basedir
