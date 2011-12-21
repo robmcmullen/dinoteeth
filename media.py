@@ -451,6 +451,28 @@ class MediaResults(list):
                 subset.extend(name_groups[media.group_key])
         return subset
 
+    def thumbnail_mosaic(self, artwork_loader, thumbnail_factory, x, y, w, h):
+        import pyglet
+        
+        min_x = x
+        max_x = x + w
+        min_y = y
+        y = y + h
+        nominal_x = 100
+        nominal_y = 140
+        for media in self:
+            id = media.metadata['imdb_id']
+            imgpath = artwork_loader.get_poster_filename(id)
+            if imgpath is not None:
+                thumb_image = thumbnail_factory.get_image(imgpath)
+                if x + nominal_x > max_x:
+                    x = min_x
+                    y -= nominal_y
+                if y < min_y:
+                    break
+                thumb_image.blit(x + (nominal_x - thumb_image.width) / 2, y - nominal_y + (nominal_y - thumb_image.height) / 2, 0)
+                x += nominal_x
+
 
 class AudioTrack(object):
     def __init__(self, id, lang="en", codec="unknown", name=None):
