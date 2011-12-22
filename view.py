@@ -4,6 +4,33 @@ import pyglet
 from controller import *
 from thumbnail import PygletThumbnailFactory
 
+class MainWindow(pyglet.window.Window):
+    def __init__(self, config, fullscreen=True, width=800, height=600):
+        # FIXME main window size should be set differently
+        if fullscreen:
+            super(MainWindow, self).__init__(fullscreen=fullscreen)
+        else:
+            super(MainWindow, self).__init__(width, height)
+        self.layout = config.get_layout(self)
+        root = config.get_root(self)
+        self.layout.set_root(root)
+        self.controller = self.layout.get_controller()
+    
+    def on_draw(self):
+        print "draw"
+        self.clear()
+        self.layout.draw()
+    
+    def on_text_motion(self, motion):
+        print "here"
+        self.controller.process_motion(motion)
+        self.flip()
+
+    def on_key_press(self, symbol, modifiers):
+        print symbol
+        self.controller.process_key_press(symbol, modifiers)
+        self.flip()
+
 class AbstractLayout(object):
     def __init__(self, window, config):
         self.window = window

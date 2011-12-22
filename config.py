@@ -74,6 +74,7 @@ class Config(object):
     
     def __init__(self, args, parser=None):
         self.layout = None
+        self.main_window = None
         self.root = None
         self.default_poster = None
         self.default_mplayer_opts = ["-novm", "-fs", "-utf8"]
@@ -92,6 +93,9 @@ class Config(object):
         parser.add_option("-d", "--database", action="store", dest="database", default="dinoteeth.db")
         parser.add_option("-m", "--metadata-database", action="store", dest="umdb", default="dinoteeth.umdb")
         parser.add_option("-i", "--image-dir", action="store", dest="image_dir", default="test/graphics")
+        parser.add_option("-w", "--window", action="store_false", dest="fullscreen", default=True)
+        parser.add_option("--window-width", action="store", type=int, default=1280)
+        parser.add_option("--window-height", action="store", type=int, default=720)
         return parser
     
     def parse_args(self, args, parser):
@@ -113,6 +117,13 @@ class Config(object):
             for path in self.args:
                 self.parse_dir(self.db, path)
             self.db.saveStateToFile()
+    
+    def get_main_window(self):
+        if self.main_window is None:
+            self.main_window = MainWindow(self, fullscreen=self.options.fullscreen,
+                                          width=self.options.window_width,
+                                          height=self.options.window_height)
+        return self.main_window
     
     def create_root(self):
         self.root = RootMenu(self.db, self.theme)
