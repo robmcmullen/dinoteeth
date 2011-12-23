@@ -5,13 +5,14 @@ from controller import *
 from thumbnail import PygletThumbnailFactory
 
 class MainWindow(pyglet.window.Window):
-    def __init__(self, config, fullscreen=True, width=800, height=600):
-        # FIXME main window size should be set differently
+    def __init__(self, config, fullscreen=True, width=800, height=600, margins=None):
         if fullscreen:
             super(MainWindow, self).__init__(fullscreen=fullscreen)
         else:
             super(MainWindow, self).__init__(width, height)
-        self.layout = config.get_layout(self)
+        if margins is None:
+            margins = (0, 0, 0, 0)
+        self.layout = config.get_layout(self, margins)
         root = config.get_root(self)
         self.layout.set_root(root)
         self.controller = self.layout.get_controller()
@@ -32,18 +33,24 @@ class MainWindow(pyglet.window.Window):
         self.flip()
 
 class AbstractLayout(object):
-    def __init__(self, window, config):
+    def __init__(self, window, margins, config):
         self.window = window
         self.config = config
-        self.compute_params()
+        self.compute_params(margins)
         self.root = None
         self.hierarchy = []
         self.controller = None
     
-    def compute_params(self):
+    def compute_params(self, margins):
+        """Compute layout size
+        
+        Margins are in css order (top, right, bottom, left)
+        """
         self.width, self.height = self.window.get_size()
-        print self.width
-        print self.height
+        self.box = (margins[3], margins[2],
+                    self.width - margins[3] - margins[1], 
+                    self.height - margins[2] - margins[0])
+        print self.box
     
     def set_root(self, root):
         self.root = root
@@ -83,8 +90,8 @@ class FontSet(object):
 
 
 class MenuDetail2ColumnLayout(AbstractLayout):
-    def __init__(self, window, config):
-        AbstractLayout.__init__(self, window, config)
+    def __init__(self, window, margins, config):
+        AbstractLayout.__init__(self, window, margins, config)
         self.controller = VerticalMenuController(self, config)
         self.fonts = FontSet(config)
         self.compute_layout()
@@ -94,12 +101,12 @@ class MenuDetail2ColumnLayout(AbstractLayout):
     
     def compute_layout(self):
         self.title_height = self.fonts.size + 10
-        self.menu_width = self.width/3
-        self.center = (self.height - self.title_height)/2
+        self.menu_width = self.box[2]/3
+        self.center = (self.box[3] - self.title_height)/2
         self.items_in_half = (self.center - self.fonts.selected_size) / self.fonts.size
-        self.title_box = (0, self.height - self.title_height + 1, self.width, self.title_height)
-        self.menu_box = (0, 0, self.menu_width, self.height - self.title_height)
-        self.detail_box = (self.menu_width, 0, self.width - self.menu_width, self.height - self.title_height)
+        self.title_box = (self.box[0], self.box[3] - self.title_height + 1, self.box[2], self.title_height)
+        self.menu_box = (self.box[0], self.box[1], self.menu_width, self.box[3] - self.title_height)
+        self.detail_box = (self.menu_width, self.box[1], self.box[2] - self.menu_width, self.box[3] - self.title_height)
     
     def draw(self):
         self.title_renderer.draw(self.hierarchy)
