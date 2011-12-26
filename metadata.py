@@ -219,7 +219,11 @@ class MovieMetadataDatabase(MetadataDatabase):
 
     def best_guess(self, movie):
         best = None
-        results = self.tmdb_api.search(movie.canonical_title)
+        try:
+            results = self.tmdb_api.search(movie.canonical_title)
+        except:
+            print "Failed looking up %s" % movie.canonical_title
+            return None
         for result in results:
             imdb_id = result['imdb_id']
             if imdb_id is None:
