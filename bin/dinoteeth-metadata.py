@@ -50,7 +50,7 @@ if __name__ == "__main__":
     elif options.posters:
         bdb = MovieMetadataDatabase()
         bdb.loadStateFromFile(options.bdb)
-        loader = ArtworkLoader(options.image_dir)
+        loader = c.get_artwork_loader()
         results = db.find("movie")
         for i, movie in enumerate(results):
             print "%d: %s" % (i, movie)
