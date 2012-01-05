@@ -1,8 +1,10 @@
 import os, sys, glob
-import pyglet
 
 def decode_title_text(text):
     return text.replace('_n_',' & ').replace('-s_','\'s ').replace('-t_','\'t ').replace('-m_','\'m ').replace('.._',': ').replace('.,_','; ').replace('_',' ')
+
+def encode_title_text(text):
+    return text.replace(' & ','_n_').replace('\'s ','-s_').replace('\'t ','-t_').replace('\'m ','-m_').replace(': ','.._').replace('; ','.,_').replace(' ','_')
 
 def shell_escape_path(path):
     escape_chars = [' ', '&', '(', ')']
@@ -14,6 +16,21 @@ def time_format(seconds):
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
     return "%d:%02d:%02d" % (h, m, s)
+
+def canonical_filename(title, film_series, season=-1, episode_char='e', episode=-1, episode_name='', ext="mkv"):
+    name = []
+    if season == -1:
+        if film_series:
+            name.append("%s-f%02d" % (film_series[0], int(film_series[1])))
+        name.append(title)
+    else:
+        name.append(title)
+        name.append("s%02d" % season)
+    if episode > -1:
+        name.append("%s%02d" % (episode_char, episode))
+    if episode_name:
+        name.append(episode_name)
+    return encode_title_text("-".join(name) + ".%s" % ext)
 
 class ArtworkLoader(object):
     def __init__(self, base_dir, default_poster, cache_size=100):
@@ -47,6 +64,7 @@ class ArtworkLoader(object):
         return None
     
     def get_poster(self, imdb_id):
+        import pyglet
         if imdb_id in self.cache:
             return self.cache[imdb_id][1]
         elif imdb_id is not None:
@@ -58,6 +76,7 @@ class ArtworkLoader(object):
         return self.get_default_poster()
     
     def get_image(self, imagepath):
+        import pyglet
         if imagepath in self.cache:
             return self.cache[imagepath][1]
         filename = os.path.join(self.base_dir, imagepath)
