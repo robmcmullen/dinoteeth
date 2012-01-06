@@ -22,10 +22,15 @@ except:
     import third_party.argparse as argparse
 from utils import encode_title_text, canonical_filename
 
-def dprint(txt=""):
-    if not isinstance(txt, basestring):
-        txt = str(txt)
-    print "-->%s<--" % txt.encode('utf-8')
+# Global verbosity
+VERBOSE = 0
+
+def vprint(verbosity_level, txt=""):
+    global VERBOSE
+    if VERBOSE >= verbosity_level:
+        if not isinstance(txt, basestring):
+            txt = str(txt)
+        print "%s" % txt.encode('utf-8')
 
 def parseIntSet(nputstr=""):
     """Return list of integers from comma separated ranges
@@ -146,14 +151,12 @@ class ExeRunner(object):
         self.verifyKeywordExists(key, kwargs)
         current = list(*args)
         current.extend(kwargs[key])
-        dprint(current)
         kwargs[key] = ",".join(current)
 
     def appendKeywordArgs(self, kwargs, key, *args):
         self.verifyKeywordExists(key, kwargs)
         current = kwargs[key]
         current.extend(*args)
-        dprint(current)
         kwargs[key] = ",".join(current)
 
     def setCommandLine(self, source, *args, **kwargs):
@@ -171,7 +174,7 @@ class ExeRunner(object):
     def popen(self):
         args = [self.full_path_to_exe]
         args.extend(self.args)
-        dprint("starting: %s" % str(args))
+        vprint(1, "popen: %s" % str(args))
         p = sub.Popen(args, stdout=sub.PIPE, stderr=sub.PIPE)
         return p
     
@@ -190,10 +193,10 @@ class ExeRunner(object):
         self.parseErrors(stderr)
     
     def parseOutput(self, output):
-        dprint(output)
+        vprint(2, output)
     
     def parseErrors(self, output):
-        dprint(output)
+        vprint(2, output)
         pass
 
 class MkvScanner(ExeRunner):
@@ -229,28 +232,26 @@ class MkvPropEdit(ExeRunner):
     full_path_to_exe = "/usr/bin/mkvpropedit"
     
     def setCommandLine(self, source, dvd_title=1, scan=None, mkv=None, encoder=None, options=None, *args, **kwargs):
+        vprint(0, "-Using mkvpropedit to add names to tracks")
         self.args = [source]
         self.args.extend(["-e", "track:1", "-s", "name=%s" % options.title])
         title = scan.get_title(dvd_title)
-        print title
+        #print title
         audio_index = 0
         sub_index = 0
         for mkv_id, track_type, codec in mkv.tracks:
             if track_type == "audio":
                 order = encoder.audio_track_order[audio_index]
                 audio_index += 1
-                print "audio order: %d" % order
+                #print "audio order: %d" % order
                 stream = title.audio[order - 1]
                 self.args.extend(["-e", "track:%d" % mkv_id, "-s", "name=%s" % stream.name])
             elif track_type == "subtitles":
                 order = encoder.subtitle_track_order[sub_index]
                 sub_index += 1
-                print "subtitle order: %d" % order
+                #print "subtitle order: %d" % order
                 stream = title.subtitle[order - 1]
                 self.args.extend(["-e", "track:%d" % mkv_id, "-s", "name=%s" % stream.name])
-    
-    def parseOutput(self, output):
-        dprint(output)
 
 class MkvAudioExtractor(ExeRunner):
     full_path_to_exe = "/usr/bin/mkvextract"
@@ -262,7 +263,6 @@ class MkvAudioExtractor(ExeRunner):
             output = "tmp.%s.%d.mp3" % (source, handbrake_id)
             self.args.append("%d:%s" % (mkv_id, output))
             self.handbrake_to_mp3[handbrake_id] = output
-        print self.args
 
 class MplayerAudioExtractor(ExeRunner):
     full_path_to_exe = "/usr/bin/mplayer"
@@ -270,7 +270,6 @@ class MplayerAudioExtractor(ExeRunner):
     def setCommandLine(self, source, output="", aid=128, options=None, *args, **kwargs):
         self.args = ["-nocorrect-pts", "-vc", "null", "-vo", "null",
                      "-ao", "pcm:fast:file=%s" % output, "-aid", str(aid), source]
-        print self.args
 
 class VOBAudioExtractor(object):
     def __init__(self, source, title, track_order, output):
@@ -282,13 +281,13 @@ class VOBAudioExtractor(object):
         self.output = output
         
     def run(self):
-        print self.url
+        vprint(0, "-Using mplayer to rip audio tracks from %s" % self.url)
         handbrake_id = 0
         for order in self.track_order:
             handbrake_id += 1
-            print "Ripping audio track %d" % order
+            vprint(0, "--Ripping audio track %d" % order)
             stream = self.title.audio[order - 1]
-            print stream
+            #print stream
             output = "tmp.%s.%d.wav" % (self.output, handbrake_id)
             self.handbrake_to_mp3[handbrake_id] = output
             wav = MplayerAudioExtractor(self.url, output=output, aid=stream.mplayer_id)
@@ -298,12 +297,12 @@ class AudioGain(ExeRunner):
     full_path_to_exe = "/usr/bin/normalize"
     
     def setCommandLine(self, source, extractor=None, options=None, *args, **kwargs):
+        vprint(0, "-Using normalize to compute audio gain for %s" % source)
         self.args = ["-n", "--no-progress"]
         self.normalize_order = []
         for handbrake_id, output in extractor.handbrake_to_mp3.iteritems():
             self.args.append(output)
             self.normalize_order.append(handbrake_id)
-        print self.args
 
     def parseOutput(self, output):
         self.gains = ['']*len(self.normalize_order)
@@ -315,7 +314,7 @@ class AudioGain(ExeRunner):
                 gain = details[2][:-2]
                 self.gains[self.normalize_order[index] - 1] = gain
                 index += 1
-        print self.gains
+        vprint(0, "--Computed gains: %s" % str(self.gains))
 
 class DVDBackup(ExeRunner):
     full_path_to_exe = "/usr/bin/dvdbackup"
@@ -455,13 +454,15 @@ class HandBrakeScanner(HandBrake):
                 dirname, basename = os.path.split(self.source)
                 self.scanfile = os.path.join(dirname, basename + self.default_scanfile)
         self.user_audio = TrackOptions(options.audio)
-        print self.user_audio
+        #print self.user_audio
         self.user_subtitle = TrackOptions(options.subtitles)
-        print self.user_subtitle
+        #print self.user_subtitle
     
     def run(self):
+        vprint(0, "-Running HandBrake --scan %s" % self.source)
         if self.scanfile:
             if os.path.exists(self.scanfile):
+                vprint(0, "--Using previous scan %s" % self.scanfile)
                 fh = open(self.scanfile)
                 previous_run = fh.read()
                 self.parseErrors(previous_run)
@@ -500,27 +501,27 @@ class HandBrakeScanner(HandBrake):
             match = re_scan_num_title.match(line)
             if match:
                 self.num_titles = int(match.group(2))
-                if self.verbose: print "matched! num titles=%d" % self.num_titles
+                vprint(2, "matched! num titles=%d" % self.num_titles)
                 self.titles = [Title(i+1, self) for i in range(self.num_titles)]
                 continue
             match = re_preview.match(line)
             if match:
                 title = int(match.group(2))
-                if self.verbose: print "matched! preview: title=%d" % title
+                vprint(2, "matched! preview: title=%d" % title)
                 self.current_title = self.titles[title - 1]
                 self.current_stream = None
                 continue
             match = re_scan_title.match(line)
             if match:
                 title = int(match.group(2))
-                if self.verbose: print "matched! title=%d" % title
+                vprint(2, "matched! title=%d" % title)
                 self.current_title = self.titles[title - 1]
                 self.current_stream = None
                 continue
             match = re_title_summary.match(line)
             if match:
                 title = int(match.group(1))
-                if self.verbose: print "matched! + title=%d" % title
+                vprint(2, "matched! + title=%d" % title)
                 self.current_title = self.titles[title - 1]
                 self.current_stream = None
                 self.stream_flag = ""
@@ -554,22 +555,22 @@ class HandBrakeScanner(HandBrake):
                         else:
                             subtitle.type = "unknown"
                         self.override_title(self.current_title, subtitle, self.user_subtitle)
-                        if self.verbose: print subtitle
+                        vprint(2, subtitle)
             
             if self.current_title:
                 if line.startswith("  + Main Feature"):
-                    if self.verbose: print "Main feature!"
+                    vprint(2, "Main feature!")
                     self.current_title.main_feature = True
                     continue
                 match = re_duration.match(line)
                 if match:
                     self.current_title.duration = match.group(1)
-                    if self.verbose: print "duration = %s" % self.current_title.duration
+                    vprint(2, "duration = %s" % self.current_title.duration)
                     continue
                 match = re_vts.match(line)
                 if match:
                     self.current_title.vts = int(match.group(1))
-                    if self.verbose: print "vts = %d" % self.current_title.vts
+                    vprint(2, "vts = %d" % self.current_title.vts)
                     continue
                 match = re_size.match(line)
                 if match:
@@ -577,12 +578,12 @@ class HandBrakeScanner(HandBrake):
                     self.current_title.pixel_aspect = match.group(2)
                     self.current_title.display_aspect = match.group(3)
                     self.current_title.fps = match.group(4)
-                    if self.verbose: print "display aspect = %s" % self.current_title.display_aspect
+                    vprint(2, "display aspect = %s" % self.current_title.display_aspect)
                     continue
                 match = re_audio.match(line)
                 if match:
                     order = int(match.group(2))
-                    if self.verbose: print "matched! audio=%d" % order
+                    vprint(2, "matched! audio=%d" % order)
                     self.current_stream = Audio(order)
                     self.current_title.audio.append(self.current_stream)
                     self.override_title(self.current_title, self.current_stream, self.user_audio)
@@ -590,7 +591,7 @@ class HandBrakeScanner(HandBrake):
                 match = re_preview_audio.match(line)
                 if match:
                     id = int(match.group(2), 16)
-                    if self.verbose: print "matched! preview audio=%d" % id
+                    vprint(2, "matched! preview audio=%d" % id)
                     audio = self.current_title.find_audio_by_mplayer_id(id)
                     audio.rate = int(match.group(4))
                     audio.bitrate = int(match.group(5))
@@ -599,7 +600,7 @@ class HandBrakeScanner(HandBrake):
                 match = re_subtitle.match(line)
                 if match:
                     order = int(match.group(2))
-                    if self.verbose: print "matched! subtitle=%d" % order
+                    vprint(2, "matched! subtitle=%d" % order)
                     self.current_stream = Subtitle(order)
                     self.current_title.subtitle.append(self.current_stream)
                     continue
@@ -607,7 +608,7 @@ class HandBrakeScanner(HandBrake):
                 match = re_stream_id.match(line)
                 if match:
                     id = int(match.group(2), 16)
-                    if self.verbose: print "matched! id=%d" % id
+                    vprint(2, "matched! id=%d" % id)
                     self.current_stream.mplayer_id = id
                     self.current_stream.lang = match.group(3)
                     if not self.current_stream.name:
@@ -619,7 +620,7 @@ class HandBrakeScanner(HandBrake):
         user_track = user.get_info(title.title_num)
         if stream.order in user_track.name:
             stream.name = user_track.name[stream.order]
-            print "overriding dvd title %d %s track %d name=%s" % (title.title_num, stream.__class__.__name__, stream.order, stream.name)
+            vprint(0, "--Overriding dvd title %d %s track %d name=%s" % (title.title_num, stream.__class__.__name__, stream.order, stream.name))
     
     def get_title(self, title_num):
         return self.titles[title_num - 1]
@@ -638,7 +639,6 @@ class HandBrakeEncoder(HandBrake):
         self.select_subtitles(scan.user_subtitle.get_info(self.title_num))
         self.add_options(options)
         self.args.extend(["-o", output])
-        print self.args
     
     def clone_audio_only(self):
         hb = HandBrakeEncoder(self.source, self.scan, self.output, self.title_num,
@@ -756,6 +756,7 @@ class HandBrakeEncoder(HandBrake):
     def run(self):
         if not self.audio_only and self.options.normalize:
             self.compute_gains()
+        vprint(0, "-Using HandBrake to encode video %s" % self.output)
         p = self.popen()
         q_stderr = Queue()
         t_stderr = Thread(target=self.enqueue_output, args=(p.stderr, q_stderr))
@@ -767,24 +768,25 @@ class HandBrakeEncoder(HandBrake):
             try:
                 while True:
                     line = q_stdout.get_nowait()
-                    print "stdout-->%s<--" % line.rstrip()
+                    vprint(2, "stdout-->%s<--" % line.rstrip())
             except Empty:
-                print "empty"
+                vprint(3, "stdout empty")
             try:
                 while True:
                     line = q_stderr.get_nowait()
-                    print "-->%s<--" % line.rstrip()
+                    vprint(2, "-->%s<--" % line.rstrip())
                     if not line:
                         break
             except Empty:
-                print "empty"
+                vprint(3, "stderr empty")
             time.sleep(1)
-            print "Poll: %s" % str(p.poll())
-        print "Waiting for process to finish..."
+            vprint(3, "Poll: %s" % str(p.poll()))
+        vprint(3, "Waiting for process to finish...")
         p.wait()
-        print "Waiting for thread join..."
+        vprint(3, "Waiting for thread join...")
         t_stderr.join()
         t_stdout.join()
+        vprint(0, "-HandBrake finished encoding %s" % self.output)
         if not self.audio_only:
             self.rename_tracks()
     
@@ -805,9 +807,9 @@ class HandBrakeEncoder(HandBrake):
             self.args[index:index] = ["--gain"]
             index += 1
         self.args[index:index] = [",".join(normalizer.gains)]
-        print self.args
     
     def compute_gains(self):
+        vprint(0, "-Preparing to compute audio gain factors")
         extractor = VOBAudioExtractor(self.source, self.title, self.audio_track_order, self.output)
         extractor.run()
         normalizer = AudioGain(self.output, extractor=extractor)
@@ -820,9 +822,9 @@ class HandBrakeEncoder(HandBrake):
             self.args[index:index] = ["--gain"]
             index += 1
         self.args[index:index] = [",".join(normalizer.gains)]
-        print self.args
     
     def rename_tracks(self):
+        vprint(0, "-Preparing to rename tracks in %s" % self.output)
         mkv = MkvScanner(self.output)
         mkv.run()
         prop = MkvPropEdit(self.output, options=self.options, dvd_title=self.title_num, scan=self.scan, mkv=mkv, encoder=self)
@@ -852,7 +854,7 @@ class TrackOptions(object):
             self.parse(args)
     
     def parse(self, args):
-        print args
+#        print args
         i = 0
         while i + 1 < len(args):
             dvd_title = int(args[i])
@@ -875,7 +877,7 @@ class TrackOptions(object):
             for track_index, title in zip(range, titles):
                 track_titles.add_track(track_index, title)
             self.dvd_titles[dvd_title] = track_titles
-        print self.dvd_titles
+#        print self.dvd_titles
     
     def get_info(self, title_num):
         try:
@@ -885,7 +887,7 @@ class TrackOptions(object):
 
 
 def parse_episodes(args):
-    print args
+#    print args
     episodes = []
     episode = int(args[0])
     range = parseIntSet(args[1])
@@ -896,12 +898,13 @@ def parse_episodes(args):
     for track_index, title in zip(range, titles):
         episodes.append((episode, track_index, title))
         episode += 1
-    print episodes
+    vprint(0, "-Encoding episodes from dvd title numbers: %s" % str([e[1] for e in episodes]))
     return episodes
 
 
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description="Convert titles in a DVD image to Matroska files")
+    parser.add_argument("-v", "--verbose", default=0, action="count")
     parser.add_argument("--lang", action="store", default="eng",
                       help="Preferred language")
     parser.add_argument("--min-time", action="store", type=int, default=2,
@@ -935,8 +938,11 @@ if __name__ == "__main__":
     parser.add_argument("--mkv-names", action="store", metavar=("MKV_FILE", "DVD_TITLE"), nargs=2, help="Rename tracks in .mkv file")
     options = parser.parse_args()
     
+    VERBOSE = options.verbose
+    vprint(0, "HI THERE!!!")
+    
     queue = []
-    print options
+    vprint(2, options)
     source = options.feature[0]
     scan = HandBrakeScanner(source, options=options)
     scan.run()
@@ -970,17 +976,16 @@ if __name__ == "__main__":
             dvd_title = int(options.feature[1])
             filename = canonical_filename(options.title, options.film_series, options.season, None, None, None, options.ext)
             encoder = HandBrakeEncoder(source, scan, filename, dvd_title, options)
-            print "Main feature: %s" % encoder
+            vprint(1, "Main feature: %s" % encoder)
             queue.append(encoder)
         else:
             print "Expecting main feature"
     if len(options.episode) > 0:
-        print "episode"
         bonus = parse_episodes(options.episode)
         for episode, dvd_title, name in bonus:
             filename = canonical_filename(options.title, options.film_series, options.season, "e", episode, name, options.ext)
             encoder = HandBrakeEncoder(source, scan, filename, dvd_title, options)
-            print "Episode: %s" % encoder
+            vprint(1, "Episode: %s" % encoder)
             queue.append(encoder)
     if len(options.extra) > 0:
         print "bonus features"
@@ -988,10 +993,9 @@ if __name__ == "__main__":
         for episode, dvd_title, name in bonus:
             filename = canonical_filename(options.title, options.film_series, options.season, "x", episode, name, options.ext)
             encoder = HandBrakeEncoder(source, scan, filename, dvd_title, options)
-            print "Bonus Feature: %s" % encoder
+            vprint(1, "Bonus Feature: %s" % encoder)
             queue.append(encoder)
     
     for enc in queue:
-        print enc
         enc.run()
         
