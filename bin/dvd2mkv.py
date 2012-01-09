@@ -292,11 +292,16 @@ class VOBAudioExtractor(object):
             self.handbrake_to_mp3[handbrake_id] = output
             wav = MplayerAudioExtractor(self.url, output=output, aid=stream.mplayer_id)
             wav.run()
+    
+    def cleanup(self):
+        for h_id, filename in self.handbrake_to_mp3.iteritems():
+            os.remove(filename)
 
 class AudioGain(ExeRunner):
     full_path_to_exe = "/usr/bin/normalize"
     
     def setCommandLine(self, source, extractor=None, options=None, *args, **kwargs):
+        self.extractor = extractor
         vprint(0, "-Using normalize to compute audio gain for %s" % source)
         self.args = ["-n", "--no-progress"]
         self.normalize_order = []
@@ -315,6 +320,7 @@ class AudioGain(ExeRunner):
                 self.gains[self.normalize_order[index] - 1] = gain
                 index += 1
         vprint(0, "--Computed gains: %s" % str(self.gains))
+        self.extractor.cleanup()
 
 class DVDBackup(ExeRunner):
     full_path_to_exe = "/usr/bin/dvdbackup"
@@ -486,18 +492,21 @@ class HandBrakeScanner(HandBrake):
         re_scan_num_title = re.compile("(\[.+\])? scan: DVD has (\d+) title")
         re_scan_title = re.compile("(\[.+\])? scan: scanning title (\d+)")
         re_audio = re.compile("(\[.+\])? scan: checking audio (\d+)")
-        re_stream_id = re.compile("(\[.+\])? scan: id=0x([0-9a-f]+)bd, lang=(.+), 3cc=([a-z]+)")
+        re_dvd_stream_id = re.compile("(\[.+\])? scan: id=0x([0-9a-f]+)bd, lang=(.+), 3cc=([a-z]+)")
+        re_mkv_input = re.compile("Input #(\d+)\, matroska.+")
+        re_mkv_stream_id = re.compile(".+Stream #\d+\.(\d+)\((.+)\): ([a-zA-Z]+): .+")
         re_subtitle = re.compile("(\[.+\])? scan: checking subtitle (\d+)")
         re_preview = re.compile("(\[.+\])? scan: decoding previews for title (\d+)")
-        re_preview_audio = re.compile("(\[.+\])? scan: audio 0x([0-9a-f]+)bd: (.+), rate=(\d+)Hz, bitrate=(\d+) (.+)")
+        re_preview_audio = re.compile("(\[.+\])? scan: audio 0x([0-9a-f]+): (.+), rate=(\d+)Hz, bitrate=(\d+) (.+)")
         re_title_summary = re.compile("\+ title (\d+):")
         re_duration = re.compile("  \+ duration: (.+)")
         re_vts = re.compile("  \+ vts (\d+), ttn (\d+), (.+)")
         re_size = re.compile("  \+ size: (.+), pixel aspect: (.+), display aspect: ([\.\d]+), ([\.\d]+) fps")
         re_subtitle_type = re.compile("    \+ (\d+), (.+) \(iso639-2: ([a-z]+)\) (.+)")
 
+        mkv_counters = {'Input': 1, 'Video': 1, 'Audio': 1, 'Subtitle': 1}
         for line in output.splitlines():
-            #dprint(line)
+            vprint(3, line)
             match = re_scan_num_title.match(line)
             if match:
                 self.num_titles = int(match.group(2))
@@ -508,21 +517,29 @@ class HandBrakeScanner(HandBrake):
             if match:
                 title = int(match.group(2))
                 vprint(2, "matched! preview: title=%d" % title)
-                self.current_title = self.titles[title - 1]
+                self.current_title = self.get_title(title)
                 self.current_stream = None
                 continue
             match = re_scan_title.match(line)
             if match:
                 title = int(match.group(2))
                 vprint(2, "matched! title=%d" % title)
-                self.current_title = self.titles[title - 1]
+                self.current_title = self.get_title(title)
+                self.current_stream = None
+                continue
+            match = re_mkv_input.match(line)
+            if match:
+                input = int(match.group(1))
+                vprint(2, "matched! mkv input=%d" % input)
+                self.current_title = self.get_title(mkv_counters['Input'])
+                mkv_counters['Input'] += 1
                 self.current_stream = None
                 continue
             match = re_title_summary.match(line)
             if match:
                 title = int(match.group(1))
                 vprint(2, "matched! + title=%d" % title)
-                self.current_title = self.titles[title - 1]
+                self.current_title = self.get_title(title)
                 self.current_stream = None
                 self.stream_flag = ""
                 continue
@@ -590,7 +607,10 @@ class HandBrakeScanner(HandBrake):
                     continue
                 match = re_preview_audio.match(line)
                 if match:
-                    id = int(match.group(2), 16)
+                    hex_id = match.group(2)
+                    if hex_id.endswith('bd'):
+                        hex_id = hex_id[0:2]
+                    id = int(hex_id, 16)
                     vprint(2, "matched! preview audio=%d" % id)
                     audio = self.current_title.find_audio_by_mplayer_id(id)
                     audio.rate = int(match.group(4))
@@ -604,11 +624,34 @@ class HandBrakeScanner(HandBrake):
                     self.current_stream = Subtitle(order)
                     self.current_title.subtitle.append(self.current_stream)
                     continue
+                match = re_mkv_stream_id.match(line)
+                if match:
+                    id = int(match.group(1))
+                    vprint(2, "matched mkv stream! mplayer_id=%d" % id)
+                    stream_flag = match.group(3)
+                    order = mkv_counters.get(stream_flag, 0)
+                    if stream_flag == "Audio":
+                        self.current_stream = Audio(order)
+                        self.current_title.audio.append(self.current_stream)
+                    elif stream_flag == "Subtitle":
+                        self.current_stream = Subtitle(order)
+                        self.current_title.subtitle.append(self.current_stream)
+                    elif stream_flag == "Video":
+                        continue
+                    else:
+                        vprint(0, "ignoring mkv stream type %s" % stream_flag)
+                    mkv_counters[stream_flag] += 1
+                    self.current_stream.mplayer_id = id
+                    self.current_stream.lang = match.group(2)
+                    if not self.current_stream.name:
+                        self.current_stream.name = self.current_stream.lang
+                    self.current_stream.threecc = match.group(2)
+                    continue
             if self.current_stream:
-                match = re_stream_id.match(line)
+                match = re_dvd_stream_id.match(line)
                 if match:
                     id = int(match.group(2), 16)
-                    vprint(2, "matched! id=%d" % id)
+                    vprint(2, "matched dvd stream! id=%d" % id)
                     self.current_stream.mplayer_id = id
                     self.current_stream.lang = match.group(3)
                     if not self.current_stream.name:
@@ -623,6 +666,10 @@ class HandBrakeScanner(HandBrake):
             vprint(0, "--Overriding dvd title %d %s track %d name=%s" % (title.title_num, stream.__class__.__name__, stream.order, stream.name))
     
     def get_title(self, title_num):
+        if title_num > len(self.titles):
+            for i in range(len(self.titles), title_num):
+                self.titles.append(Title(i+1, self))
+            self.num_titles = len(self.titles)
         return self.titles[title_num - 1]
 
 class HandBrakeEncoder(HandBrake):
@@ -711,7 +758,7 @@ class HandBrakeEncoder(HandBrake):
     
     def add_options(self, options):
         self.args.extend(["-t", str(self.title.title_num)])
-#        self.args.extend(["-c", "1"]) # For testing: first chapter only!!!
+        self.args.extend(["-c", "1-2"]) # For testing: first chapter only!!!
         if options.fast or self.audio_only:
             self.args.extend(["-r", "5"])
             self.args.extend(["-b", "100"])
@@ -764,6 +811,7 @@ class HandBrakeEncoder(HandBrake):
         q_stdout = Queue()
         t_stdout = Thread(target=self.enqueue_output, args=(p.stdout, q_stdout))
         t_stdout.start()
+        out = HandBrakeOutput()
         while p.poll() is None:
             try:
                 while True:
@@ -774,6 +822,7 @@ class HandBrakeEncoder(HandBrake):
             try:
                 while True:
                     line = q_stderr.get_nowait()
+                    out.process(line)
                     vprint(2, "-->%s<--" % line.rstrip())
                     if not line:
                         break
@@ -829,6 +878,70 @@ class HandBrakeEncoder(HandBrake):
         mkv.run()
         prop = MkvPropEdit(self.output, options=self.options, dvd_title=self.title_num, scan=self.scan, mkv=mkv, encoder=self)
         prop.run()
+
+class HandBrakeOutput(object):
+    """State machine to process only interesting bits of the HandBrake output
+    
+    """
+    def __init__(self):
+        self.expected_jobs = 0
+        self.job = 0
+        self.state = None
+        self.configuration = ""
+    
+    def process(self, line):
+        line = line.rstrip()
+        if self.expected_jobs == 0:
+            if "job(s) to process" in line:
+                details = line.split(" ")
+                self.expected_jobs = int(details[1])
+            return
+        if line.startswith("["):
+            time, line = line.split("] ", 1)
+        else:
+            time = None
+        if line == "starting job":
+            self.job += 1
+            return
+        if self.job > 0:
+            if self.state == None:
+                if line == "job configuration:":
+                    self.state = line
+                    return
+                if line.startswith("Subtitle stream"):
+                    info_unsplit, hits = line.split(": ", 1)
+                    info = info_unsplit.split()
+                    stream_id = info[2]
+                    details = hits.split()
+                    hits = int(details[0])
+                    forced = int(details[2][1:])
+                    if forced > 0:
+                        vprint(0, "burning in %d forced subtitles (of %d) for subtitle stream %s" % (forced, hits, stream_id))
+                    else:
+                        vprint(0, "no forced subtitles to burn in for subtitle stream %s" % stream_id)
+                if line.startswith("libhb: work result"):
+                    _, ret = line.split(" = ", 1)
+                    if ret == "0":
+                        vprint(0, "HandBrake finished successfully")
+                    else:
+                        vprint(0, "Handbrake failed with return code %s" % ret)
+                    return
+            if self.state == "job configuration:":
+                if time is not None:
+                    self.configuration += line + "\n"
+                else:
+                    if self.job == self.expected_jobs:
+                        vprint(0, "starting final encode pass %s/%s" % (self.job, self.expected_jobs))
+                        print self.configuration
+                    else:
+                        vprint(0, "starting encode pass %s/%s" % (self.job, self.expected_jobs))
+                        self.configuration = ""
+                    self.state = None
+                return
+            if line.startswith("reader: done"):
+                vprint(0, "finished encode pass %s/%s" % (self.job, self.expected_jobs))
+                self.state = None
+                return
 
 
 class TrackInfo(object):
@@ -911,8 +1024,10 @@ if __name__ == "__main__":
                       help="Minimum time (minutes) for bonus feature to be valid")
     parser.add_argument("--crop", action="store", dest="crop", default="0:0:0:0", help="Crop parameters (default %(default)s)")
     parser.add_argument("--ext", action="store", dest="ext", default="mkv", help="Output file format (default %(default)s)")
-    parser.add_argument("--scanfile", action="store_true", default=False, help="Store output of scan to increase speed on subsequent runs (default handbrake.scan)")
+    parser.add_argument("--scanfile", action="store_true", default=True, help="Store output of scan to increase speed on subsequent runs (default handbrake.scan)")
+    parser.add_argument("--no-scanfile", action="store_true", dest="scanfile", default=True, help="No not store output of scan to increase speed on subsequent runs (default handbrake.scan)")
     parser.add_argument("--normalize", action="store_true", default=True, help="Automatically select gain values to normalize audio (uses an extra encoding pass)")
+    parser.add_argument("--no-normalize", dest="normalize", action="store_false", default=True, help="Automatically select gain values to normalize audio (uses an extra encoding pass)")
     parser.add_argument("--deint", action="store_true", default=False, help="Add deinterlace (decomb) filter (slows processing by up to 50%)")
     parser.add_argument("--fast", action="store_true", default=False, help="Fast encoding mode for testing audio")
     parser.add_argument("-g", "--grayscale", action="store_true", default=False, help="Grayscale encoding")
@@ -939,7 +1054,6 @@ if __name__ == "__main__":
     options = parser.parse_args()
     
     VERBOSE = options.verbose
-    vprint(0, "HI THERE!!!")
     
     queue = []
     vprint(2, options)
