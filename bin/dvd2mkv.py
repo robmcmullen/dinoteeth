@@ -1028,7 +1028,9 @@ def parse_episode_info(starting, dvd_titles, spec):
             tokens = tokens[0:len(dvd_titles)]
         names[0:len(tokens)] = tokens
 
-    if len(spec) == 1:
+    if len(spec) == 0:
+        pass
+    elif len(spec) == 1:
         try:
             parse_episode_numbers(spec[0])
         except ValueError:
