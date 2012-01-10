@@ -778,8 +778,10 @@ class HandBrakeEncoder(HandBrake):
     
     def add_options(self, options):
         self.args.extend(["-t", str(self.title.title_num)])
-        self.args.extend(["-c", "1-2"]) # For testing: first chapter only!!!
-        if options.fast or self.audio_only:
+        if options.preview > 0:
+            self.args.extend(["-c", "1-%d" % options.preview])
+            self.args.extend(["-r", "5"])
+        elif options.fast or self.audio_only:
             self.args.extend(["-r", "5"])
             self.args.extend(["-b", "100"])
             self.args.extend(["-w", "160"])
@@ -1046,6 +1048,7 @@ if __name__ == "__main__":
     global_parser.add_argument("--no-normalize", dest="normalize", action="store_false", default=True, help="Automatically select gain values to normalize audio (uses an extra encoding pass)")
     global_parser.add_argument("--deint", action="store_true", default=False, help="Add deinterlace (decomb) filter (slows processing by up to 50%)")
     global_parser.add_argument("--fast", action="store_true", default=False, help="Fast encoding mode for testing audio")
+    global_parser.add_argument("--preview", action="store", type=int, default=0, help="Preview the first PREVIEW chapters using fast encoding parameters at constant 5fps")
     global_parser.add_argument("-g", "--grayscale", action="store_true", default=False, help="Grayscale encoding")
     global_parser.add_argument("--video-encoder", action="store", default="x264", help="Video encoder (default %(default)s)")
     global_parser.add_argument("--x264-preset", action="store", default="", help="x264 encoder preset")
