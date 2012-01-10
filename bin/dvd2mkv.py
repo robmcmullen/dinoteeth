@@ -24,13 +24,18 @@ from utils import encode_title_text, canonical_filename
 
 # Global verbosity
 VERBOSE = 0
+LOGFILE = None
 
 def vprint(verbosity_level, txt=""):
     global VERBOSE
-    if VERBOSE >= verbosity_level:
+    global LOGFILE
+    if VERBOSE >= verbosity_level or LOGFILE is not None:
         if not isinstance(txt, basestring):
             txt = str(txt)
-        print "%s" % txt.encode('utf-8')
+        if VERBOSE >= verbosity_level:
+            print "%s" % txt.encode('utf-8')
+        if LOGFILE is not None:
+            LOGFILE.write("%s\n" % txt)
 
 def parseIntSet(nputstr=""):
     """Return list of integers from comma separated ranges
@@ -1043,6 +1048,7 @@ if __name__ == "__main__":
     global_parser.add_argument("--crop", action="store", dest="crop", default="0:0:0:0", help="Crop parameters (default %(default)s)")
     global_parser.add_argument("--ext", action="store", dest="ext", default="mkv", help="Output file format (default %(default)s)")
     global_parser.add_argument("--scanfile", action="store_true", default=True, help="Store output of scan to increase speed on subsequent runs (default handbrake.scan)")
+    global_parser.add_argument("--log", action="store_true", default=True, help="Store output of scan to increase speed on subsequent runs (default handbrake.log)")
     global_parser.add_argument("--no-scanfile", action="store_true", dest="scanfile", default=True, help="No not store output of scan to increase speed on subsequent runs (default handbrake.scan)")
     global_parser.add_argument("--normalize", action="store_true", default=True, help="Automatically select gain values to normalize audio (uses an extra encoding pass)")
     global_parser.add_argument("--no-normalize", dest="normalize", action="store_false", default=True, help="Automatically select gain values to normalize audio (uses an extra encoding pass)")
@@ -1095,6 +1101,9 @@ if __name__ == "__main__":
     queue = []
     vprint(2, options)
     source = options.feature
+    
+    if options.log:
+        LOGFILE = open(os.path.join(source, "handbrake.log"), "w")
     
     scan = HandBrakeScanner(source, options=options)
     scan.run()
@@ -1167,3 +1176,5 @@ if __name__ == "__main__":
     for enc in queue:
         enc.run()
         
+    if options.log:
+        LOGFILE.close()
