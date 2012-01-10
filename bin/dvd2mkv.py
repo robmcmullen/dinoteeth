@@ -11,7 +11,7 @@ mkvpropedit
 HandBrake CLI
 """
 
-import os, sys, re, tempfile, time
+import os, sys, re, tempfile, time, copy
 import subprocess as sub
 from threading import Thread
 from Queue import Queue, Empty
@@ -177,9 +177,13 @@ class ExeRunner(object):
             self.args.append("-%s" % key)
             self.args.append(value)
     
-    def popen(self):
+    def get_command_line(self):
         args = [self.full_path_to_exe]
         args.extend(self.args)
+        return args
+    
+    def popen(self):
+        args = self.get_command_line()
         vprint(1, "popen: %s" % str(args))
         p = sub.Popen(args, stdout=sub.PIPE, stderr=sub.PIPE)
         return p
@@ -786,12 +790,10 @@ class HandBrakeEncoder(HandBrake):
         self.args.extend(["-t", str(self.title.title_num)])
         if options.preview > 0:
             self.args.extend(["-c", "1-%d" % options.preview])
-            self.args.extend(["-r", "5"])
-        elif options.fast or self.audio_only:
+        if options.fast or self.audio_only:
             self.args.extend(["-r", "5"])
             self.args.extend(["-b", "100"])
             self.args.extend(["-w", "160"])
-#            self.args.extend(["-e", "x264", "--x264-preset", "ultrafast"])
         else:
             self.args.extend(["-2", "-T", "--detelecine"])
             if options.deint:
@@ -938,9 +940,9 @@ class HandBrakeOutput(object):
             return
         if line.startswith("x264 [error]"):
             _, error = line.split(": ", 1)
-            vprint(0, "* x264 encoding error: %s" % error)
+            vprint(0, "** x264 encoding error: %s" % error)
             if "stats file could not be written to" in error:
-                vprint(0, "** Likely out of space in temporary directory.  Try --tmp option.")
+                vprint(0, "*** Likely out of space in temporary directory.  Try --tmp option.")
             return error
         if self.job > 0:
             if self.state == None:
@@ -955,30 +957,30 @@ class HandBrakeOutput(object):
                     hits = int(details[0])
                     forced = int(details[2][1:])
                     if forced > 0:
-                        vprint(0, "burning in %d forced subtitles (of %d) for subtitle stream %s" % (forced, hits, stream_id))
+                        vprint(0, "--burning in %d forced subtitles (of %d) for subtitle stream %s" % (forced, hits, stream_id))
                     else:
-                        vprint(0, "no forced subtitles to burn in for subtitle stream %s" % stream_id)
+                        vprint(0, "--no forced subtitles to burn in for subtitle stream %s" % stream_id)
                 if line.startswith("libhb: work result"):
                     _, ret = line.split(" = ", 1)
                     if ret == "0":
-                        vprint(0, "HandBrake finished successfully")
+                        vprint(0, "-HandBrake finished successfully")
                     else:
-                        vprint(0, "Handbrake failed with return code %s" % ret)
+                        vprint(0, "-Handbrake failed with return code %s" % ret)
                     return
             if self.state == "job configuration:":
                 if time is not None:
                     self.configuration += line + "\n"
                 else:
                     if self.job == self.expected_jobs:
-                        vprint(0, "starting final encode pass %s/%s" % (self.job, self.expected_jobs))
+                        vprint(0, "--starting final encode pass %s/%s" % (self.job, self.expected_jobs))
                         print self.configuration
                     else:
-                        vprint(0, "starting encode pass %s/%s" % (self.job, self.expected_jobs))
+                        vprint(0, "--starting encode pass %s/%s" % (self.job, self.expected_jobs))
                         self.configuration = ""
                     self.state = None
                 return
             if line.startswith("reader: done"):
-                vprint(0, "finished encode pass %s/%s" % (self.job, self.expected_jobs))
+                vprint(0, "--finished encode pass %s/%s" % (self.job, self.expected_jobs))
                 self.state = None
                 return
 
@@ -1053,42 +1055,55 @@ def parse_stream_names(spec):
 if __name__ == "__main__":
     global_parser = argparse.ArgumentParser(description="Convert titles in a DVD image to Matroska files")
     global_parser.add_argument("-v", "--verbose", default=0, action="count")
-    global_parser.add_argument("--lang", action="store", default="eng",
-                      help="Preferred language")
+    global_parser.add_argument("--dry-run", action="store_true", default=False, help="Don't encode, just show what would have been encoded")
     global_parser.add_argument("--min-time", action="store", type=int, default=2,
                       help="Minimum time (minutes) for bonus feature to be valid")
-    global_parser.add_argument("--crop", action="store", dest="crop", default="0:0:0:0", help="Crop parameters (default %(default)s)")
-    global_parser.add_argument("--ext", action="store", dest="ext", default="mkv", help="Output file format (default %(default)s)")
     global_parser.add_argument("--scanfile", action="store_true", default=True, help="Store output of scan to increase speed on subsequent runs (default handbrake.scan)")
+    global_parser.add_argument("--no-scanfile", action="store_true", dest="scanfile", default=True, help="No not store output of scan to increase speed on subsequent runs (default handbrake.scan)")
     global_parser.add_argument("--log", action="store_true", default=True, help="Store output of scan to increase speed on subsequent runs (default handbrake.log)")
     global_parser.add_argument("--tmp", action="store", default="", help="Directory for temporary files created during encoding process")
-    global_parser.add_argument("--no-scanfile", action="store_true", dest="scanfile", default=True, help="No not store output of scan to increase speed on subsequent runs (default handbrake.scan)")
-    global_parser.add_argument("--normalize", action="store_true", default=True, help="Automatically select gain values to normalize audio (uses an extra encoding pass)")
-    global_parser.add_argument("--no-normalize", dest="normalize", action="store_false", default=True, help="Automatically select gain values to normalize audio (uses an extra encoding pass)")
-    global_parser.add_argument("--deint", action="store_true", default=False, help="Add deinterlace (decomb) filter (slows processing by up to 50%)")
-    global_parser.add_argument("--fast", action="store_true", default=False, help="Fast encoding mode for testing audio")
-    global_parser.add_argument("--preview", action="store", type=int, default=0, help="Preview the first PREVIEW chapters using fast encoding parameters at constant 5fps")
-    global_parser.add_argument("-g", "--grayscale", action="store_true", default=False, help="Grayscale encoding")
-    global_parser.add_argument("--video-encoder", action="store", default="x264", help="Video encoder (default %(default)s)")
-    global_parser.add_argument("--x264-preset", action="store", default="", help="x264 encoder preset")
-    global_parser.add_argument("--x264-tune", action="store", default="film", help="x264 encoder tuning (typically either 'film' or 'animation')")
-    global_parser.add_argument("-b", "--vb", action="store", dest="video_bitrate", type=int, default=2000, help="Video bitrate (kb/s)")
-    global_parser.add_argument("--audio-encoder", action="store", default="faac", help="Audio encoder (default %(default)s)")
-    global_parser.add_argument("-B", "--ab", action="store", dest="audio_bitrate", type=int, default=160, help="Audio bitrate (kb/s)")
-    global_parser.add_argument("--gain", action="store", type=float, default=0.0, help="Audio gain (dB, positive values amplify)")
     global_parser.add_argument("-o", action="store", dest="output", default="", help="Output directory  (default current directory)")
-    global_parser.add_argument("-i", action="store_true", dest="info", default=False, help="Only print info")
-    global_parser.add_argument("--mkv", action="store", help="Display audio information of specified .mkv file")
-    global_parser.add_argument("--mkv-names", action="store", metavar=("MKV_FILE", "DVD_TITLE"), nargs=2, help="Rename tracks in .mkv file")
+    global_parser.add_argument("--info", action="store_true", dest="info", default=False, help="Only print info")
     global_parser.add_argument("-n", action="store", dest="name", default='', help="Movie or TV Series name")
     global_parser.add_argument("-f", action="store", dest="film_series", default=[], nargs=2, metavar=("SERIES_NAME", "FILM_NUMBER"), help="Film series name and number in series (e.g. \"James Bond\" 1 or \"Harry Potter\" 8 etc.)")
     global_parser.add_argument("-s", action="store", type=int, dest="season", default=-1, help="Season number")
-    global_parser.add_argument("feature", action="store", help="Path to DVD image")
+    global_parser.add_argument("--lang", action="store", default="eng",
+                      help="Preferred language")
+    global_parser.add_argument("-i", action="store", dest="input", help="Path to DVD image")
+
+    # Testing options not used for normal encoding tasks
+    global_parser.add_argument("--mkv", action="store", help="Display audio information of specified .mkv file")
+    global_parser.add_argument("--mkv-names", action="store", metavar=("MKV_FILE", "DVD_TITLE"), nargs=2, help="Rename tracks in .mkv file")
+
+
+    sticky_parser = argparse.ArgumentParser(description="Sticky arguments that remain set until explicitly reset")
+    sticky_parser.add_argument("--ext", action="store", dest="ext", default="mkv", help="Output file format (default %(default)s)")
     
+    # Video options
+    sticky_parser.add_argument("-b", "--vb", action="store", dest="video_bitrate", type=int, default=2000, help="Video bitrate (kb/s)")
+    sticky_parser.add_argument("-g", "--grayscale", action="store_true", default=False, help="Grayscale encoding")
+    sticky_parser.add_argument("--crop", action="store", dest="crop", default="0:0:0:0", help="Crop parameters (default %(default)s)")
+    sticky_parser.add_argument("--deint", action="store_true", default=False, help="Add deinterlace (decomb) filter (slows processing by up to 50%)")
+    sticky_parser.add_argument("--video-encoder", action="store", default="x264", help="Video encoder (default %(default)s)")
+    sticky_parser.add_argument("--x264-preset", action="store", default="", help="x264 encoder preset")
+    sticky_parser.add_argument("--x264-tune", action="store", default="film", help="x264 encoder tuning (typically either 'film' or 'animation')")
+    
+    # Audio options
+    sticky_parser.add_argument("--audio-encoder", action="store", default="faac", help="Audio encoder (default %(default)s)")
+    sticky_parser.add_argument("-B", "--ab", action="store", dest="audio_bitrate", type=int, default=160, help="Audio bitrate (kb/s)")
+    sticky_parser.add_argument("--normalize", action="store_true", default=True, help="Automatically select gain values to normalize audio (uses an extra encoding pass)")
+    sticky_parser.add_argument("--no-normalize", dest="normalize", action="store_false", default=True, help="Automatically select gain values to normalize audio (uses an extra encoding pass)")
+    sticky_parser.add_argument("--gain", action="store", type=float, default=0.0, help="Specify audio gain (dB, positive values amplify)")
+
+    # Testing options not used for normal encoding tasks
+    sticky_parser.add_argument("--fast", action="store_true", default=False, help="Fast encoding mode to small video at constant 5fps")
+    sticky_parser.add_argument("--preview", action="store", type=int, default=0, help="Preview the first PREVIEW chapters")
+
+
     title_parser = argparse.ArgumentParser(description="DVD Title options")
     title_parser.add_argument("-t", action="store", dest="dvd_title", default="", help="DVD title number (or list or range) to process")
     title_parser.add_argument("-e", action="store", dest="episode", default=None, nargs="*", metavar=("NUMBER", "NAME,NAME"), help="Optional starting episode number and optional comma separated list of episode names")
-    title_parser.add_argument("-b", "-x", action="store", dest="bonus", default=None, nargs="*", metavar=("NUMBER", "NAME,NAME"), help="Optional starting bonus feature number and optional comma separated list of bonus feature names")
+    title_parser.add_argument("-x", action="store", dest="bonus", default=None, nargs="*", metavar=("NUMBER", "NAME,NAME"), help="Optional starting bonus feature number and optional comma separated list of bonus feature names")
     title_parser.add_argument("-a", action="store", dest="audio", default=None, nargs="+", metavar="AUDIO_TRACK_NUMBER(s) [TITLE,TITLE...]", help="Range of audio track numbers and optional audio track names.  Note: if multiple DVD titles are specified in this title block, the audio tracks will apply to ALL of them")
     title_parser.add_argument("-c", action="store", dest="subtitles", default=None, nargs="+", metavar="SUBTITLE_TRACK_NUMBER(s) [TITLE,TITLE...]", help="Range of subtitle caption numbers and optional corresponding subtitle track names.  Note: if multiple DVD titles are specified in this title block, the audio tracks will apply to ALL of them")
     
@@ -1108,59 +1123,76 @@ if __name__ == "__main__":
     global_args = arg_sets[0]
     title_args = arg_sets[1:]
     
-    options = global_parser.parse_args(global_args)
-    VERBOSE = options.verbose
+    global_options, sticky_args = global_parser.parse_known_args(global_args)
+    VERBOSE = global_options.verbose
+    sticky_options = copy.copy(global_options)
+    sticky_options, extra_args = sticky_parser.parse_known_args(sticky_args, sticky_options)
+    title_options = []
+    for args in title_args:
+        sticky_options, extra_args = sticky_parser.parse_known_args(args, sticky_options)
+        options = copy.copy(sticky_options)
+        options, extra_args = title_parser.parse_known_args(extra_args, options)
+        vprint(2, "title(s): %s" % options.dvd_title)
+        if extra_args:
+            global_options, ignored_args = global_parser.parse_known_args(extra_args, global_options)
+        vprint(2, "global: %s" % global_options)
+        vprint(2, "sticky: %s" % sticky_options)
+        vprint(2, "options: %s" % options)
+        title_options.append(options)
+    
+    VERBOSE = global_options.verbose
     
     queue = []
-    vprint(2, options)
-    source = options.feature
+    vprint(2, global_options)
+    source = global_options.input
+    if not source:
+        global_parser.print_usage()
+        global_parser.exit()
     
-    if options.log:
+    if global_options.log:
         LOGFILE = open(os.path.join(source, "handbrake.log"), "w")
     
-    if options.tmp:
-        os.environ["TEMP"] = options.tmp
+    if global_options.tmp:
+        os.environ["TEMP"] = global_options.tmp
     
-    scan = HandBrakeScanner(source, options=options)
+    scan = HandBrakeScanner(source, options=global_options)
     scan.run()
     
-    if options.mkv:
-        mkv = MkvScanner(options.mkv)
+    if global_options.mkv:
+        mkv = MkvScanner(global_options.mkv)
         mkv.run()
         print scan.handbrake_to_mkv
-        extractor = MkvAudioExtractor(options.mkv, mkv=mkv)
+        extractor = MkvAudioExtractor(global_options.mkv, mkv=mkv)
         extractor.run()
-        normalizer = AudioGain(options.mkv, extractor=extractor)
+        normalizer = AudioGain(global_options.mkv, extractor=extractor)
         normalizer.run()
         sys.exit()
-    if options.mkv_names:
+    if global_options.mkv_names:
         print scan
-        filename = options.mkv_names[0]
-        dvd_title = int(options.mkv_names[1])
+        filename = global_options.mkv_names[0]
+        dvd_title = int(global_options.mkv_names[1])
         mkv = MkvScanner(filename)
         mkv.run()
         print mkv
-        encoder = HandBrakeEncoder(source, scan, filename, dvd_title, options)
+        encoder = HandBrakeEncoder(source, scan, filename, dvd_title, global_options)
         prop = MkvPropEdit(filename, options=options, dvd_title=dvd_title, scan=scan, mkv=mkv, encoder=encoder)
         prop.run()
         sys.exit()
 
-    if len(title_args) > 0:
+    if len(title_options) > 0:
         episode_number = 1
         bonus_number = 1
-        for args in title_args:
-            title_options = title_parser.parse_args(args)
-            
-            dvd_title_spec = title_options.dvd_title
+        for options in title_options:
+            dvd_title_spec = options.dvd_title
             if not dvd_title_spec:
                 title_parser.error("DVD title number must be specified.") 
             dvd_titles = parseIntSet(dvd_title_spec)
             
-            audio = parse_stream_names(title_options.audio)
-            subtitles = parse_stream_names(title_options.subtitles)
+            audio = parse_stream_names(options.audio)
+            subtitles = parse_stream_names(options.subtitles)
             
-            if title_options.episode is not None:
-                numbers, names = parse_episode_info(episode_number, dvd_titles, title_options.episode)
+            if options.episode is not None:
+                numbers, names = parse_episode_info(episode_number, dvd_titles, options.episode)
                 
                 # add each episode to queue
                 for dvd_title, episode, name in zip(dvd_titles, numbers, names):
@@ -1171,8 +1203,8 @@ if __name__ == "__main__":
                 # set up next default episode number
                 episode_number = numbers[-1] + 1
             
-            elif title_options.bonus is not None:
-                numbers, names = parse_episode_info(bonus_number, dvd_titles, title_options.bonus)
+            elif options.bonus is not None:
+                numbers, names = parse_episode_info(bonus_number, dvd_titles, options.bonus)
                 
                 # add each bonus feature to queue
                 for dvd_title, episode, name in zip(dvd_titles, numbers, names):
@@ -1189,8 +1221,11 @@ if __name__ == "__main__":
                 encoder = HandBrakeEncoder(source, scan, filename, dvd_title, audio, subtitles, options)
                 queue.append(encoder)
 
-    for enc in queue:
-        enc.run()
+        for enc in queue:
+            if global_options.dry_run:
+                vprint(0, " ".join(enc.get_command_line()))
+            else:
+                enc.run()
         
-    if options.log:
+    if global_options.log:
         LOGFILE.close()
