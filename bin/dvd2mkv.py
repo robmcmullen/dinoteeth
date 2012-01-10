@@ -518,7 +518,7 @@ class HandBrakeScanner(HandBrake):
         re_scan_num_title = re.compile("(\[.+\])? scan: DVD has (\d+) title")
         re_scan_title = re.compile("(\[.+\])? scan: scanning title (\d+)")
         re_audio = re.compile("(\[.+\])? scan: checking audio (\d+)")
-        re_dvd_stream_id = re.compile("(\[.+\])? scan: id=0x([0-9a-f]+)bd, lang=(.+), 3cc=([a-z]+)")
+        re_dvd_stream_id = re.compile("(\[.+\])? scan: id=(?:0x)?([0-9a-f]+)bd, lang=(.+), 3cc=([a-z]+)")
         re_mkv_input = re.compile("Input #(\d+)\, matroska.+")
         re_mkv_stream_id = re.compile(".+Stream #\d+\.(\d+)\((.+)\): ([a-zA-Z]+): .+")
         re_subtitle = re.compile("(\[.+\])? scan: checking subtitle (\d+)")
@@ -637,6 +637,12 @@ class HandBrakeScanner(HandBrake):
                     id = int(hex_id, 16)
                     vprint(3, "matched! preview audio=%d" % id)
                     audio = self.current_title.find_audio_by_mplayer_id(id)
+                    if audio is None:
+                        order = len(self.current_title.audio) + 1
+                        vprint(0, "failed matching audio stream %d.  HandBrake scan output probably changed. Assuming it is stream #%d" % (id, order))
+                        audio = Audio(order)
+                        self.current_title.audio.append(audio)
+                        audio.mplayer_id = id
                     audio.rate = int(match.group(4))
                     audio.bitrate = int(match.group(5))
                     audio.codec = match.group(6)
