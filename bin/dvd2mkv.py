@@ -234,7 +234,7 @@ class MkvPropEdit(ExeRunner):
     def setCommandLine(self, source, dvd_title=1, scan=None, mkv=None, encoder=None, options=None, *args, **kwargs):
         vprint(0, "-Using mkvpropedit to add names to tracks")
         self.args = [source]
-        self.args.extend(["-e", "track:1", "-s", "name=%s" % options.title])
+        self.args.extend(["-e", "track:1", "-s", "name=%s" % options.name])
         title = scan.get_title(dvd_title)
         #print title
         audio_index = 0
@@ -410,6 +410,11 @@ class Title(object):
             if audio.mplayer_id == id:
                 return audio
     
+    def find_audio_by_handbrake_id(self, id):
+        for audio in self.audio:
+            if audio.order == id:
+                return audio
+    
     def find_stream_by_language(self, stream, lang=None):
         if lang is None:
             lang = self.handbrake.preferred_lang
@@ -425,6 +430,21 @@ class Title(object):
     def find_subtitle_by_language(self, lang=None):
         return self.find_stream_by_language(self.subtitle, lang)
             
+    def cleanup_streams(self):
+        cleaned = []
+        for audio in self.audio:
+            if audio.mplayer_id == -1:
+                vprint(1, "Found inactive audio %d" % audio.order)
+            else:
+                cleaned.append(audio)
+        self.audio = cleaned
+        cleaned = []
+        for sub in self.subtitle:
+            if sub.mplayer_id == -1:
+                vprint(1, "Found inactive subtitle %d" % sub.order)
+            else:
+                cleaned.append(sub)
+        self.subtitle = cleaned
 
 class HandBrakeScanner(HandBrake):
     default_scanfile = "handbrake.scan"
@@ -459,10 +479,6 @@ class HandBrakeScanner(HandBrake):
             else:
                 dirname, basename = os.path.split(self.source)
                 self.scanfile = os.path.join(dirname, basename + self.default_scanfile)
-        self.user_audio = TrackOptions(options.audio)
-        #print self.user_audio
-        self.user_subtitle = TrackOptions(options.subtitles)
-        #print self.user_subtitle
     
     def run(self):
         vprint(0, "-Running HandBrake --scan %s" % self.source)
@@ -571,7 +587,6 @@ class HandBrakeScanner(HandBrake):
                             subtitle.name = "Closed Captions"
                         else:
                             subtitle.type = "unknown"
-                        self.override_title(self.current_title, subtitle, self.user_subtitle)
                         vprint(2, subtitle)
             
             if self.current_title:
@@ -603,7 +618,6 @@ class HandBrakeScanner(HandBrake):
                     vprint(2, "matched! audio=%d" % order)
                     self.current_stream = Audio(order)
                     self.current_title.audio.append(self.current_stream)
-                    self.override_title(self.current_title, self.current_stream, self.user_audio)
                     continue
                 match = re_preview_audio.match(line)
                 if match:
@@ -658,12 +672,12 @@ class HandBrakeScanner(HandBrake):
                         self.current_stream.name = self.current_stream.lang
                     self.current_stream.threecc = match.group(4)
                     continue
+        
+        self.cleanup_streams()
     
-    def override_title(self, title, stream, user):
-        user_track = user.get_info(title.title_num)
-        if stream.order in user_track.name:
-            stream.name = user_track.name[stream.order]
-            vprint(0, "--Overriding dvd title %d %s track %d name=%s" % (title.title_num, stream.__class__.__name__, stream.order, stream.name))
+    def cleanup_streams(self):
+        for title in self.titles:
+            title.cleanup_streams()
     
     def get_title(self, title_num):
         if title_num > len(self.titles):
@@ -673,7 +687,7 @@ class HandBrakeScanner(HandBrake):
         return self.titles[title_num - 1]
 
 class HandBrakeEncoder(HandBrake):
-    def __init__(self, source, scan, output, dvd_title, options, audio_only=False):
+    def __init__(self, source, scan, output, dvd_title, audio_spec, subtitle_spec, options, audio_only=False):
         HandBrake.__init__(self, source)
         self.source = source
         self.scan = scan
@@ -682,8 +696,8 @@ class HandBrakeEncoder(HandBrake):
         self.title = scan.get_title(self.title_num)
         self.options = options
         self.audio_only = audio_only
-        self.select_audio(scan.user_audio.get_info(self.title_num))
-        self.select_subtitles(scan.user_subtitle.get_info(self.title_num))
+        self.select_audio(audio_spec)
+        self.select_subtitles(subtitle_spec)
         self.add_options(options)
         self.args.extend(["-o", output])
     
@@ -700,9 +714,12 @@ class HandBrakeEncoder(HandBrake):
         names = []
         for track, name in track_titles.iter_tracks():
             tracks.append(track)
-            if not name:
-                audio = self.title.audio[track - 1]
-                name = audio.lang
+            audio = self.title.find_audio_by_handbrake_id(track)
+            if name:
+                # Override stream name to user's name
+                audio.name = name
+            else:
+                name = audio.name
             names.append(name)
         
         if not tracks:
@@ -722,9 +739,12 @@ class HandBrakeEncoder(HandBrake):
         scan = False
         for track, name in track_titles.iter_tracks():
             tracks.append(track)
-            if not name:
-                sub = self.title.subtitle[track - 1]
-                name = sub.lang
+            sub = self.title.subtitle[track - 1]
+            if name:
+                # Override stream name to user's name
+                sub.name = name
+            else:
+                name = sub.name
             names.append(name)
         
         if not tracks:
@@ -960,104 +980,119 @@ class TrackInfo(object):
         for i in self.order:
             yield i, self.name[i]
 
-class TrackOptions(object):
-    def __init__(self, args):
-        self.dvd_titles = dict()
-        if args is not None:
-            self.parse(args)
+def parse_episode_info(starting, dvd_titles, spec):
+    # set defaults
+    numbers = range(starting, starting + len(dvd_titles))
+    names = [""] * len(dvd_titles)
     
-    def parse(self, args):
-#        print args
-        i = 0
-        while i + 1 < len(args):
-            dvd_title = int(args[i])
-            range = parseIntSet(args[i + 1])
-            titles = []
-            if i + 2 < len(args):
-                arg = args[i + 2]
-                vals = csv_split(arg)
-                try:
-                    test = int(vals[0])
-                except:
-                    titles = vals
-            if titles:
-                i += 3
-            else:
-                i += 2
-                titles = []
-            titles.extend([''] * len(range))
-            track_titles = TrackInfo()
-            for track_index, title in zip(range, titles):
-                track_titles.add_track(track_index, title)
-            self.dvd_titles[dvd_title] = track_titles
-#        print self.dvd_titles
+    def parse_episode_numbers(number_spec):
+        tokens = csv_split(number_spec)
+        tokens = [int(t) for t in tokens]
+        # Throw away any extra specified items in the list beyond the number of
+        # expected dvd titles
+        if len(tokens) > len(dvd_titles):
+            tokens = tokens[0:len(dvd_titles)]
+        elif len(tokens) > 0:
+            num = tokens[-1] + 1
+            for i in range(len(tokens), len(dvd_titles)):
+                numbers[i] = num
+                num += 1
+        else:
+            return
+        numbers[0:len(tokens)] = tokens
     
-    def get_info(self, title_num):
+    def parse_episode_names(number_spec):
+        tokens = csv_split(number_spec)
+        if len(tokens) > len(dvd_titles):
+            tokens = tokens[0:len(dvd_titles)]
+        names[0:len(tokens)] = tokens
+
+    if len(spec) == 1:
         try:
-            return self.dvd_titles[title_num]
-        except KeyError:
-            return TrackInfo()
+            parse_episode_numbers(spec[0])
+        except ValueError:
+            parse_episode_names(spec[0])
+    elif len(spec) == 2:
+        parse_episode_numbers(spec[0])
+        parse_episode_names(spec[1])
+    else:
+        raise RuntimeError("Incorrect format specification")
+    return numbers, names
 
-
-def parse_episodes(args):
-#    print args
-    episodes = []
-    episode = int(args[0])
-    range = parseIntSet(args[1])
-    titles = []
-    if len(args) == 3:
-        titles = csv_split(args[2])
-    titles.extend([''] * len(range))
-    for track_index, title in zip(range, titles):
-        episodes.append((episode, track_index, title))
-        episode += 1
-    vprint(0, "-Encoding episodes from dvd title numbers: %s" % str([e[1] for e in episodes]))
-    return episodes
-
+def parse_stream_names(spec):
+    info = TrackInfo()
+    if spec:
+        tracks = parseIntSet(spec[0])
+        names = [''] * len(tracks)
+        if len(spec) > 1:
+            tokens = csv_split(spec[1])
+            names[0:len(tokens)] = tokens
+        for t, n in zip(tracks, names):
+            info.add_track(t, n)
+    return info
 
 if __name__ == "__main__":
-    parser=argparse.ArgumentParser(description="Convert titles in a DVD image to Matroska files")
-    parser.add_argument("-v", "--verbose", default=0, action="count")
-    parser.add_argument("--lang", action="store", default="eng",
+    global_parser = argparse.ArgumentParser(description="Convert titles in a DVD image to Matroska files")
+    global_parser.add_argument("-v", "--verbose", default=0, action="count")
+    global_parser.add_argument("--lang", action="store", default="eng",
                       help="Preferred language")
-    parser.add_argument("--min-time", action="store", type=int, default=2,
+    global_parser.add_argument("--min-time", action="store", type=int, default=2,
                       help="Minimum time (minutes) for bonus feature to be valid")
-    parser.add_argument("--crop", action="store", dest="crop", default="0:0:0:0", help="Crop parameters (default %(default)s)")
-    parser.add_argument("--ext", action="store", dest="ext", default="mkv", help="Output file format (default %(default)s)")
-    parser.add_argument("--scanfile", action="store_true", default=True, help="Store output of scan to increase speed on subsequent runs (default handbrake.scan)")
-    parser.add_argument("--no-scanfile", action="store_true", dest="scanfile", default=True, help="No not store output of scan to increase speed on subsequent runs (default handbrake.scan)")
-    parser.add_argument("--normalize", action="store_true", default=True, help="Automatically select gain values to normalize audio (uses an extra encoding pass)")
-    parser.add_argument("--no-normalize", dest="normalize", action="store_false", default=True, help="Automatically select gain values to normalize audio (uses an extra encoding pass)")
-    parser.add_argument("--deint", action="store_true", default=False, help="Add deinterlace (decomb) filter (slows processing by up to 50%)")
-    parser.add_argument("--fast", action="store_true", default=False, help="Fast encoding mode for testing audio")
-    parser.add_argument("-g", "--grayscale", action="store_true", default=False, help="Grayscale encoding")
-    parser.add_argument("--video-encoder", action="store", default="x264", help="Video encoder (default %(default)s)")
-    parser.add_argument("--x264-preset", action="store", default="", help="x264 encoder preset")
-    parser.add_argument("--x264-tune", action="store", default="film", help="x264 encoder tuning (typically either 'film' or 'animation')")
-    parser.add_argument("-b", "--vb", action="store", dest="video_bitrate", type=int, default=2000, help="Video bitrate (kb/s)")
-    parser.add_argument("--audio-encoder", action="store", default="faac", help="Audio encoder (default %(default)s)")
-    parser.add_argument("-B", "--ab", action="store", dest="audio_bitrate", type=int, default=160, help="Audio bitrate (kb/s)")
-    parser.add_argument("--gain", action="store", type=float, default=0.0, help="Audio gain (dB, positive values amplify)")
-    parser.add_argument("-o", action="store", dest="output", default="", help="Output directory  (default current directory)")
-    parser.add_argument("-i", action="store_true", dest="info", default=False, help="Only print info")
-    parser.add_argument("-t", action="store", dest="title", default='', help="Movie or series title")
-    parser.add_argument("-f", action="store", dest="film_series", default=[], nargs=2, metavar=("SERIES_NAME", "FILM_NUMBER"), help="Film series name and number in series (e.g. \"James Bond\" 1 or \"Harry Potter\" 8 etc.)")
-    parser.add_argument("-s", action="store", type=int, dest="season", default=-1, help="Season number")
-    parser.add_argument("-e", action="store", dest="episode", default=[], nargs="+", metavar=("NUMBER DVD_TITLE_RANGE", "NAME,NAME"), help="Starting episode number, comma/dash separated range of titles to use, and optional comma separated list of episode names")
-    parser.add_argument("-x", action="store", dest="extra", default=[], nargs="+", metavar=("NUMBER DVD_TITLE_RANGE", "NAME,NAME"), help="Starting bonus feature number, comma/dash separated range of titles to use, and optional comma separated list of bonus feature names")
-    parser.add_argument("-a", action="store", dest="audio", nargs="+", metavar="DVD_TITLE AUDIO_TRACK_NUMBER [TITLE,TITLE...]", help="DVD Title number, range of audio track numbers and optional corresponding titles")
-    parser.add_argument("-c", action="store", dest="subtitles", nargs="+", metavar="DVD_TITLE SUBTITLE_TRACK_NUMBER [TITLE,TITLE...]", help="DVD Title number, range of subtitle caption numbers and optional corresponding titles")
-    parser.add_argument("feature", action="store", nargs="+", metavar="path [dvd_title]", help="Path to DVD image and dvd title number if encoding main feature (or the word 'scan' to scan image)")
+    global_parser.add_argument("--crop", action="store", dest="crop", default="0:0:0:0", help="Crop parameters (default %(default)s)")
+    global_parser.add_argument("--ext", action="store", dest="ext", default="mkv", help="Output file format (default %(default)s)")
+    global_parser.add_argument("--scanfile", action="store_true", default=True, help="Store output of scan to increase speed on subsequent runs (default handbrake.scan)")
+    global_parser.add_argument("--no-scanfile", action="store_true", dest="scanfile", default=True, help="No not store output of scan to increase speed on subsequent runs (default handbrake.scan)")
+    global_parser.add_argument("--normalize", action="store_true", default=True, help="Automatically select gain values to normalize audio (uses an extra encoding pass)")
+    global_parser.add_argument("--no-normalize", dest="normalize", action="store_false", default=True, help="Automatically select gain values to normalize audio (uses an extra encoding pass)")
+    global_parser.add_argument("--deint", action="store_true", default=False, help="Add deinterlace (decomb) filter (slows processing by up to 50%)")
+    global_parser.add_argument("--fast", action="store_true", default=False, help="Fast encoding mode for testing audio")
+    global_parser.add_argument("-g", "--grayscale", action="store_true", default=False, help="Grayscale encoding")
+    global_parser.add_argument("--video-encoder", action="store", default="x264", help="Video encoder (default %(default)s)")
+    global_parser.add_argument("--x264-preset", action="store", default="", help="x264 encoder preset")
+    global_parser.add_argument("--x264-tune", action="store", default="film", help="x264 encoder tuning (typically either 'film' or 'animation')")
+    global_parser.add_argument("-b", "--vb", action="store", dest="video_bitrate", type=int, default=2000, help="Video bitrate (kb/s)")
+    global_parser.add_argument("--audio-encoder", action="store", default="faac", help="Audio encoder (default %(default)s)")
+    global_parser.add_argument("-B", "--ab", action="store", dest="audio_bitrate", type=int, default=160, help="Audio bitrate (kb/s)")
+    global_parser.add_argument("--gain", action="store", type=float, default=0.0, help="Audio gain (dB, positive values amplify)")
+    global_parser.add_argument("-o", action="store", dest="output", default="", help="Output directory  (default current directory)")
+    global_parser.add_argument("-i", action="store_true", dest="info", default=False, help="Only print info")
+    global_parser.add_argument("--mkv", action="store", help="Display audio information of specified .mkv file")
+    global_parser.add_argument("--mkv-names", action="store", metavar=("MKV_FILE", "DVD_TITLE"), nargs=2, help="Rename tracks in .mkv file")
+    global_parser.add_argument("-n", action="store", dest="name", default='', help="Movie or TV Series name")
+    global_parser.add_argument("-f", action="store", dest="film_series", default=[], nargs=2, metavar=("SERIES_NAME", "FILM_NUMBER"), help="Film series name and number in series (e.g. \"James Bond\" 1 or \"Harry Potter\" 8 etc.)")
+    global_parser.add_argument("-s", action="store", type=int, dest="season", default=-1, help="Season number")
+    global_parser.add_argument("feature", action="store", help="Path to DVD image")
     
-    parser.add_argument("--mkv", action="store", help="Display audio information of specified .mkv file")
-    parser.add_argument("--mkv-names", action="store", metavar=("MKV_FILE", "DVD_TITLE"), nargs=2, help="Rename tracks in .mkv file")
-    options = parser.parse_args()
+    title_parser = argparse.ArgumentParser(description="DVD Title options")
+    title_parser.add_argument("-t", action="store", dest="dvd_title", default="", help="DVD title number (or list or range) to process")
+    title_parser.add_argument("-e", action="store", dest="episode", default=None, nargs="*", metavar=("NUMBER", "NAME,NAME"), help="Optional starting episode number and optional comma separated list of episode names")
+    title_parser.add_argument("-b", "-x", action="store", dest="bonus", default=None, nargs="*", metavar=("NUMBER", "NAME,NAME"), help="Optional starting bonus feature number and optional comma separated list of bonus feature names")
+    title_parser.add_argument("-a", action="store", dest="audio", default=None, nargs="+", metavar="AUDIO_TRACK_NUMBER(s) [TITLE,TITLE...]", help="Range of audio track numbers and optional audio track names.  Note: if multiple DVD titles are specified in this title block, the audio tracks will apply to ALL of them")
+    title_parser.add_argument("-c", action="store", dest="subtitles", default=None, nargs="+", metavar="SUBTITLE_TRACK_NUMBER(s) [TITLE,TITLE...]", help="Range of subtitle caption numbers and optional corresponding subtitle track names.  Note: if multiple DVD titles are specified in this title block, the audio tracks will apply to ALL of them")
     
+    # Split argument list by the "-t" option so that each "-t" can have its
+    # own arguments
+    arg_sets = []
+    start = 1
+    while start < len(sys.argv):
+        try:
+            end = sys.argv.index("-t", start + 1)
+            arg_set = sys.argv[start:end]
+            arg_sets.append(arg_set)
+            start = end
+        except ValueError:
+            arg_sets.append(sys.argv[start:])
+            break
+    global_args = arg_sets[0]
+    title_args = arg_sets[1:]
+    
+    options = global_parser.parse_args(global_args)
     VERBOSE = options.verbose
     
     queue = []
     vprint(2, options)
-    source = options.feature[0]
+    source = options.feature
+    
     scan = HandBrakeScanner(source, options=options)
     scan.run()
     
@@ -1082,34 +1117,50 @@ if __name__ == "__main__":
         prop.run()
         sys.exit()
 
+    if len(title_args) > 0:
+        episode_number = 1
+        bonus_number = 1
+        for args in title_args:
+            title_options = title_parser.parse_args(args)
+            
+            dvd_title_spec = title_options.dvd_title
+            if not dvd_title_spec:
+                title_parser.error("DVD title number must be specified.") 
+            dvd_titles = parseIntSet(dvd_title_spec)
+            
+            audio = parse_stream_names(title_options.audio)
+            subtitles = parse_stream_names(title_options.subtitles)
+            
+            if title_options.episode is not None:
+                numbers, names = parse_episode_info(episode_number, dvd_titles, title_options.episode)
+                
+                # add each episode to queue
+                for dvd_title, episode, name in zip(dvd_titles, numbers, names):
+                    filename = canonical_filename(options.name, options.film_series, options.season, "e", episode, name, options.ext)
+                    encoder = HandBrakeEncoder(source, scan, filename, dvd_title, audio, subtitles, options)
+                    queue.append(encoder)
+                
+                # set up next default episode number
+                episode_number = numbers[-1] + 1
+            
+            elif title_options.bonus is not None:
+                numbers, names = parse_episode_info(bonus_number, dvd_titles, title_options.bonus)
+                
+                # add each bonus feature to queue
+                for dvd_title, episode, name in zip(dvd_titles, numbers, names):
+                    filename = canonical_filename(options.name, options.film_series, options.season, "x", episode, name, options.ext)
+                    encoder = HandBrakeEncoder(source, scan, filename, dvd_title, audio, subtitles, options)
+                    queue.append(encoder)
+                
+                # set up next default episode number
+                bonus_number = numbers[-1] + 1
+            
+            else:
+                dvd_title = dvd_titles[0]
+                filename = canonical_filename(options.name, options.film_series, options.season, None, None, None, options.ext)
+                encoder = HandBrakeEncoder(source, scan, filename, dvd_title, audio, subtitles, options)
+                queue.append(encoder)
 
-    if len(options.feature) == 1:
-        print scan
-    elif len(options.feature) > 1:
-        if options.title:
-            dvd_title = int(options.feature[1])
-            filename = canonical_filename(options.title, options.film_series, options.season, None, None, None, options.ext)
-            encoder = HandBrakeEncoder(source, scan, filename, dvd_title, options)
-            vprint(1, "Main feature: %s" % encoder)
-            queue.append(encoder)
-        else:
-            print "Expecting main feature"
-    if len(options.episode) > 0:
-        bonus = parse_episodes(options.episode)
-        for episode, dvd_title, name in bonus:
-            filename = canonical_filename(options.title, options.film_series, options.season, "e", episode, name, options.ext)
-            encoder = HandBrakeEncoder(source, scan, filename, dvd_title, options)
-            vprint(1, "Episode: %s" % encoder)
-            queue.append(encoder)
-    if len(options.extra) > 0:
-        print "bonus features"
-        bonus = parse_episodes(options.extra)
-        for episode, dvd_title, name in bonus:
-            filename = canonical_filename(options.title, options.film_series, options.season, "x", episode, name, options.ext)
-            encoder = HandBrakeEncoder(source, scan, filename, dvd_title, options)
-            vprint(1, "Bonus Feature: %s" % encoder)
-            queue.append(encoder)
-    
     for enc in queue:
         enc.run()
         
