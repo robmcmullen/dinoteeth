@@ -802,7 +802,7 @@ class HandBrakeEncoder(HandBrake):
             self.args.extend(["-w", "160"])
         else:
             self.args.extend(["-2", "-T", "--detelecine"])
-            if options.deint:
+            if options.decomb:
                 self.args.append("--decomb")
             self.args.extend(("-e", options.video_encoder))
             if options.x264_preset:
@@ -1091,7 +1091,7 @@ if __name__ == "__main__":
     sticky_parser.add_argument("-b", "--vb", action="store", dest="video_bitrate", type=int, default=2000, help="Video bitrate (kb/s)")
     sticky_parser.add_argument("-g", "--grayscale", action="store_true", default=False, help="Grayscale encoding")
     sticky_parser.add_argument("--crop", action="store", dest="crop", default="0:0:0:0", help="Crop parameters (default %(default)s)")
-    sticky_parser.add_argument("--deint", action="store_true", default=False, help="Add deinterlace (decomb) filter (slows processing by up to 50%)")
+    sticky_parser.add_argument("--decomb", action="store_true", default=False, help="Add deinterlace (decomb) filter (slows processing by up to 50%)")
     sticky_parser.add_argument("--video-encoder", action="store", default="x264", help="Video encoder (default %(default)s)")
     sticky_parser.add_argument("--x264-preset", action="store", default="", help="x264 encoder preset")
     sticky_parser.add_argument("--x264-tune", action="store", default="film", help="x264 encoder tuning (typically either 'film' or 'animation')")
