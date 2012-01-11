@@ -794,6 +794,7 @@ class HandBrakeEncoder(HandBrake):
     
     def add_options(self, options):
         self.args.extend(["-t", str(self.title.title_num)])
+        self.args.append("-m") # include chapter markers
         if options.preview > 0:
             self.args.extend(["-c", "1-%d" % options.preview])
         if options.fast or self.audio_only:
