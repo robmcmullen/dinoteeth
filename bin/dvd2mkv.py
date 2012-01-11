@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 """Rip DVDs and encode to mkv
 
-Requires:
+Tested on linux; probably will work under all unix-like OSes.  Not tested (and
+probably will not work) on Windows.
 
-mplayer
-normalize
-mkvmerge
-mkvextract
-mkvpropedit
-HandBrake CLI
+Requires the following programs to be available on your PATH:
+
+mkvmerge, mkvextract, mkvpropedit from mkvtoolnix
+HandBrakeCLI
+mplayer (only if audio gain normalization is used)
+normalize (only if audio gain normalization is used)
 """
 
 import os, sys, re, tempfile, time, copy
@@ -140,7 +141,7 @@ def csv_split(text):
     return fields
 
 class ExeRunner(object):
-    full_path_to_exe = None
+    exe_name = None
     default_args = []
     
     def __init__(self, source, options=None, test_stdout=None, test_stderr=None, verbose=False, *args, **kwargs):
@@ -178,14 +179,17 @@ class ExeRunner(object):
             self.args.append(value)
     
     def get_command_line(self):
-        args = [self.full_path_to_exe]
+        args = [self.exe_name]
         args.extend(self.args)
         return args
     
     def popen(self):
         args = self.get_command_line()
         vprint(1, "popen: %s" % str(args))
-        p = sub.Popen(args, stdout=sub.PIPE, stderr=sub.PIPE)
+        try:
+            p = sub.Popen(args, stdout=sub.PIPE, stderr=sub.PIPE)
+        except OSError, e:
+            raise RuntimeError("Error with executable %s: %s" % (self.exe_name, e))
         return p
     
     def run(self):
@@ -210,7 +214,7 @@ class ExeRunner(object):
         pass
 
 class MkvScanner(ExeRunner):
-    full_path_to_exe = "/usr/bin/mkvmerge"
+    exe_name = "mkvmerge"
     
     def __str__(self):
         return "\n".join("Track #%d: %s (%s)" % t for t in self.tracks)
@@ -239,7 +243,7 @@ class MkvScanner(ExeRunner):
         return self.handbrake_to_mkv[handbrake_audio_id]
 
 class MkvPropEdit(ExeRunner):
-    full_path_to_exe = "/usr/bin/mkvpropedit"
+    exe_name = "mkvpropedit"
     
     def setCommandLine(self, source, dvd_title=1, scan=None, mkv=None, encoder=None, options=None, *args, **kwargs):
         vprint(0, "-Using mkvpropedit to add names to tracks")
@@ -264,7 +268,7 @@ class MkvPropEdit(ExeRunner):
                 self.args.extend(["-e", "track:%d" % mkv_id, "-s", "name=%s" % stream.name])
 
 class MkvAudioExtractor(ExeRunner):
-    full_path_to_exe = "/usr/bin/mkvextract"
+    exe_name = "mkvextract"
     
     def setCommandLine(self, source, mkv=None, options=None, *args, **kwargs):
         self.args = ["tracks", source]
@@ -275,7 +279,7 @@ class MkvAudioExtractor(ExeRunner):
             self.handbrake_to_mp3[handbrake_id] = output
 
 class MplayerAudioExtractor(ExeRunner):
-    full_path_to_exe = "/usr/bin/mplayer"
+    exe_name = "mplayer"
     
     def setCommandLine(self, source, output="", aid=128, options=None, *args, **kwargs):
         self.args = ["-nocorrect-pts", "-quiet", "-vc", "null", "-vo", "null",
@@ -308,7 +312,7 @@ class VOBAudioExtractor(object):
             os.remove(filename)
 
 class AudioGain(ExeRunner):
-    full_path_to_exe = "/usr/bin/normalize"
+    exe_name = "normalize"
     
     def setCommandLine(self, source, extractor=None, options=None, *args, **kwargs):
         self.extractor = extractor
@@ -332,12 +336,8 @@ class AudioGain(ExeRunner):
         vprint(0, "--Computed gains: %s" % str(self.gains))
         self.extractor.cleanup()
 
-class DVDBackup(ExeRunner):
-    full_path_to_exe = "/usr/bin/dvdbackup"
-
-
 class HandBrake(ExeRunner):
-    full_path_to_exe = "/opt/src/HandBrake/build/HandBrakeCLI"
+    exe_name = "HandBrakeCLI"
 
     def setCommandLine(self, source, options=None, *args, **kwargs):
         args = list(args)
@@ -1233,7 +1233,11 @@ if __name__ == "__main__":
             if global_options.dry_run:
                 vprint(0, " ".join(enc.get_command_line()))
             else:
-                enc.run()
+                try:
+                    enc.run()
+                except RuntimeError, e:
+                    vprint(0, e)
+                    break
         
     if global_options.log:
         LOGFILE.close()
