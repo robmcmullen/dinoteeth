@@ -377,6 +377,7 @@ class Title(object):
         self.main_feature = False
         self.vts = -1
         self.duration = "00:00:00"
+        self.autocrop = "0/0/0/0"
         self.size = ""
         self.pixel_aspect = ""
         self.display_aspect = ""
@@ -389,6 +390,8 @@ class Title(object):
         if self.main_feature:
             s += "(MAIN) "
         s += "%s, %s " % (self.size, self.display_aspect)
+        if self.autocrop != "0/0/0/0":
+            s += "(autocrop %s) " % self.autocrop
         s += "%d audio " % (len(self.audio))
         pref = 0
         extra = ""
@@ -525,6 +528,7 @@ class HandBrakeScanner(HandBrake):
         re_preview = re.compile("(\[.+\])? scan: decoding previews for title (\d+)")
         re_preview_audio = re.compile("(\[.+\])? scan: audio 0x([0-9a-f]+): (.+), rate=(\d+)Hz, bitrate=(\d+) (.+)")
         re_title_summary = re.compile("\+ title (\d+):")
+        re_autocrop = re.compile("  \+ autocrop: (.+)")
         re_duration = re.compile("  \+ duration: (.+)")
         re_vts = re.compile("  \+ vts (\d+), ttn (\d+), (.+)")
         re_size = re.compile("  \+ size: (.+), pixel aspect: (.+), display aspect: ([\.\d]+), ([\.\d]+) fps")
@@ -603,6 +607,11 @@ class HandBrakeScanner(HandBrake):
                 if line.startswith("  + Main Feature"):
                     vprint(3, "Main feature!")
                     self.current_title.main_feature = True
+                    continue
+                match = re_autocrop.match(line)
+                if match:
+                    self.current_title.autocrop = match.group(1)
+                    vprint(3, "autocrop = %s" % self.current_title.autocrop)
                     continue
                 match = re_duration.match(line)
                 if match:
@@ -820,7 +829,10 @@ class HandBrakeEncoder(HandBrake):
             self.args.extend(("--pixel-aspect", "8:9"))
         else:
             raise RuntimeError("Unknown aspect ratio %s" % self.title.display_aspect)
-        self.args.extend(["--crop", options.crop])
+        if options.autocrop:
+            self.args.extend(["--crop", self.title.autocrop])
+        else:
+            self.args.extend(["--crop", options.crop])
         
         # Audio settings
         if options.fast:
@@ -1092,6 +1104,7 @@ if __name__ == "__main__":
     sticky_parser.add_argument("-b", "--vb", action="store", dest="video_bitrate", type=int, default=2000, help="Video bitrate (kb/s)")
     sticky_parser.add_argument("-g", "--grayscale", action="store_true", default=False, help="Grayscale encoding")
     sticky_parser.add_argument("--crop", action="store", dest="crop", default="0:0:0:0", help="Crop parameters (default %(default)s)")
+    sticky_parser.add_argument("--autocrop", action="store_true", default=False, help="Use autocrop as determined from the scan (default %(default)s)")
     sticky_parser.add_argument("--decomb", action="store_true", default=False, help="Add deinterlace (decomb) filter (slows processing by up to 50%)")
     sticky_parser.add_argument("--video-encoder", action="store", default="x264", help="Video encoder (default %(default)s)")
     sticky_parser.add_argument("--x264-preset", action="store", default="", help="x264 encoder preset")
