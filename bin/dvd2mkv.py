@@ -1239,6 +1239,8 @@ if __name__ == "__main__":
                 except RuntimeError, e:
                     vprint(0, e)
                     break
+    else:
+        print scan
         
     if global_options.log:
         LOGFILE.close()
