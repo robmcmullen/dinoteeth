@@ -835,14 +835,10 @@ class HandBrakeEncoder(HandBrake):
             self.args.extend(["--crop", options.crop])
         
         # Audio settings
-        if options.fast:
-            self.args.extend(("-E", "lame"))
-            self.args.extend(("-B", "128"))
-        else:
-            self.args.extend(("-E", options.audio_encoder))
-            self.args.extend(("-B", str(options.audio_bitrate)))
-            if options.gain != 0.0:
-                self.args.extend(("--gain", str(options.gain)))
+        self.args.extend(("-E", options.audio_encoder))
+        self.args.extend(("-B", str(options.audio_bitrate)))
+        if options.gain != 0.0:
+            self.args.extend(("--gain", str(options.gain)))
     
     def enqueue_output(self, out, queue):
         for line in iter(out.readline, ''):
