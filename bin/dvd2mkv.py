@@ -453,7 +453,9 @@ class Title(object):
         self.audio = cleaned
         cleaned = []
         for sub in self.subtitle:
-            if sub.mplayer_id == -1:
+            # Note: only one closed caption track can exist and it doesn't have
+            # an mplayer id number
+            if sub.mplayer_id == -1 and sub.type == "vobsub":
                 vprint(1, "Found inactive subtitle %d" % sub.order)
             else:
                 cleaned.append(sub)
