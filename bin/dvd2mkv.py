@@ -846,7 +846,7 @@ class HandBrakeEncoder(HandBrake):
         out.close()
     
     def run(self):
-        if not self.audio_only and self.options.normalize:
+        if not self.audio_only and self.options.normalize and self.options.gain == 0.0:
             self.compute_gains()
         vprint(0, "-Using HandBrake to encode video %s" % self.output)
         p = self.popen()
