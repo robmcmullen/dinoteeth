@@ -775,20 +775,24 @@ class HandBrakeEncoder(HandBrake):
             names.append(name)
         
         if not tracks:
-            vobsub = None
+            vobsub = []
             cc = None
             default_set = self.title.find_subtitle_by_language()
             for sub in default_set:
-                if vobsub is None and sub.type == "vobsub":
-                    vobsub = sub
+                if sub.type == "vobsub":
+                    vobsub.append(sub)
                 if cc is None and sub.type == "cc":
                     cc = sub
+            if vobsub:
+                tracks.extend([v.order for v in vobsub])
+                names.append([v.lang for v in vobsub])
             if cc is not None:
-                tracks.append(cc.order)
-                names.append(cc.lang)
-            if vobsub is not None:
-                tracks.append(vobsub.order)
-                names.append(vobsub.lang)
+                if self.options.cc_first:
+                    tracks[0:0] = [cc.order]
+                    names[0:0] = [cc.lang]
+                else:
+                    tracks.append(cc.order)
+                    names.append(cc.lang)
         
         self.subtitle_track_order = tracks[:]
 
@@ -1097,6 +1101,8 @@ if __name__ == "__main__":
 
     sticky_parser = argparse.ArgumentParser(description="Sticky arguments that remain set until explicitly reset")
     sticky_parser.add_argument("--ext", action="store", dest="ext", default="mkv", help="Output file format (default %(default)s)")
+    sticky_parser.add_argument("--cc-first", action="store_true", dest="cc_first", default=True, help="Place closed captions before vobsub (DVD image subtitles)")
+    sticky_parser.add_argument("--vobsub-first", action="store_false", dest="cc_first", default=True, help="Place vobsub (DVD image subtitles) before closed captions")
     
     # Video options
     sticky_parser.add_argument("-b", "--vb", action="store", dest="video_bitrate", type=int, default=2000, help="Video bitrate (kb/s)")
