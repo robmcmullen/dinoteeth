@@ -81,7 +81,11 @@ class ThumbnailFactory(object):
             return None
         if img.size[0] <= self.size[0] and img.size[1] <= self.size[1]:
             return imgpath
-        img = self._get_rotated_thumbnail(img)
+        try:
+            img = self._get_rotated_thumbnail(img)
+        except IOError:
+            print "error thumbnailing %s" % imgpath
+            raise
         
         uri = self._path_to_uri(imgpath)
         thumbpath = self._uri_to_thumbpath(uri)
