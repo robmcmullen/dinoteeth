@@ -12,7 +12,7 @@ import pyglet
 from PIL import Image, PngImagePlugin
 
 class Slideshow(pyglet.window.Window):
-    def __init__(self, image_filenames, time, fullscreen=False, width=800, height=600, margins=None, verbose=False):
+    def __init__(self, image_filenames, time, fullscreen=False, width=800, height=600, margins=None, verbose=False, once=False):
         if fullscreen:
             super(Slideshow, self).__init__(fullscreen=fullscreen)
         else:
@@ -24,19 +24,44 @@ class Slideshow(pyglet.window.Window):
         self.index = -1
         self.interval = time
         self.verbose = verbose
+        self.once = once
         self.transition(None)
     
     def transition(self, dt, delta=1):
         if self.verbose: print "next slide"
-        self.index += delta
-        if self.index >= len(self.paths):
-            self.index = 0
-        elif self.index < 0:
-            self.index = 0
-        filename = self.paths[self.index]
+        self.index = self.calc_index(delta)
+        try:
+            filename = self.paths[self.index]
+        except IndexError:
+            # reached end; quit
+            sys.exit()
         if self.verbose: print "loading %s" % filename
-        self.current = self.get_image(filename)
-        pyglet.clock.schedule_once(self.transition, self.interval)
+        try:
+            self.current = self.get_image(filename)
+            pyglet.clock.schedule_once(self.transition, self.interval)
+        except:
+            # Bad image!  Skip to next image in the desired direction
+            print "bad image: %s" % filename
+            if delta < 0:
+                delta = -1
+            else:
+                delta = 1
+            next_index = self.calc_index(delta)
+            if next_index != self.index:
+                self.transition(self.interval, delta)
+            else:
+                sys.exit()
+    
+    def calc_index(self, delta):
+        index = self.index + delta
+        if index >= len(self.paths):
+            if self.once:
+                index = len(self.paths)
+            else:
+                index = 0
+        elif index < 0:
+            index = 0
+        return index
     
     def get_image(self, filename):
         """If image is rotated according to EXIF data, rotate the thumbnail
@@ -113,6 +138,15 @@ class Slideshow(pyglet.window.Window):
             self.set_fullscreen(not self.fullscreen)
             self.force_transition(0)
 
+def add_images(dir, images):
+    files = glob.glob(os.path.join(dir, "*"))
+    sub_images = []
+    for file in files:
+        if os.path.isdir(file):
+            add_images(file, images)
+        sub_images.append(file)
+    sub_images.sort()
+    images.extend(sub_images)
 
 if __name__ == "__main__":
     usage="usage: %prog [options] [files...]\n\n" + __doc__
@@ -123,6 +157,9 @@ if __name__ == "__main__":
                       help="load image filenames from this file")
     parser.add_option("-t", action="store", type="int", dest="time", default=6,
                       help="delay (in seconds) before transitioning to next image")
+    parser.add_option("-w", "--window", action="store_false", dest="fullscreen", default=True)
+    parser.add_option("--once", action="store_true", dest="once", default=False,
+                      help="only display the set of images once and quit after the last image")
     (options, args) = parser.parse_args()
 
     images = []
@@ -135,8 +172,8 @@ if __name__ == "__main__":
     
     for name in args:
         if os.path.isdir(name):
-            print "skipping dir %s" % name
+            add_images(name, images)
         else:
             images.append(name)
-    window = Slideshow(images, options.time)
+    window = Slideshow(images, options.time, fullscreen=options.fullscreen, once=options.once)
     pyglet.app.run()
