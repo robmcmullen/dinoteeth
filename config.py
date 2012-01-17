@@ -10,11 +10,13 @@ from theme import MenuTheme
 from mplayer import MPlayerClient, MPlayerInfo
 from utils import decode_title_text, ArtworkLoader
 from metadata import UnifiedMetadataDatabase, UnifiedMetadata
+from photo import PhotoDB
 
 class RootMenu(MenuItem):
-    def __init__(self, db, menu_theme):
+    def __init__(self, db, menu_theme, photo=None):
         MenuItem.__init__(self, "Dinoteeth Media Launcher", theme=menu_theme)
         self.db = db
+        self.pdb = photo
         self.metadata = {
             'image': '../../graphics/background-merged.jpg',
             }
@@ -22,17 +24,17 @@ class RootMenu(MenuItem):
         self.category_order = [
 #            ("Movies", self.get_movies_genres),
             ("TV", self.get_tv_root),
-            ("Photos", self.get_empty_root),
-            ("Games", self.get_empty_root),
             ("Paused...", self.get_empty_root),
+            ("Games", self.get_empty_root),
             ]
         self.categories = {}
     
     def create_menus(self):
-        self.create_movies_genres()
+        #self.create_movies_genres()
         for cat, populate in self.category_order:
             menu = MenuItem(cat, populate=populate)
             self.add(menu)
+        self.create_photo_menu()
     
     def create_movies_genres(self, *args):
         results = self.db.find("movie")
@@ -59,6 +61,17 @@ class RootMenu(MenuItem):
         results = self.db.find("episode")
         h = results.hierarchy()
         return h
+    
+    def create_photo_menu(self, *args):
+        menu = MenuItem("Photos")
+        #menu.metadata = {'imagegen': photodb.thumbnail_mosaic}
+        self.add(menu)
+        entry = MenuItem("By Folder", populate=self.pdb.hierarchy)
+        #entry.metadata = {'imagegen': photodb.thumbnail_mosaic}
+        menu.add(entry)
+        entry = MenuItem("Slideshows")
+        #entry.metadata = {'imagegen': results.thumbnail_mosaic}
+        menu.add(entry)
     
     def get_empty_root(self, *args):
         results = self.db.find("nothing")
@@ -94,6 +107,7 @@ class Config(object):
         parser.add_option("-m", "--metadata-database", action="store", dest="umdb", default="dinoteeth.umdb")
         parser.add_option("-i", "--image-dir", action="store", dest="image_dir", default="test/graphics")
         parser.add_option("-w", "--window", action="store_false", dest="fullscreen", default=True)
+        parser.add_option("-p", "--photo-dir", action="append", dest="photo_dirs", default=None)
         parser.add_option("--window-width", action="store", type=int, default=1280)
         parser.add_option("--window-height", action="store", type=int, default=720)
         parser.add_option("--top-margin", action="store", type=int, default=0)
@@ -106,7 +120,7 @@ class Config(object):
         self.parser = parser
         (self.options, self.args) = self.parser.parse_args()
     
-        self.db = self.get_database()
+        self.db = self.get_media_database()
         self.umdb = self.get_metadata_database()
         MediaObject.setMetadataDatabase(self.umdb)
         MediaObject.setIgnoreLeadingArticles(self.get_leading_articles())
@@ -121,6 +135,7 @@ class Config(object):
             for path in self.args:
                 self.parse_dir(self.db, path)
             self.db.saveStateToFile()
+        self.pdb = self.get_photo_database()
     
     def get_main_window(self):
         if self.main_window is None:
@@ -133,13 +148,19 @@ class Config(object):
         return self.main_window
     
     def create_root(self):
-        self.root = RootMenu(self.db, self.theme)
+        self.root = RootMenu(self.db, self.theme, photo=self.pdb)
         self.root.create_menus()
     
-    def get_database(self):
+    def get_media_database(self):
         scanner = self.get_metadata_scanner()
         db = DictDatabase(media_scanner=scanner)
         db.loadStateFromFile(self.options.database)
+        return db
+    
+    def get_photo_database(self):
+        db = PhotoDB()
+        for path in self.options.photo_dirs:
+            db.add_path(path)
         return db
     
     def get_metadata_scanner(self):
