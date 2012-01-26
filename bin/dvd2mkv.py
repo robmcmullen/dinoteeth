@@ -843,8 +843,6 @@ class HandBrakeEncoder(HandBrake):
         # Audio settings
         self.args.extend(("-E", options.audio_encoder))
         self.args.extend(("-B", str(options.audio_bitrate)))
-        if options.gain != 0.0:
-            self.args.extend(("--gain", str(options.gain)))
     
     def enqueue_output(self, out, queue):
         for line in iter(out.readline, ''):
@@ -852,8 +850,7 @@ class HandBrakeEncoder(HandBrake):
         out.close()
     
     def run(self):
-        if not self.audio_only and self.options.normalize and self.options.gain == 0.0:
-            self.compute_gains()
+        self.compute_gains()
         vprint(0, "-Using HandBrake to encode video %s" % self.output)
         p = self.popen()
         q_stderr = Queue()
@@ -904,30 +901,27 @@ class HandBrakeEncoder(HandBrake):
         extractor.run()
         normalizer = AudioGain(self.output, extractor=extractor)
         normalizer.run()
-        try:
-            index = self.args.index("--gain")
-            index += 1
-        except ValueError:
-            index = len(self.args)
-            self.args[index:index] = ["--gain"]
-            index += 1
-        self.args[index:index] = [",".join(normalizer.gains)]
+        return normalizer.gains
     
-    def compute_gains(self):
+    def compute_gains_mplayer(self):
         vprint(0, "-Preparing to compute audio gain factors")
         extractor = VOBAudioExtractor(self.source, self.title, self.audio_track_order, self.output)
         extractor.run()
         normalizer = AudioGain(self.output, extractor=extractor)
         normalizer.run()
-        try:
-            index = self.args.index("--gain")
-            index += 1
-        except ValueError:
-            index = len(self.args)
-            self.args[index:index] = ["--gain"]
-            index += 1
-        self.args[index:index] = [",".join(normalizer.gains)]
+        return normalizer.gains
     
+    def compute_gains(self):
+        if self.audio_only:
+            return
+        gains = []
+        if options.gain:
+            self.args.extend(("--gain", str(options.gain)))
+        elif self.options.normalize:
+            gains = self.compute_gains_mplayer()
+            self.args.append("--gain")
+            self.args.extend([",".join(gains)])
+
     def rename_tracks(self):
         vprint(0, "-Preparing to rename tracks in %s" % self.output)
         mkv = MkvScanner(self.output)
@@ -1119,7 +1113,7 @@ if __name__ == "__main__":
     sticky_parser.add_argument("-B", "--ab", action="store", dest="audio_bitrate", type=int, default=160, help="Audio bitrate (kb/s)")
     sticky_parser.add_argument("--normalize", action="store_true", default=True, help="Automatically select gain values to normalize audio (uses an extra encoding pass)")
     sticky_parser.add_argument("--no-normalize", dest="normalize", action="store_false", default=True, help="Automatically select gain values to normalize audio (uses an extra encoding pass)")
-    sticky_parser.add_argument("--gain", action="store", type=float, default=0.0, help="Specify audio gain (dB, positive values amplify)")
+    sticky_parser.add_argument("--gain", action="store", default="", help="Specify audio gain (dB, positive values amplify). Comma separated list, otherwise gain value used for all tracks")
 
     # Testing options not used for normal encoding tasks
     sticky_parser.add_argument("--fast", action="store_true", default=False, help="Fast encoding mode to small video at constant 5fps")
