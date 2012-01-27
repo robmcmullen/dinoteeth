@@ -1081,7 +1081,6 @@ if __name__ == "__main__":
     global_parser.add_argument("--tmp", action="store", default="", help="Directory for temporary files created during encoding process")
     global_parser.add_argument("-o", action="store", dest="output", default="", help="Output directory  (default current directory)")
     global_parser.add_argument("--info", action="store_true", dest="info", default=False, help="Only print info")
-    global_parser.add_argument("-n", action="store", dest="name", default='', help="Movie or TV Series name")
     global_parser.add_argument("-f", action="store", dest="film_series", default=[], nargs=2, metavar=("SERIES_NAME", "FILM_NUMBER"), help="Film series name and number in series (e.g. \"James Bond\" 1 or \"Harry Potter\" 8 etc.)")
     global_parser.add_argument("-s", action="store", type=int, dest="season", default=-1, help="Season number")
     global_parser.add_argument("--lang", action="store", default="eng",
@@ -1094,13 +1093,15 @@ if __name__ == "__main__":
 
 
     sticky_parser = argparse.ArgumentParser(description="Sticky arguments that remain set until explicitly reset")
+    sticky_parser.add_argument("-n", action="store", dest="name", default='', help="Movie or TV Series name")
     sticky_parser.add_argument("--ext", action="store", dest="ext", default="mkv", help="Output file format (default %(default)s)")
     sticky_parser.add_argument("--cc-first", action="store_true", dest="cc_first", default=True, help="Place closed captions before vobsub (DVD image subtitles)")
     sticky_parser.add_argument("--vobsub-first", action="store_false", dest="cc_first", default=True, help="Place vobsub (DVD image subtitles) before closed captions")
     
     # Video options
     sticky_parser.add_argument("-b", "--vb", action="store", dest="video_bitrate", type=int, default=2000, help="Video bitrate (kb/s)")
-    sticky_parser.add_argument("-g", "--grayscale", action="store_true", default=False, help="Grayscale encoding")
+    sticky_parser.add_argument("-g", "--grayscale", action="store_true", dest="grayscale", default=False, help="Grayscale encoding")
+    sticky_parser.add_argument("--color", action="store_false", dest="grayscale", default=False, help="Color encoding (default)")
     sticky_parser.add_argument("--crop", action="store", dest="crop", default="0:0:0:0", help="Crop parameters (default %(default)s)")
     sticky_parser.add_argument("--autocrop", action="store_true", default=False, help="Use autocrop as determined from the scan (default %(default)s)")
     sticky_parser.add_argument("--decomb", action="store_true", default=False, help="Add deinterlace (decomb) filter (slows processing by up to 50%)")
@@ -1202,6 +1203,7 @@ if __name__ == "__main__":
     if len(title_options) > 0:
         episode_number = 1
         bonus_number = 1
+        seen_film_series = False
         for options in title_options:
             dvd_title_spec = options.dvd_title
             if not dvd_title_spec:
@@ -1236,10 +1238,13 @@ if __name__ == "__main__":
                 bonus_number = numbers[-1] + 1
             
             else:
+                if seen_film_series:
+                    options.film_series[1] = int(options.film_series[1]) + 1
                 dvd_title = dvd_titles[0]
                 filename = canonical_filename(options.name, options.film_series, options.season, None, None, None, options.ext)
                 encoder = HandBrakeEncoder(source, scan, filename, dvd_title, audio, subtitles, options)
                 queue.append(encoder)
+                seen_film_series = True
 
         for enc in queue:
             if global_options.dry_run:
