@@ -30,7 +30,7 @@ class RootMenu(MenuItem):
         self.categories = {}
     
     def create_menus(self):
-        #self.create_movies_genres()
+        self.create_movies_genres()
         for cat, populate in self.category_order:
             menu = MenuItem(cat, populate=populate)
             self.add(menu)
