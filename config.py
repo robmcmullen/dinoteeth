@@ -147,6 +147,17 @@ class Config(object):
                                           margins=margins)
         return self.main_window
     
+    def prepare_for_external_app(self):
+        win = self.get_main_window()
+        if self.options.fullscreen:
+            win.set_fullscreen(False)
+    
+    def restore_after_external_app(self):
+        win = self.get_main_window()
+        win.set_fullscreen(not self.options.fullscreen)
+        win.set_fullscreen(self.options.fullscreen)
+        win.activate()
+    
     def create_root(self):
         self.root = RootMenu(self.db, self.theme, photo=self.pdb)
         self.root.create_menus()

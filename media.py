@@ -255,13 +255,10 @@ class Playable(object):
         return utils.time_format(self.scanned_metadata.length)
     
     def play(self, config=None):
-        win = config.get_main_window()
-        if config.options.fullscreen:
-            win.set_fullscreen(False)
+        config.prepare_for_external_app()
         client = config.get_media_client()
         last_pos = client.play(self['pathname'], self.audio, self.subtitle)
-        if config.options.fullscreen:
-            win.set_fullscreen(True)
+        config.restore_after_external_app()
     
     def resume(self, config=None):
         print "FIXME: Resuming %s" % self
