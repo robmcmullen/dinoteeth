@@ -1,4 +1,4 @@
-import os, sys, re, bisect, glob
+import os, sys, re, bisect, glob, subprocess
 
 import utils
 
@@ -37,7 +37,18 @@ class PhotoDir(object):
     def add_to_menu(self, theme, parent_menu):
         menu, handled = theme.add_simple_menu(self, parent_menu)
         menu.metadata = {'imagegen': self.thumbnail_mosaic}
+        menu.action = self.slideshow
         return menu, True
+    
+    def slideshow(self, config=None):
+        config.prepare_for_external_app()
+        print "Starting slideshow for %s" % self.path
+        args = [sys.executable, "bin/slideshow.py", "--once", self.path]
+        p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, errors = p.communicate()
+        print output
+        print errors
+        config.restore_after_external_app()
 
     def thumbnail_mosaic(self, artwork_loader, thumbnail_factory, x, y, w, h):
         import pyglet
