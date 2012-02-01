@@ -850,6 +850,9 @@ class HandBrakeEncoder(HandBrake):
         out.close()
     
     def run(self):
+        if not self.options.overwrite and os.path.exists(self.output):
+            vprint(0, "-skipping already encoded file %s; use --overwrite to replace existing files" % self.output)
+            return 
         self.compute_gains()
         vprint(0, "-Using HandBrake to encode video %s" % self.output)
         p = self.popen()
@@ -1079,6 +1082,7 @@ if __name__ == "__main__":
     global_parser.add_argument("--no-scanfile", action="store_true", dest="scanfile", default=True, help="No not store output of scan to increase speed on subsequent runs (default handbrake.scan)")
     global_parser.add_argument("--log", action="store_true", default=True, help="Store output of scan to increase speed on subsequent runs (default handbrake.log)")
     global_parser.add_argument("--tmp", action="store", default="", help="Directory for temporary files created during encoding process")
+    global_parser.add_argument("--overwrite", action="store_true", default=False, help="Overwrite existing encoded files")
     global_parser.add_argument("-o", action="store", dest="output", default="", help="Output directory  (default current directory)")
     global_parser.add_argument("--info", action="store_true", dest="info", default=False, help="Only print info")
     global_parser.add_argument("-f", action="store", dest="film_series", default=[], nargs=2, metavar=("SERIES_NAME", "FILM_NUMBER"), help="Film series name and number in series (e.g. \"James Bond\" 1 or \"Harry Potter\" 8 etc.)")
