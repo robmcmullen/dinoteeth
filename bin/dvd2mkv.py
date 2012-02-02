@@ -753,7 +753,13 @@ class HandBrakeEncoder(HandBrake):
             default_set = self.title.find_audio_by_language()
             default = default_set[0]
             tracks.append(default.order)
-            names.append(default.lang)
+            names.append("Stereo (%s)" % default.threecc)
+            commentary_count = 0
+            for audio in default_set[1:]:
+                if "Commentary" in audio.name:
+                    tracks.append(audio.order)
+                    commentary_count += 1
+                    names.append("Commentary %d (%s)" % (commentary_count, audio.threecc))
         
         self.audio_track_order = tracks
         
