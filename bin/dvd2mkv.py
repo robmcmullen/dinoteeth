@@ -469,7 +469,15 @@ class HandBrakeScanner(HandBrake):
         too_short = 0
         for title in self.titles:
             if title.num_minutes() >= self.min_time:
-                lines.append("mplayer dvd://%d/%s" % (title.title_num, self.source))
+                size = [int(t) for t in title.size.split("x")]
+                if title.autocrop != "0/0/0/0":
+                    crop = [int(t) if int(t) > 9 else 0 for t in title.autocrop.split("/")]
+                    vf = "-vf crop=%d:%d:%d:%d" % (size[0] - crop[2] - crop[3],
+                                                   size[1] - crop[0] - crop[1],
+                                                   crop[2], crop[0])
+                else:
+                    vf = ""
+                lines.append("mplayer dvd://%d/%s %s" % (title.title_num, self.source, vf))
                 lines.append(str(title))
             else:
                 too_short += 1
