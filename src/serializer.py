@@ -7,6 +7,36 @@
 import os
 
 
+# This set of functions handles pickle loading when module names have changed.
+# renametable contains the mapping from old module names to new names.  Code
+# from http://wiki.python.org/moin/UsingPickle/RenamingModules
+renametable = {
+    'media': 'dinoteeth.media',
+    'metadata': 'dinoteeth.metadata',
+    'mplayer': 'dinoteeth.mplayer',
+    }
+
+def mapname(name):
+    if name in renametable:
+        return renametable[name]
+    return name
+
+def mapped_load_global(self):
+    module = mapname(self.readline()[:-1])
+    name = mapname(self.readline()[:-1])
+    klass = self.find_class(module, name)
+    self.append(klass)
+
+def pickle_loads_renamed(str):
+    import pickle
+    import cStringIO
+    
+    file = cStringIO.StringIO(str)
+    unpickler = pickle.Unpickler(file)
+    unpickler.dispatch[pickle.GLOBAL] = mapped_load_global
+    return unpickler.load()
+
+
 class PickleSerializerMixin(object):
     """Utility class to serialize an object's interesting data
     
@@ -79,7 +109,10 @@ class PickleSerializerMixin(object):
             bytes = fh.read()
             fh.close()
             if bytes:
-                version, data = pickle.loads(bytes)
+                try:
+                    version, data = pickle.loads(bytes)
+                except ImportError:
+                    version, data = pickle_loads_renamed(bytes)
                 unpack_method = "unpackVersion%s" % version
                 if hasattr(self, unpack_method):
                     unpacker = getattr(self, unpack_method)

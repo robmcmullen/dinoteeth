@@ -18,18 +18,15 @@ def addImportPath(path):
     importPath = os.path.abspath(os.path.join(currentPath(), path))
     sys.path = [ importPath ] + sys.path
 
-addImportPath('..')
-
-from metadata import MovieMetadataDatabase, UnifiedMetadataDatabase
-from config import Config
-from utils import ArtworkLoader
+from dinoteeth.metadata import MovieMetadataDatabase, UnifiedMetadataDatabase
+from dinoteeth.config import Config
+from dinoteeth.utils import ArtworkLoader
 
 if __name__ == "__main__":
-    from config import Config
     parser = Config.get_arg_parser()
     parser.add_option("--batch-metadata-database", action="store", dest="bdb", default="dinoteeth.bdb")
     parser.add_option("-r", "--regenerate", action="store_true", dest="regenerate", default=False)
-    parser.add_option("-p", "--posters", action="store_true", dest="posters", default=False)
+    parser.add_option("--posters", action="store_true", dest="posters", default=False)
     parser.add_option("-f", "--fetch", action="store_true", dest="fetch", default=False)
     
     c = Config(sys.argv, parser)

@@ -105,7 +105,7 @@ class Config(object):
         parser.add_option("-t", "--test", action="store_true", dest="test", default=False)
         parser.add_option("-d", "--database", action="store", dest="database", default="dinoteeth.db")
         parser.add_option("-m", "--metadata-database", action="store", dest="umdb", default="dinoteeth.umdb")
-        parser.add_option("-i", "--image-dir", action="store", dest="image_dir", default="test/graphics")
+        parser.add_option("-i", "--image-dir", action="store", dest="image_dir", default="../test/graphics")
         parser.add_option("-w", "--window", action="store_false", dest="fullscreen", default=True)
         parser.add_option("-p", "--photo-dir", action="append", dest="photo_dirs", default=None)
         parser.add_option("--window-width", action="store", type=int, default=1280)
@@ -238,7 +238,7 @@ class Config(object):
         return MenuTheme()
     
     def get_artwork_loader(self):
-        return ArtworkLoader(self.options.image_dir, "graphics/artwork-not-available.png")
+        return ArtworkLoader(self.options.image_dir, "../graphics/artwork-not-available.png")
     
     def get_media_client(self):
         return MPlayerClient(self)

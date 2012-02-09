@@ -2,7 +2,7 @@ import os, sys, re, bisect
 
 import utils
 
-from guessit import guess_file_info, Guess
+from third_party.guessit import guess_file_info, Guess
 
 
 def normalize_guess(guess):
