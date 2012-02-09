@@ -463,6 +463,8 @@ class MediaResults(list):
         nominal_x = 100
         nominal_y = 140
         for media in self:
+            if 'imdb_id' not in media.metadata:
+                continue
             id = media.metadata['imdb_id']
             imgpath = artwork_loader.get_poster_filename(id)
             if imgpath is not None:
