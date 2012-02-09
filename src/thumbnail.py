@@ -164,13 +164,13 @@ class PygletThumbnailFactory(ThumbnailFactory):
 
 
 if __name__ == "__main__":
-    f = ThumbnailFactory("test/thumbnails/normal")
+    f = ThumbnailFactory("../test/thumbnails/normal")
     print f.basedir
-    t = f.get_thumbnail_file("graphics/artwork-not-available.png")
+    t = f.get_thumbnail_file("../graphics/artwork-not-available.png")
     print t
     info = Image.open(t).info
     print info
-    t = f.get_thumbnail_file("graphics/background-merged.jpg")
+    t = f.get_thumbnail_file("../graphics/background-merged.jpg")
     print t
     info = Image.open(t).info
     print info

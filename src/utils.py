@@ -52,7 +52,7 @@ class ArtworkLoader(object):
     def get_default_poster(self):
         import pyglet
         if self.default_poster is None:
-            self.default_poster = pyglet.image.load("graphics/artwork-not-available.png")
+            self.default_poster = pyglet.image.load("../graphics/artwork-not-available.png")
         return self.default_poster
     
     def get_poster_filename(self, imdb_id):
