@@ -14,6 +14,11 @@ renametable = {
     'media': 'dinoteeth.media',
     'metadata': 'dinoteeth.metadata',
     'mplayer': 'dinoteeth.mplayer',
+    'third_party.themoviedb.tmdb': 'dinoteeth.third_party.themoviedb.tmdb',
+    'dinoteeth.media': 'media',
+    'dinoteeth.metadata': 'metadata',
+    'dinoteeth.mplayer': 'mplayer',
+    'dinoteeth.third_party.themoviedb.tmdb': 'third_party.themoviedb.tmdb',
     }
 
 def mapname(name):
