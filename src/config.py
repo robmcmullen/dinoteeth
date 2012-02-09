@@ -170,8 +170,9 @@ class Config(object):
     
     def get_photo_database(self):
         db = PhotoDB()
-        for path in self.options.photo_dirs:
-            db.add_path(path)
+        if self.options.photo_dirs:
+            for path in self.options.photo_dirs:
+                db.add_path(path)
         return db
     
     def get_metadata_scanner(self):
