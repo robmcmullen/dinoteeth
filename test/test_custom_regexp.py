@@ -20,8 +20,8 @@
 
 
 from guessittest import *
-from media import guess_custom
-from config import Config
+from dinoteeth.media import guess_custom
+from dinoteeth.config import Config
 
 class TestEpisode(TestGuessit):
 

@@ -21,9 +21,9 @@
 import unittest
 from guessittest import *
 
-from media import guess_custom
-from config import Config
-from database import DictDatabase
+from dinoteeth.media import guess_custom
+from dinoteeth.config import Config
+from dinoteeth.database import DictDatabase
 
 class TestDatabaseMovies1(TestCase):
     def setUp(self):

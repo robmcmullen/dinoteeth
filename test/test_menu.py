@@ -3,10 +3,10 @@
 
 from dinoteeth_test import *
 
-from media import guess_custom
-from config import Config
-from database import DictDatabase
-from model import MenuItem
+from dinoteeth.media import guess_custom
+from dinoteeth.config import Config
+from dinoteeth.database import DictDatabase
+from dinoteeth.model import MenuItem
 
 class TestMenuMovies1(TestCase):
     def setUp(self):
