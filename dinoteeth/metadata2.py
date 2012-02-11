@@ -30,9 +30,14 @@ class MetadataDatabase(PickleSerializerMixin):
     def unpackVersion1(self, data):
         self.db = data
 
+def safestr(s):
+    if isinstance(s, basestring):
+        return s.encode('ascii', "replace")
+    return s
+
 def safeprint(s):
     if isinstance(s, basestring):
-        return s.encode('utf8')
+        return s.encode('utf-8')
     return s
 
 def printdict(d, indent=""):
@@ -56,12 +61,12 @@ class Person(object):
     def __cmp__(self, other):
         def sort_key(p):
             if p.surname:
-                return [p.surname, p.name]
-            return [p.name, ""]
+                return [p.surname.lower(), p.name.lower()]
+            return [p.name.lower(), ""]
         return cmp(sort_key(self), sort_key(other))
     
     def __str__(self):
-        return safeprint("%s %s" % (self.name, self.surname))
+        return safestr("%s %s" % (self.name, self.surname))
     
     def __unicode__(self):
         return u"%s %s" % (self.name, self.surname)
@@ -74,7 +79,7 @@ class Person(object):
 
 
 class BaseMetadata(object):
-    def get_country_list(self, imdb_obj, key, country):
+    def get_country_list(self, imdb_obj, key, country, skip=None):
         if not imdb_obj.has_key(key): # Note: key in imdb_obj fails; must use has_key
             return ""
         default = ""
@@ -84,6 +89,10 @@ class BaseMetadata(object):
             if ":" in value:
                 c, v = value.split(":", 1)
                 if c == country:
+                    if skip and skip in v:
+                        continue
+                    if "::" in v:
+                        v, _ = v.split("::", 1)
                     return v
             else:
                 default = value
@@ -95,22 +104,31 @@ class BaseMetadata(object):
         people_obj = imdb_obj[key]
 #        print "get_people_obj[%s]: %s" % (key, str(people_obj))
         return list(people_obj)
+    
+    def get_title(self, imdb_obj, country):
+        best = imdb_obj['title']
+        if imdb_obj.has_key('akas'):
+            for aka in imdb_obj['akas']:
+                if "::" in aka:
+                    title, note = aka.split("::")
+                    if "imdb display title" in note:
+                        # Only allow official display titles
+                        print safeprint(title)
+                        for part in note.split(","):
+                            print "  %s" % part
+                            if country in part:
+                                best = title
+        return best
 
 class MovieMetadata(BaseMetadata):
     country = "USA"
     
     def __init__(self, movie_obj, db):
-        keys = ['kind', 'title', 'akas', 'year', 'imdbIndex', 'certificates', 'mpaa', 'runtimes', 'rating', 'votes', 'genres', 'director', 'writer', 'producer', 'cast', 'writer', 'creator', 'original music', 'plot outline', 'number of seasons', 'number of episodes', 'series years', ]
-        print sorted(movie_obj.keys())
-        print sorted(dir(movie_obj))
-        for k in keys:
-            if movie_obj.has_key(k):
-                print k, safeprint(movie_obj[k])
         self.id = movie_obj.movieID
-        self.title = movie_obj['title']
+        self.title = self.get_title(movie_obj, self.country)
         self.year = movie_obj['year']
         self.title_index = movie_obj.get('imdbIndex', "")
-        self.certificate = self.get_country_list(movie_obj, 'certificates', self.country)
+        self.certificate = self.get_country_list(movie_obj, 'certificates', self.country, skip="TV rating")
         self.plot = movie_obj.get('plot outline', "")
         self.genres = movie_obj.get('genres', list())
         self.rating = movie_obj.get('rating', "")
@@ -125,6 +143,7 @@ class MovieMetadata(BaseMetadata):
         self.producers = db.prune_people(producers)
         
         writers = self.get_people_obj(movie_obj, 'writer')
+        self.novel_writers = db.prune_people(writers, 'novel')
         self.screenplay_writers = db.prune_people(writers, 'screenplay')
         self.story_writers = db.prune_people(writers, 'story')
         self.writers = db.prune_people(writers)
@@ -148,6 +167,7 @@ class MovieMetadata(BaseMetadata):
         lines.append("  Directed by: %s" % ", ".join([str(d) for d in self.directors]))
         lines.append("  Screenplay by: %s" % ", ".join([str(d) for d in self.screenplay_writers]))
         lines.append("  Story by: %s" % ", ".join([str(d) for d in self.story_writers]))
+        lines.append("  Novel by: %s" % ", ".join([str(d) for d in self.novel_writers]))
         lines.append("  Writers: %s" % ", ".join([str(d) for d in self.writers]))
         lines.append("  Music by: %s" % ", ".join([str(d) for d in self.music]))
         lines.append("  Executive Producers: %s" % ", ".join([str(d) for d in self.executive_producers]))
@@ -201,8 +221,8 @@ class MovieMetadataDatabase(MetadataDatabase):
                     print "  poster: %s" % value
                     biggest = value
 
-    def best_guess(self, movie):
-        best = None
+    def guess(self, movie, fetch=False):
+        found = []
         try:
             results = self.imdb_api.search_movie(movie.canonical_title)
         except:
@@ -213,23 +233,25 @@ class MovieMetadataDatabase(MetadataDatabase):
             if imdb_id is None:
                 continue
             
-            if 'movie' in result.kind:
-                self.fetch_movie(imdb_id)
-            elif 'series' in result.kind:
-                self.fetch_series(imdb_id)
+            if 'movie' in result['kind']:
+                if fetch:
+                    self.fetch_movie(imdb_id)
+            elif 'series' in result['kind']:
+                if fetch:
+                    self.fetch_series(imdb_id)
             else:
                 # It's a video game or something else; skip it
                 continue
             
-            # First entry in results is assumed to be the best match
-            if not best:
-                best = imdb_id
-            
-            tfilm = result.info()
-            self.print_entry(tfilm)
-            self.db_tmdb[imdb_id] = tfilm
-            ifilm = self.fetch_imdb(imdb_id)
-        return best
+            found.append(result)
+        return found
+    
+    def best_guess(self, movie, fetch=False):
+        # First entry in results is assumed to be the best match
+        found = self.guess(movie, fetch)
+        if found:
+            return found[0]
+        return None
     
     def fetch_movie(self, imdb_id):
         if imdb_id in self.movies:
@@ -249,7 +271,7 @@ class MovieMetadataDatabase(MetadataDatabase):
             self.people[id] = person
         return person
     
-    def prune_people(self, people_obj, match=""):
+    def prune_people(self, people_obj, match="", max=25):
         """Create list of Person objects where the notes field of the imdb
         Person object matches the criteria.
         
@@ -261,6 +283,8 @@ class MovieMetadataDatabase(MetadataDatabase):
             if match in p.notes:
                 persons.append(self.get_person(p))
                 people_obj.remove(p)
+                if len(persons) >= max:
+                    break
         return persons
         
     def fetch_poster(self, movie, root_dir):
