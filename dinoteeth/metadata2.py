@@ -113,9 +113,9 @@ class BaseMetadata(object):
                     title, note = aka.split("::")
                     if "imdb display title" in note:
                         # Only allow official display titles
-                        print safeprint(title)
+#                        print safeprint(title)
                         for part in note.split(","):
-                            print "  %s" % part
+#                            print "  %s" % part
                             if country in part:
                                 best = title
         return best
@@ -181,10 +181,71 @@ class SeriesMetadata(BaseMetadata):
     
 #'title', 'akas', 'year', 'imdbIndex', 'certificates', 'director', 'writer', 'producer', 'cast', 'writer', 'creator', 'original music', 'plot outline', 'rating', 'votes', 'genres', 'number of seasons', 'number of episodes', 'series years', ]    
 
-class MovieMetadataDatabase(MetadataDatabase):
-    def __init__(self, default_version=1):
-        MetadataDatabase.__init__(self, default_version)
+class IMDbProxy(PickleSerializerMixin):
+    def __init__(self, default_version=1, filename=None):
+        PickleSerializerMixin.__init__(self, default_version)
         self.imdb_api = imdb.IMDb(accessSystem='http', adultSearch=1)
+        self.create()
+        if filename:
+            self.loadStateFromFile(filename)
+            self.use_cache = True
+        else:
+            self.use_cache = False
+    
+    def __str__(self):
+        lines = []
+        titles = sorted(self.search_cache.keys())
+        for title in titles:
+            lines.append("%s: %s" % (title, self.search_cache[title]))
+        return "\n".join(lines)
+    
+    def saveStateToFile(self, *args, **kwargs):
+        if not self.use_cache:
+            print "IMDb Cache not used; not saving."
+            return
+        PickleSerializerMixin.saveStateToFile(self, *args, **kwargs)
+    
+    def create(self):
+        self.createVersion1()
+    
+    def createVersion1(self):
+        self.search_cache = {}
+        self.movie_obj_cache = {}
+    
+    def packVersion1(self):
+        return (self.search_cache, self.movie_obj_cache)
+    
+    def unpackVersion1(self, data):
+        self.search_cache, self.movie_obj_cache = data
+        
+    def search_movie(self, title):
+        if title in self.search_cache:
+            print "*** FOUND %s in search cache: " % title
+            return self.search_cache[title]
+        print "*** NOT FOUND in search cache: %s" % title 
+        results = self.imdb_api.search_movie(title)
+        print "*** STORING %s in search cache: " % title
+        if self.use_cache:
+            self.search_cache[title] = results
+        return results
+        
+    def get_movie(self, imdb_id):
+        if type(imdb_id) == int:
+            imdb_id = "%07d" % imdb_id
+        if imdb_id in self.movie_obj_cache:
+            print "*** FOUND %s in movie cache: " % imdb_id
+            return self.movie_obj_cache[imdb_id]
+        print "*** NOT FOUND in movie cache: %s" % imdb_id 
+        movie_obj = self.imdb_api.get_movie(imdb_id)
+        print "*** STORING %s in movie cache: " % imdb_id
+        if self.use_cache:
+            self.movie_obj_cache[imdb_id] = movie_obj
+        return movie_obj
+
+class MovieMetadataDatabase(MetadataDatabase):
+    def __init__(self, default_version=1, imdb_cache=None):
+        MetadataDatabase.__init__(self, default_version)
+        self.imdb_api = IMDbProxy(filename=imdb_cache)
         self.tmdb_api = tmdb.MovieDb()
     
     def __str__(self):
@@ -203,6 +264,7 @@ class MovieMetadataDatabase(MetadataDatabase):
         self.people = {}
     
     def packVersion1(self):
+        self.imdb_api.saveStateToFile()
         return (self.movies, self.series, self.people)
     
     def unpackVersion1(self, data):
@@ -220,13 +282,23 @@ class MovieMetadataDatabase(MetadataDatabase):
                 if key not in ['id', 'type']:
                     print "  poster: %s" % value
                     biggest = value
+    
+    def search_movie(self, title):
+        if self.imdb_cache:
+            results = self.imdb_cache.get_search_results(title)
+            if results:
+                return results
+        results = self.imdb_api.search_movie(title)
+        if self.imdb_cache:
+            self.imdb_cache.set_search_results(title, results)
+        return results
 
     def guess(self, movie, fetch=False):
         found = []
         try:
-            results = self.imdb_api.search_movie(movie.canonical_title)
+            results = self.imdb_api.search_movie(movie.search_title)
         except:
-            print "Failed looking up %s" % movie.canonical_title
+            print "Failed looking up %s" % movie.search_title
             return None
         for result in results:
             imdb_id = result.movieID

@@ -111,15 +111,16 @@ class TestBaseMetadata(TestCase):
 
 class TestMovieMetadata(TestCase):
     def setUp(self):
-        self.db = MovieMetadataDatabase()
+        self.db = MovieMetadataDatabase(imdb_cache="dinoteeth.imdb")
+    
+    def tearDown(self):
+        self.db.imdb_api.saveStateToFile()
         
     def test1(self):
         movie = self.db.fetch_movie("0102250")
-        print movie
         self.assertEqual(movie.title, "L.A. Story")
         
         movie = self.db.fetch_movie("0093886")
-        print movie
         self.assertEqual(movie.title, "Roxanne")
         print self.db
 
