@@ -268,6 +268,7 @@ class Movie(Playable, MediaObject):
     def canonicalize(self):
         self.canonical_title = self['title']
         self.in_context_title = self.canonical_title
+        self.search_title = self['title']
     
     def decorate(self):
         entry = (self.sort_title,
@@ -288,6 +289,7 @@ class MovieBonus(Movie):
     def canonicalize(self):
         self.in_context_title = self.get_bonus_title()
         self.canonical_title = "%s %s" % (self['title'], self.in_context_title)
+        self.search_title = self['title']
     
     def decorate(self):
         entry = (self.get('title', ""),
@@ -340,6 +342,7 @@ class SeriesEpisode(Playable, SeriesBase):
     def canonicalize(self):
         self.in_context_title = "Episode %d %s" % (self['episodeNumber'], self.get('episodeTitle',""))
         self.canonical_title = "%s Season %d %s" % (self['series'], self['season'], self.in_context_title)
+        self.search_title = self['series']
     
     def decompose(self):
         return [Series(self), Season(self), self]
@@ -354,6 +357,7 @@ class SeriesBonus(SeriesEpisode):
     def canonicalize(self):
         self.in_context_title = self.get_bonus_title()
         self.canonical_title = "%s Season %d %s" % (self['series'], self['season'], self.in_context_title)
+        self.search_title = self['series']
     
     def decompose(self):
         return [Series(self), Season(self), self]
@@ -374,6 +378,7 @@ class Series(SeriesBase):
     def canonicalize(self):
         self.canonical_title = self['series']
         self.in_context_title = self.canonical_title
+        self.search_title = self['series']
     
     def decompose(self):
         return [self]
@@ -394,6 +399,7 @@ class Season(SeriesBase):
     def canonicalize(self):
         self.in_context_title = "Season %d" % self['season']
         self.canonical_title = "%s %s" % (self['series'], self.in_context_title)
+        self.search_title = self['series']
     
     def decompose(self):
         return [Series(self), self]
