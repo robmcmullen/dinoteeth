@@ -1113,24 +1113,31 @@ class OrderedNamespace(argparse.Namespace):
             delattr(self, "_arg_order_first_time_through")
         self.__dict__["_arg_order"].append(name)
     
+    def _finalize(self):
+        if hasattr(self, "_arg_order_first_time_through"):
+            self.__dict__["_arg_order"] = []
+            delattr(self, "_arg_order_first_time_through")
+    
     def _prepend(self, other):
         a = other
         b = self
-        self._merge(a, b)
+        self._merge(other, a, b)
         
     def _append(self, other):
         a = self
         b = other
-        self._merge(a, b)
+        self._merge(other, a, b)
     
-    def _merge(self, a, b):
+    def _merge(self, other, a, b):
+        self._finalize()
+        other._finalize()
         order = a._arg_order[:]
         order.extend(b._arg_order[:])
         d1 = {}
-        d1.update(a.__dict__)
-        for k in b._arg_order: # only override non-default values in b
-            d1[k] = b.__dict__[k]
-        for k,v in b.__dict__.iteritems(): # add any missing default items from b
+        d1.update(self.__dict__)
+        for k in other._arg_order: # only override non-default values in other
+            d1[k] = other.__dict__[k]
+        for k,v in other.__dict__.iteritems(): # add any missing default items from b
             if k not in d1:
                 d1[k] = v
         self.__dict__.clear()
@@ -1234,18 +1241,18 @@ if __name__ == "__main__":
         sticky_options._append(new_sticky_options)
         options, extra_args = title_parser.parse_known_args(extra_args, namespace=OrderedNamespace())
         options._prepend(sticky_options)
-        vprint(2, "title(s): %s" % options.dvd_title)
+        vprint(1, "title(s): %s" % options.dvd_title)
         if extra_args:
             new_global_options, ignored_args = global_parser.parse_known_args(extra_args, namespace=OrderedNamespace())
             global_options._append(new_global_options)
             vprint.verbose = global_options.verbose
-        vprint(2, "global: %s" % global_options)
-        vprint(2, "sticky: %s" % sticky_options)
-        vprint(2, "options: %s" % options)
+        vprint(1, "global: %s" % global_options)
+        vprint(1, "sticky: %s" % sticky_options)
+        vprint(1, "options: %s" % options)
         title_options.append(options)
     
     queue = []
-    vprint(2, "final global options: %s" % global_options)
+    vprint(1, "final global options: %s" % global_options)
     source = global_options.input
     if not source:
         global_parser.print_usage()
