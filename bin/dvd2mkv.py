@@ -20,24 +20,22 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..")) # to find thir
 try:
     import argparse
 except:
-    import third_party.argparse as argparse
-from utils import encode_title_text, canonical_filename
+    import dinoteeth.third_party.argparse as argparse
+from dinoteeth.utils import encode_title_text, canonical_filename
 
-# Global verbosity
-VERBOSE = 0
-LOGFILE = None
-LOGLEVEL = 2
-
-def vprint(verbosity_level, txt=""):
-    global VERBOSE
-    global LOGFILE
-    if VERBOSE >= verbosity_level or LOGFILE is not None:
-        if not isinstance(txt, basestring):
-            txt = str(txt)
-        if VERBOSE >= verbosity_level:
-            print "%s" % txt.encode('utf-8')
-        if LOGFILE is not None and LOGLEVEL >= verbosity_level:
-            LOGFILE.write("%s\n" % txt)
+class vprint(object):
+    verbose = 0
+    logfile = None
+    loglevel = 2
+    
+    def __init__(self, verbosity_level, txt=""):
+        if self.verbose >= verbosity_level or self.logfile is not None:
+            if not isinstance(txt, basestring):
+                txt = str(txt)
+            if self.verbose >= verbosity_level:
+                print "%s" % txt.encode('utf-8')
+            if self.logfile is not None and self.loglevel >= verbosity_level:
+                self.logfile.write("%s\n" % txt)
 
 def parseIntSet(nputstr=""):
     """Return list of integers from comma separated ranges
@@ -471,7 +469,7 @@ class HandBrakeScanner(HandBrake):
             if title.num_minutes() >= self.min_time:
                 size = [int(t) for t in title.size.split("x")]
                 if title.autocrop != "0/0/0/0":
-                    crop = [int(t) if int(t) > 9 else 0 for t in title.autocrop.split("/")]
+                    crop = [int(t) if int(t) > 2 else 0 for t in title.autocrop.split("/")]
                     vf = "-vf crop=%d:%d:%d:%d" % (size[0] - crop[2] - crop[3],
                                                    size[1] - crop[0] - crop[1],
                                                    crop[2], crop[0])
@@ -849,7 +847,8 @@ class HandBrakeEncoder(HandBrake):
             self.args.extend(("--pixel-aspect", "8:9"))
         else:
             raise RuntimeError("Unknown aspect ratio %s" % self.title.display_aspect)
-        if options.autocrop:
+        which = options._latest_of("crop", "autocrop")
+        if which == "autocrop":
             self.args.extend(["--crop", self.title.autocrop])
         else:
             self.args.extend(["--crop", options.crop])
@@ -1086,6 +1085,55 @@ def parse_stream_names(spec):
             info.add_track(t, n)
     return info
 
+class OrderedNamespace(argparse.Namespace):
+    def __init__(self, **kwargs):
+        self.__dict__["_arg_order"] = []
+        self.__dict__["_arg_order_first_time_through"] = True
+        argparse.Namespace.__init__(self, **kwargs)
+            
+    def __setattr__(self, name, value):
+        #print("Setting %s -> %s" % (name, value))
+        self.__dict__[name] = value
+        if name in self._arg_order and hasattr(self, "_arg_order_first_time_through"):
+            self.__dict__["_arg_order"] = []
+            delattr(self, "_arg_order_first_time_through")
+        self.__dict__["_arg_order"].append(name)
+    
+    def _prepend(self, other):
+        a = other
+        b = self
+        self._merge(a, b)
+        
+    def _append(self, other):
+        a = self
+        b = other
+        self._merge(a, b)
+    
+    def _merge(self, a, b):
+        order = a._arg_order[:]
+        order.extend(b._arg_order[:])
+        d1 = {}
+        d1.update(a.__dict__)
+        for k in b._arg_order: # only override non-default values in b
+            d1[k] = b.__dict__[k]
+        for k,v in b.__dict__.iteritems(): # add any missing default items from b
+            if k not in d1:
+                d1[k] = v
+        self.__dict__.clear()
+        for k,v in d1.iteritems():
+            self.__dict__[k] = v
+        self.__dict__["_arg_order"] = order
+    
+    def _latest_of(self, k1, k2):
+        try:
+            if self._arg_order.index(k1) > self._arg_order.index(k2):
+                return k1
+        except ValueError:
+            if k1 in self._arg_order:
+                return k1
+        return k2
+
+
 if __name__ == "__main__":
     global_parser = argparse.ArgumentParser(description="Convert titles in a DVD image to Matroska files")
     global_parser.add_argument("-v", "--verbose", default=0, action="count")
@@ -1162,34 +1210,35 @@ if __name__ == "__main__":
     global_args = arg_sets[0]
     title_args = arg_sets[1:]
     
-    global_options, sticky_args = global_parser.parse_known_args(global_args)
-    VERBOSE = global_options.verbose
-    sticky_options = copy.copy(global_options)
-    sticky_options, extra_args = sticky_parser.parse_known_args(sticky_args, sticky_options)
+    global_options, sticky_args = global_parser.parse_known_args(global_args, namespace=OrderedNamespace())
+    vprint.verbose = global_options.verbose
+    sticky_options, extra_args = sticky_parser.parse_known_args(sticky_args, namespace=OrderedNamespace())
+    sticky_options._prepend(global_options)
     title_options = []
     for args in title_args:
-        sticky_options, extra_args = sticky_parser.parse_known_args(args, sticky_options)
-        options = copy.copy(sticky_options)
-        options, extra_args = title_parser.parse_known_args(extra_args, options)
+        new_sticky_options, extra_args = sticky_parser.parse_known_args(args, namespace=OrderedNamespace())
+        sticky_options._append(new_sticky_options)
+        options, extra_args = title_parser.parse_known_args(extra_args, namespace=OrderedNamespace())
+        options._prepend(sticky_options)
         vprint(2, "title(s): %s" % options.dvd_title)
         if extra_args:
-            global_options, ignored_args = global_parser.parse_known_args(extra_args, global_options)
+            new_global_options, ignored_args = global_parser.parse_known_args(extra_args, namespace=OrderedNamespace())
+            global_options._append(new_global_options)
+            vprint.verbose = global_options.verbose
         vprint(2, "global: %s" % global_options)
         vprint(2, "sticky: %s" % sticky_options)
         vprint(2, "options: %s" % options)
         title_options.append(options)
     
-    VERBOSE = global_options.verbose
-    
     queue = []
-    vprint(2, global_options)
+    vprint(2, "final global options: %s" % global_options)
     source = global_options.input
     if not source:
         global_parser.print_usage()
         global_parser.exit()
     
     if global_options.log:
-        LOGFILE = open(os.path.join(source, "handbrake.log"), "w")
+        vprint.logfile = open(os.path.join(source, "handbrake.log"), "w")
     
     if global_options.tmp:
         os.environ["TEMP"] = global_options.tmp
@@ -1277,4 +1326,4 @@ if __name__ == "__main__":
         print scan
         
     if global_options.log:
-        LOGFILE.close()
+        vprint.logfile.close()
