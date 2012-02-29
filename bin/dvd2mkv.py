@@ -37,6 +37,9 @@ class vprint(object):
             if self.logfile is not None and self.loglevel >= verbosity_level:
                 self.logfile.write("%s\n" % txt)
 
+def wprint(text):
+    print "WARNING: %s" % text
+
 def parseIntSet(nputstr=""):
     """Return list of integers from comma separated ranges
     
@@ -438,6 +441,11 @@ class Title(object):
     def find_audio_by_language(self, lang=None):
         return self.find_stream_by_language(self.audio, lang)
     
+    def find_subtitle_by_handbrake_id(self, id):
+        for sub in self.subtitle:
+            if sub.order == id:
+                return sub
+    
     def find_subtitle_by_language(self, lang=None):
         return self.find_stream_by_language(self.subtitle, lang)
             
@@ -746,14 +754,17 @@ class HandBrakeEncoder(HandBrake):
         tracks = []
         names = []
         for track, name in track_titles.iter_tracks():
-            tracks.append(track)
             audio = self.title.find_audio_by_handbrake_id(track)
-            if name:
-                # Override stream name to user's name
-                audio.name = name
+            if audio is None:
+                wprint("Invalid audio track %s (%s); skipping" % (track, name))
             else:
-                name = audio.name
-            names.append(name)
+                tracks.append(track)
+                if name:
+                    # Override stream name to user's name
+                    audio.name = name
+                else:
+                    name = audio.name
+                names.append(name)
         
         if not tracks:
             default_set = self.title.find_audio_by_language()
@@ -777,14 +788,17 @@ class HandBrakeEncoder(HandBrake):
         names = []
         scan = False
         for track, name in track_titles.iter_tracks():
-            tracks.append(track)
-            sub = self.title.subtitle[track - 1]
-            if name:
-                # Override stream name to user's name
-                sub.name = name
+            sub = self.title.find_subtitle_by_handbrake_id(track)
+            if sub is None:
+                wprint("Invalid subtitle track %s (%s); skipping" % (track, name))
             else:
-                name = sub.name
-            names.append(name)
+                tracks.append(track)
+                if name:
+                    # Override stream name to user's name
+                    sub.name = name
+                else:
+                    name = sub.name
+                names.append(name)
         
         if not tracks:
             vobsub = []
@@ -809,7 +823,7 @@ class HandBrakeEncoder(HandBrake):
         self.subtitle_track_order = tracks[:]
 
         for track in tracks:
-            sub = self.title.subtitle[track - 1]
+            sub = self.title.find_subtitle_by_handbrake_id(track)
             if sub.type == "vobsub":
                 scan = True
                 tracks[0:0] = ["scan"]
