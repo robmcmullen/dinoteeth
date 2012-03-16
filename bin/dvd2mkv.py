@@ -756,7 +756,7 @@ class HandBrakeEncoder(HandBrake):
         for track, name in track_titles.iter_tracks():
             audio = self.title.find_audio_by_handbrake_id(track)
             if audio is None:
-                wprint("Invalid audio track %s (%s); skipping" % (track, name))
+                wprint("Title %d: Invalid audio track %s (%s); skipping" % (self.title_num, track, name))
             else:
                 tracks.append(track)
                 if name:
@@ -790,7 +790,7 @@ class HandBrakeEncoder(HandBrake):
         for track, name in track_titles.iter_tracks():
             sub = self.title.find_subtitle_by_handbrake_id(track)
             if sub is None:
-                wprint("Invalid subtitle track %s (%s); skipping" % (track, name))
+                wprint("Title %d: Invalid subtitle track %s (%s); skipping" % (self.title_num, track, name))
             else:
                 tracks.append(track)
                 if name:
