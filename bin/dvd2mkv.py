@@ -1101,22 +1101,13 @@ def parse_stream_names(spec):
 
 class OrderedNamespace(argparse.Namespace):
     def __init__(self, **kwargs):
-        self.__dict__["_arg_order"] = []
-        self.__dict__["_arg_order_first_time_through"] = True
+        self.__arg_call_order__ = []
         argparse.Namespace.__init__(self, **kwargs)
-            
+
     def __setattr__(self, name, value):
-        #print("Setting %s -> %s" % (name, value))
+        if self.__dict__.has_key(name):
+            self.__arg_call_order__.append(name)
         self.__dict__[name] = value
-        if name in self._arg_order and hasattr(self, "_arg_order_first_time_through"):
-            self.__dict__["_arg_order"] = []
-            delattr(self, "_arg_order_first_time_through")
-        self.__dict__["_arg_order"].append(name)
-    
-    def _finalize(self):
-        if hasattr(self, "_arg_order_first_time_through"):
-            self.__dict__["_arg_order"] = []
-            delattr(self, "_arg_order_first_time_through")
     
     def _prepend(self, other):
         a = other
@@ -1129,13 +1120,11 @@ class OrderedNamespace(argparse.Namespace):
         self._merge(other, a, b)
     
     def _merge(self, other, a, b):
-        self._finalize()
-        other._finalize()
-        order = a._arg_order[:]
-        order.extend(b._arg_order[:])
+        order = a.__arg_call_order__[:]
+        order.extend(b.__arg_call_order__[:])
         d1 = {}
         d1.update(self.__dict__)
-        for k in other._arg_order: # only override non-default values in other
+        for k in other.__arg_call_order__: # only override non-default values in other
             d1[k] = other.__dict__[k]
         for k,v in other.__dict__.iteritems(): # add any missing default items from b
             if k not in d1:
@@ -1143,17 +1132,20 @@ class OrderedNamespace(argparse.Namespace):
         self.__dict__.clear()
         for k,v in d1.iteritems():
             self.__dict__[k] = v
-        self.__dict__["_arg_order"] = order
+        self.__arg_call_order__ = order
     
     def _latest_of(self, k1, k2):
         try:
-            if self._arg_order.index(k1) > self._arg_order.index(k2):
+            if self.__arg_call_order__.index(k1) > self.__arg_call_order__.index(k2):
                 return k1
         except ValueError:
-            if k1 in self._arg_order:
+            if k1 in self.__arg_call_order__:
                 return k1
         return k2
 
+    def _get_kwargs(self):
+        '''For obfuscating the __arg_call_order__ variable. Not really needed'''
+        return [x for x in self.__dict__.items() if x[0] !='__arg_call_order__']
 
 if __name__ == "__main__":
     global_parser = argparse.ArgumentParser(description="Convert titles in a DVD image to Matroska files")
