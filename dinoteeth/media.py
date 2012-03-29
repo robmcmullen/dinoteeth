@@ -108,7 +108,15 @@ class MediaScan(object):
         options = []
         for audio in self.iter_audio():
             print "audio track: %s" % audio
-            options.append((audio.id, audio.id == self.selected_audio_id, audio.title))
+            title = audio.title
+            if not title:
+                if audio.channels == 1:
+                    title = "Mono"
+                elif audio.channels == 2:
+                    title = "Stereo"
+                else:
+                    title = "%d Channels" % audio.channels
+            options.append((audio.id, audio.id == self.selected_audio_id, title))
         if not options:
             # "No audio" is not an option by default; only if there really is
             # no audio available in the media
