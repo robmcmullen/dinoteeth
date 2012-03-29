@@ -29,19 +29,20 @@ class MediaScanList(list):
         episodes.sort()
         return episodes
     
-    def get_best_runtime(self):
-        """Return best guess for runtime of main feature, or average time
-        of episodes
+    def get_total_runtime(self):
+        """Return best guess for runtime of main feature, or total time
+        of episodes (ignoring bonus features)
         
-        @returns: time in minutes
+        @returns: (tuple) time in minutes, number of episodes
         """
         runtime = 0.0
         num = 0
         for m in self:
             if not m.is_bonus():
                 runtime += m.length
+                print m.title, m.length
                 num += 1
-        return runtime / num / 60.0
+        return runtime / 60.0, num
     
     def get_main_feature(self):
         non_bonus = []
@@ -528,11 +529,13 @@ class MovieMetadataDatabase(MetadataDatabase):
         if not guesses:
             log.error("IMDb returned no guesses for %s???" % title_key[0])
             return None
-        runtime = scans.get_best_runtime()
-        scale = runtime * 2 / 60 # +- 2 minutes per hour
-        with_commercials = runtime * 30 / 22
+        total_runtime, num_episodes = scans.get_total_runtime()
+        total_scale = total_runtime * 5 / 60 # +- 5 minutes per hour for mini series
+        avg_runtime = total_runtime / num_episodes
+        avg_scale = avg_runtime * 2 / 60 # +- 2 minutes per hour
+        with_commercials = avg_runtime * 30 / 22
         commercial_scale = with_commercials * 2 / 60 # +- 2 minutes per hour
-        log.debug("runtime: %f (%f with commercials if applicable)" % (runtime, with_commercials))
+        log.debug("runtime: %f (%f with commercials if applicable, %f series total if applicable)" % (avg_runtime, with_commercials, total_runtime))
         
         def best_loop():
             closest = 10000
@@ -543,22 +546,33 @@ class MovieMetadataDatabase(MetadataDatabase):
                     log.info("runtime: %s %s" % (movie.title.encode('utf8'), r))
                     if r == 0:
                         continue
-                    if runtime > r - scale and runtime < r + scale:
+                    if r - avg_scale < avg_runtime < r + avg_scale:
                         return movie
-                    elif (kind == "series" or movie.is_tv()) and with_commercials > r - commercial_scale  and with_commercials < r + commercial_scale:
+                    elif (kind == "series" or movie.is_tv()) and (r - commercial_scale < with_commercials < r + commercial_scale):
                         return movie
+                    elif movie.is_mini_series():
+                        # Assume the runtime returned by IMDB is for the full
+                        # run.  Compute the total series time based on the
+                        # average time and the number of episodes in the full
+                        # series, including additional fuzz factor in scale
+                        num_episodes_full_season = movie.expected_episodes()
+                        total_runtime = avg_runtime * num_episodes_full_season
+                        total_scale = avg_scale * 5 * num_episodes_full_season
+                        print "mini series!", num_episodes_full_season, total_runtime, total_scale
+                        if r - total_scale < total_runtime < r + total_scale:
+                            return movie
                     else:
-                        log.debug("IMDb runtimes of %s = %s; Actual runtime = %s.  Skipping" % (movie.title, str(movie.runtimes), runtime))
+                        log.debug("IMDb runtimes of %s = %s; avg/w comm/total runtime = %s, %s, %s.  Skipping" % (movie.title, str(movie.runtimes), avg_runtime, with_commercials, total_runtime))
                 if not best:
                     best = movie
                 else:
-                    diff = abs(runtime - movie.runtime)
+                    diff = abs(avg_runtime - movie.runtime)
                     if diff < closest:
                         closest = diff
                         best = movie
             return best
         
-        if runtime > 0:
+        if avg_runtime > 0:
             best = best_loop()
         else:
             best = guesses[0]
@@ -578,7 +592,7 @@ class MovieMetadataDatabase(MetadataDatabase):
         if imdb_obj['kind'] in ['movie', 'video movie', 'tv movie']:
             tmdb_obj = self.tmdb_api.get_imdb_id(imdb_id)
             media = MovieMetadata(imdb_obj, tmdb_obj, self)
-        elif imdb_obj['kind'] in ['series', 'tv series']:
+        elif imdb_obj['kind'] in ['series', 'tv series', 'tv mini series']:
             tvdb_obj = self.tvdb_api.get_imdb_id(imdb_id)
             media = SeriesMetadata(imdb_obj, tvdb_obj, self)
         else:

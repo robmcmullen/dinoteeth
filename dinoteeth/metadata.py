@@ -4,6 +4,7 @@ Get TMDB/IMDB metadata for movies in the database
 """
 
 import os, collections, logging
+from third_party.sentence import first_sentence
 
 log = logging.getLogger("dinoteeth.metadata")
 
@@ -251,12 +252,22 @@ class BaseMetadata(object):
     runtime = property(get_runtime)
     
     def is_tv(self):
-        return self.kind in ['series', 'tv movie', 'tv series']
+        return self.kind in ['series', 'tv movie', 'tv series', 'tv mini series']
+    
+    def is_mini_series(self):
+        return self.kind in ['tv mini series']
+    
+    def expected_episodes(self, season=1):
+        if not hasattr(self, 'seasons'):
+            return 1
+        if season not in self.seasons:
+            return -1
+        return len(self.seasons[season])
     
     def update_with_media_scans(self, media_scans):
         pass
     
-    def get_media_scan_html(self, media_scan):
+    def get_audio_html(self, media_scan):
         audio = ""
         for id, selected, name in media_scan.get_audio_options():
             if selected:
@@ -279,7 +290,7 @@ class BaseMetadata(object):
 %s""" % (audio, subtitle)
         return text
 
-    def get_media_scan_pyglet_text(self, media_scan):
+    def get_audio_pyglet_text(self, media_scan):
         audio = ""
         for id, selected, name in media_scan.get_audio_options():
             if selected:
@@ -400,7 +411,7 @@ class MovieMetadata(BaseMetadata):
 <br><b>Directed by:</b> %s""" % (title, self.plot, self.certificate,
                           "release date goes here", genres, directors)
         if media_scan:
-            text += self.get_media_scan_html(media_scan)
+            text += self.get_audio_html(media_scan)
         else:
             text += u"""<br><br><b>Produced by:</b> %s
 <br><b>Written by:</b> %s
@@ -431,7 +442,7 @@ class MovieMetadata(BaseMetadata):
 """ % (title, self.plot, self.certificate,
                           "release date goes here", genres)
         if media_scan:
-            text += self.get_media_scan_pyglet_text(media_scan)
+            text += self.get_audio_pyglet_text(media_scan)
         else:
             text += u"""{}
 {bold True}Directed by:{bold False} %s{}
@@ -494,6 +505,8 @@ class SeriesMetadata(BaseMetadata):
             else:
                 network = None
         self.network = network
+        
+        self.parse_tvdb_obj(tvdb_obj)
     
     def __unicode__(self):
         lines = []
@@ -512,6 +525,45 @@ class SeriesMetadata(BaseMetadata):
         lines.append(u"  Cast: %s" % ", ".join([unicode(d) for d in self.cast]))
         lines.append(u"  Production Companies: %s" % ", ".join([unicode(d) for d in self.companies]))
         return "\n".join(lines)
+    
+    def parse_tvdb_obj(self, show):
+        seasons = len(show) - 1
+        self.seasons = dict()
+        print "%s on %s, nominal runtime: %s" % (show.data['seriesname'], show.data['network'], show.data['runtime'])
+        print "Total seasons (not including specials): %d" % seasons
+        for season in range(1,seasons+1):
+            episodes = len(show[season])
+            print "  Season #%d: %d episodes" % (season, episodes)
+            episode_keys = show[season].keys()
+            s = dict()
+            for episode in episode_keys:
+                e = show[season][episode]
+                print (u"    Episode #%s (abs=%s dvd=%s): %s" % (e['episodenumber'], e['absolute_number'], e['dvd_episodenumber'], e['episodename'])).encode('utf8')
+                epnum = episode
+                for key in ['dvd_episodenumber', 'episodenumber']:
+                    val = e.get(key, -1)
+                    if val is not None:
+                        num = int(float(val))
+                        if num >=0:
+                            epnum = num
+                            break
+                overview = e['overview']
+                if overview:
+                    plot = first_sentence(overview)
+                else:
+                    plot = ""
+                if e['gueststars']:
+                    guest = [a.strip() for a in e['gueststars'].split("|") if a]
+                    guest = guest[0:5]
+                else:
+                    guest = []
+                ep = {'title': e['episodename'],
+                      'guest': guest,
+                      'plot': plot,
+                      'aired': e['firstaired'],
+                      }
+                s[epnum] = ep
+            self.seasons[season] = s
 
     def get_html(self, media_scan=None):
         genres = u", ".join([unicode(i) for i in self.genres])
@@ -535,7 +587,7 @@ class SeriesMetadata(BaseMetadata):
                                  self.series_years, self.num_seasons,
                                  self.certificate, genres, producers)
         if media_scan:
-            text += self.get_media_scan_html(media_scan)
+            text += self.get_audio_html(media_scan)
         else:
             text += u"""<br><br><b>Directed by:</b> %s
     <br><b>Written by:</b> %s
@@ -556,19 +608,38 @@ class SeriesMetadata(BaseMetadata):
         if self.year:
             title += u" (%s)" % self.year
         text = u"""{bold True}%s{bold False}{}
+""" % title
+        
+        if media_scan:
+            try:
+                print "season: %d" % media_scan.season
+                s = self.seasons[media_scan.season]
+                print s
+                print "episode: %d" % media_scan.episode
+                e = s[media_scan.episode]
+                print e
+                text += """{}
+{bold True}Episode:{bold False} %s{}
+{bold True}Aired:{bold False} %s{}
 {}
+{align center}{bold True}{italic True}%s{italic False}{bold False}{align left}{}
+{}
+%s{}
+{}
+{bold True}Guest Stars:{bold False} %s{}
+{}""" % (media_scan.episode, e['aired'], e['title'], e['plot'], ", ".join(e['guest']))
+            except KeyError:
+                pass
+            text += self.get_audio_pyglet_text(media_scan)
+        else:
+            text += """{}
 %s{}
 {}
 {bold True}Network:{bold False} %s %s{}
 {bold True}Number of Seasons:{bold False} %s{}
 {bold True}Rated:{bold False} %s{}
 {bold True}Genre:{bold False} %s{}
-""" % (title, self.plot, self.network,
-                                 self.series_years, self.num_seasons,
-                                 self.certificate, genres)
-        if media_scan:
-            text += self.get_media_scan_pyglet_text(media_scan)
-        else:
+""" % (self.plot, self.network, self.series_years, self.num_seasons, self.certificate, genres)
             text += u"""{}
 {bold True}Produced by:{bold False} %s{}
 {bold True}Directed by:{bold False} %s{}
