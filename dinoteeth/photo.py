@@ -51,8 +51,6 @@ class PhotoDir(object):
         config.restore_after_external_app()
 
     def thumbnail_mosaic(self, artwork_loader, thumbnail_factory, x, y, w, h):
-        import pyglet
-        
         min_x = x
         max_x = x + w
         min_y = y

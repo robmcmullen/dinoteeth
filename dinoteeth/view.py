@@ -1,6 +1,15 @@
 import os, sys, glob
 import pyglet
 
+USE_OBJGRAPH = False
+USE_HEAPY = False
+
+if USE_OBJGRAPH:
+    import objgraph
+if USE_HEAPY:
+    from guppy import hpy
+    hp = hpy()
+
 from controller import *
 from thumbnail import PygletThumbnailFactory
 
@@ -16,21 +25,34 @@ class MainWindow(pyglet.window.Window):
         root = config.get_root(self)
         self.layout.set_root(root)
         self.controller = self.layout.get_controller()
+        if USE_OBJGRAPH:
+            objgraph.show_growth()
+        if USE_HEAPY:
+            print hp.heap()
     
     def on_draw(self):
-        print "draw"
+#        print "draw"
         self.clear()
         self.layout.draw()
     
     def on_text_motion(self, motion):
-        print "here"
         self.controller.process_motion(motion)
         self.flip()
+        print "on_text_motion"
+        if USE_OBJGRAPH:
+            objgraph.show_growth()
+        if USE_HEAPY:
+            print hp.heap()
 
     def on_key_press(self, symbol, modifiers):
-        print symbol
+#        print symbol
         self.controller.process_key_press(symbol, modifiers)
         self.flip()
+        print "on_key_press"
+        if USE_OBJGRAPH:
+            objgraph.show_growth()
+        if USE_HEAPY:
+            print hp.heap()
 
 class AbstractLayout(object):
     def __init__(self, window, margins, config):
@@ -50,7 +72,7 @@ class AbstractLayout(object):
         self.box = (margins[3], margins[2],
                     self.width - margins[3] - margins[1], 
                     self.height - margins[2] - margins[0])
-        print self.box
+#        print self.box
     
     def set_root(self, root):
         self.root = root
@@ -86,6 +108,9 @@ class FontSet(object):
     def __init__(self, config):
         self.name = config.get_font_name()
         self.size = config.get_font_size()
+        font = pyglet.font.load(self.name, self.size)
+        self.height = font.ascent - font.descent
+        self.detail_size = config.get_detail_font_size()
         self.selected_size = config.get_selected_font_size()
 
 
@@ -155,7 +180,7 @@ class VerticalMenuRenderer(MenuRenderer):
         else:
             size = self.fonts.size
             italic = True
-        x = self.x + 30
+        x = self.x + self.fonts.height
         color = self.get_color(item)
         if item.is_toggle():
             if item.state:
@@ -167,7 +192,7 @@ class VerticalMenuRenderer(MenuRenderer):
                                           x=x, y=y,
                                           anchor_x='left', anchor_y='center')
                 label.draw()
-            x += 30
+            x += self.fonts.height
         label = pyglet.text.Label(text,
                                   font_name=self.fonts.name,
                                   font_size=size,
@@ -219,6 +244,7 @@ class DetailRenderer(Renderer):
     def compute_params(self, conf):
         self.artwork_loader = conf.get_artwork_loader()
         self.batch_cache = {}
+        self.use_batch = True
         self.thumbs = PygletThumbnailFactory()
         
     def draw(self, menu):
@@ -228,8 +254,8 @@ class DetailRenderer(Renderer):
             self.draw_image(item, m)
         elif 'imagegen' in m:
             self.draw_imagegen(item, m)
-        else:
-            self.draw_media(item, m)
+        elif 'mmdb' in m:
+            self.draw_mmdb(item, m)
     
     def draw_image(self, item, m):
         image = self.artwork_loader.get_image(m['image'])
@@ -239,51 +265,24 @@ class DetailRenderer(Renderer):
         image_generator = m['imagegen']
         image_generator(self.artwork_loader, self.thumbs, self.x, self.y, self.w, self.h)
     
-    def draw_media(self, item, m):
-        id = m['imdb_id']
-        image = self.artwork_loader.get_poster(id)
+    def draw_mmdb(self, item, m):
+        imdb_id = m['mmdb'].id
+        season = m.get('season', None)
+        key = (imdb_id, season)
+        image = self.artwork_loader.get_poster(imdb_id, season)
         image.blit(self.x, self.h - image.height, 0)
-        if id not in self.batch_cache:
+        
+        if not self.batch_cache:
             batch = pyglet.graphics.Batch()
-            genres = u", ".join(m['genres'])
-            directors = u", ".join(m['directors'])
-            for a in m['producers']:
-                print repr(a), type(a)
-            print m['producers']
-            producers = u", ".join(m['producers'][0:3])
-            writers = u", ".join(m['writers'])
-            actors = u", ".join(m['actors'])
-            music = u", ".join(m['music'])
-            title = m['title']
-            if m['year']:
-                title += u" (%s)" % m['year']
-            text = u"""<b>%s</b>
-<br>
-<br><b>Rated:</b> %s
-<br><b>Released:</b> %s
-<br><b>Genre:</b> %s
-<br><b>Directed by:</b> %s
-<br><b>Produced by:</b> %s
-<br><b>Written by:</b> %s
-<br><b>Music by:</b> %s
-<br><b>Actors:</b> %s
-<br><b>Runtime:</b> %s
-<br><b>Rating:</b> %s/10
-<br>
-<br><b>Plot:</b> %s""" % (title, m['mpaa'],
-                          m['released'], genres, directors, producers,
-                          writers, music, actors, m['runtime'],
-                          m['rating'], m['description'])
-            text = "<font face='%s' size='%s' color='rgb(255,255,255)'>%s</font>" % (self.fonts.name, self.fonts.size, text)
-            text = "<font face='%s' size='%s' color='#FFFFFF'>%s</font>" % (self.fonts.name, self.fonts.size, text)
-#        label = pyglet.text.Label(text,
-#                                  font_name=self.fonts.name,
-#                                  font_size=self.fonts.size,
-            label = pyglet.text.HTMLLabel(text,
+            document = pyglet.text.decode_attributed("")
+            self.label = pyglet.text.DocumentLabel(document,
                                           x=self.x + image.width + 10, y=self.h,
                                           anchor_x='left', anchor_y='top',
                                           width=self.w - image.width - 10, multiline=True,
                                           batch=batch)
-            self.batch_cache[id] = batch
-        self.batch_cache[id].draw()
-
+            self.batch_cache[True] = batch
+        
+        text = "{font_name '%s'}{font_size %s}{color (255,255,255,255)}" % (self.fonts.name, self.fonts.detail_size) + m['mmdb'].get_pyglet_text(m.get('media_scan', None))
+        document = pyglet.text.decode_attributed(text)
+        self.label.document = document
+        self.batch_cache[True].draw()

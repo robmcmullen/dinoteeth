@@ -1,8 +1,22 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import unittest
-from guessittest import *
+import os, sys
+
+from unittest import *
+
+def currentPath():
+    '''Returns the path in which the calling file is located.'''
+    return os.path.dirname(os.path.join(os.getcwd(), sys._getframe(1).f_globals['__file__']))
+
+def addImportPath(path):
+    '''Function that adds the specified path to the import path. The path can be
+    absolute or relative to the calling file.'''
+    importPath = os.path.abspath(os.path.join(currentPath(), path))
+    sys.path = [ importPath ] + sys.path
+
+addImportPath('.')  # for the tests
+addImportPath('..') # for import guessit
 
 def getAllSubclassesOf(parent=object, subclassof=None):
     """
@@ -45,7 +59,7 @@ def getAllSubclassesOf(parent=object, subclassof=None):
 def test_all():
     for case in getAllSubclassesOf(TestCase):
         if case.__module__ == "__main__":
-            suite = unittest.TestLoader().loadTestsFromTestCase(case)
+            suite = TestLoader().loadTestsFromTestCase(case)
             TextTestRunner(verbosity=2).run(suite)
 
-__all__ = ['unittest', 'test_all', 'TestCase']
+__all__ = ['test_all', 'TestCase']

@@ -1,85 +1,28 @@
-import os, sys, glob, re
-import pyglet
-from optparse import OptionParser
+import os, sys, glob, re, logging
+try:
+    import argparse
+except:
+    import dinoteeth.third_party.argparse as argparse
+from dinoteeth.third_party.configobj import ConfigObj
 
 from view import *
-from model import MenuItem
-from database import DictDatabase
-from media import guess_media_info, guess_custom, normalize_guess, MediaObject
+from database import MovieMetadataDatabase, MediaScanDatabase
 from theme import MenuTheme
-from mplayer import MPlayerClient, MPlayerInfo
+from mplayer import MPlayerClient
 from utils import decode_title_text, ArtworkLoader
-from metadata import UnifiedMetadataDatabase, UnifiedMetadata
+from hierarchy import RootMenu
 from photo import PhotoDB
+from media import enzyme_extensions
+from metadata import BaseMetadata
 
-class RootMenu(MenuItem):
-    def __init__(self, db, menu_theme, photo=None):
-        MenuItem.__init__(self, "Dinoteeth Media Launcher", theme=menu_theme)
-        self.db = db
-        self.pdb = photo
-        self.metadata = {
-            'image': '../../graphics/background-merged.jpg',
-            }
-        
-        self.category_order = [
-#            ("Movies", self.get_movies_genres),
-            ("TV", self.get_tv_root),
-            ("Paused...", self.get_empty_root),
-            ("Games", self.get_empty_root),
-            ]
-        self.categories = {}
-    
-    def create_menus(self):
-        self.create_movies_genres()
-        for cat, populate in self.category_order:
-            menu = MenuItem(cat, populate=populate)
-            self.add(menu)
-        self.create_photo_menu()
-    
-    def create_movies_genres(self, *args):
-        results = self.db.find("movie")
-        menu = MenuItem("Movies")
-        menu.metadata = {'imagegen': results.thumbnail_mosaic}
-        self.add(menu)
-        entry = MenuItem("All", populate=self.get_movies_root)
-        entry.metadata = {'imagegen': results.thumbnail_mosaic}
-        menu.add(entry)
-        genres = sorted(list(results.all_metadata('genres')))
-        for genre in genres:
-            subset = results.subset_by_metadata('genres', genre)
-            entry = MenuItem(genre, populate=subset.hierarchy)
-            entry.metadata = {'imagegen': subset.thumbnail_mosaic}
-            menu.add(entry)
-    
-    def get_movies_root(self, *args):
-        results = self.db.find("movie")
-        h = results.hierarchy()
-        print h
-        return h
-    
-    def get_tv_root(self, *args):
-        results = self.db.find("episode")
-        h = results.hierarchy()
-        return h
-    
-    def create_photo_menu(self, *args):
-        menu = MenuItem("Photos")
-        #menu.metadata = {'imagegen': photodb.thumbnail_mosaic}
-        self.add(menu)
-        entry = MenuItem("By Folder", populate=self.pdb.hierarchy)
-        #entry.metadata = {'imagegen': photodb.thumbnail_mosaic}
-        menu.add(entry)
-        entry = MenuItem("Slideshows")
-        #entry.metadata = {'imagegen': results.thumbnail_mosaic}
-        menu.add(entry)
-    
-    def get_empty_root(self, *args):
-        results = self.db.find("nothing")
-        h = results.hierarchy()
-        return h
-    
-    def save_state(self):
-        self.db.saveStateToFile()
+logging.basicConfig(level=logging.WARNING)
+
+log = logging.getLogger("dinoteeth")
+#log.setLevel(logging.DEBUG)
+otherlog = logging.getLogger("dinoteeth.metadata")
+#otherlog.setLevel(logging.DEBUG)
+otherlog = logging.getLogger("dinoteeth.utils")
+#otherlog.setLevel(logging.DEBUG)
 
 
 class Config(object):
@@ -100,42 +43,109 @@ class Config(object):
     @classmethod
     def get_arg_parser(self):
         usage="usage: %prog file [file ...]"
-        parser=OptionParser(usage=usage)
-        parser.add_option("-v", action="store_true", dest="verbose", default=False)
-        parser.add_option("-t", "--test", action="store_true", dest="test", default=False)
-        parser.add_option("-d", "--database", action="store", dest="database", default="dinoteeth.db")
-        parser.add_option("-m", "--metadata-database", action="store", dest="umdb", default="dinoteeth.umdb")
-        parser.add_option("-i", "--image-dir", action="store", dest="image_dir", default="../test/graphics")
-        parser.add_option("-w", "--window", action="store_false", dest="fullscreen", default=True)
-        parser.add_option("-p", "--photo-dir", action="append", dest="photo_dirs", default=None)
-        parser.add_option("--window-width", action="store", type=int, default=1280)
-        parser.add_option("--window-height", action="store", type=int, default=720)
-        parser.add_option("--top-margin", action="store", type=int, default=0)
-        parser.add_option("--right-margin", action="store", type=int, default=0)
-        parser.add_option("--bottom-margin", action="store", type=int, default=0)
-        parser.add_option("--left-margin", action="store", type=int, default=0)
+        parser = argparse.ArgumentParser(description="Dinoteeth Media System", conflict_handler='resolve')
+        parser.add_argument("-c", "--conf_file",
+                    help="Specify config file", metavar="FILE")
+        parser.add_argument("-v", "--verbose", action="count", default=0)
+        parser.add_argument("--metadata-root", action="store", default="",
+                          help="Default metadata/database root directory for those databases and the image directories that don't specify a full path")
+        parser.add_argument("--db", action="store", dest="database", default="dinoteeth.db")
+        parser.add_argument("--mmdb", action="store", dest="mmdb", default="dinoteeth.mmdb")
+        parser.add_argument("--imdb-cache-dir", action="store", default="imdb-cache")
+        parser.add_argument("--tmdb-cache-dir", action="store", default="tmdb-cache")
+        parser.add_argument("--tvdb-cache-dir", action="store", default="tvdb-cache")
+        parser.add_argument("-i", "--image-dir", action="store", dest="image_dir", default="graphics")
+        parser.add_argument("--poster-width", action="store", type=int, default=-1, help="Maximum displayed poster width")
+        parser.add_argument("--media-root", action="store", default="",
+                          help="Media under this directory will be stored in the database as relative paths, permitting the structure to be moved to other machines without rebuilding the database")
+        parser.add_argument("-l", "--language", action="store", default="en")
+        parser.add_argument("-w", "--window", action="store_false", dest="fullscreen", default=True)
+        parser.add_argument("-p", "--photo-dir", action="append", dest="photo_dirs", default=None)
+        parser.add_argument("--window-width", action="store", type=int, default=1280)
+        parser.add_argument("--window-height", action="store", type=int, default=720)
+        parser.add_argument("--top-margin", action="store", type=int, default=0)
+        parser.add_argument("--right-margin", action="store", type=int, default=0)
+        parser.add_argument("--bottom-margin", action="store", type=int, default=0)
+        parser.add_argument("--left-margin", action="store", type=int, default=0)
+        
+        parser.add_argument("--imdb-country-code", action="store", default="USA")
+        parser.add_argument("--country-code", action="store", default="US")
         return parser
     
     def parse_args(self, args, parser):
+        default_parser = argparse.ArgumentParser(description="Default Parser")
+        default_parser.add_argument("-c", "--conf_file", default="",
+                    help="Specify config file to replace global config file loaded from user's home directory", metavar="FILE")
+        options, extra_args = default_parser.parse_known_args()
+        defaults = {}
+        conf_file = os.path.expanduser("~/.dinoteeth/settings.ini")
+        if options.conf_file:
+            conf_file = options.conf_file
+        self.ini = ConfigObj(conf_file)
+        if "defaults" in self.ini:
+            defaults = dict(self.ini["defaults"])
+        
+        if "media_paths" not in self.ini:
+            self.ini["media_paths"] = {}
+        
+        parser.set_defaults(**defaults)
         self.parser = parser
-        (self.options, self.args) = self.parser.parse_args()
-    
+        (self.options, self.args) = self.parser.parse_known_args(extra_args)
+        
+        debuglogs = ["dinoteeth.metadata", "dinoteeth.database", "dinoteeth.utils"]
+        if self.options.verbose == 1:
+            level = logging.DEBUG
+        elif self.options.verbose > 1:
+            level = logging.INFO
+        else:
+            level = None
+        if level:
+            for name in debuglogs:
+                log = logging.getLogger(name)
+                log.setLevel(level)
+        
+        self.set_class_defaults()
+        
         self.db = self.get_media_database()
-        self.umdb = self.get_metadata_database()
-        MediaObject.setMetadataDatabase(self.umdb)
-        MediaObject.setIgnoreLeadingArticles(self.get_leading_articles())
+        self.mmdb = self.get_metadata_database()
         self.theme = self.get_menu_theme()
-        if self.options.test:
-            self.parse_dir(self.db, "test/movies1", "movie")
-            self.parse_dir(self.db, "test/movies2", "movie")
-            self.parse_dir(self.db, "test/series1", "episode")
-            self.parse_dir(self.db, "test/series2", "episode")
-            self.db.saveStateToFile()
         if self.args:
             for path in self.args:
-                self.parse_dir(self.db, path)
-            self.db.saveStateToFile()
+                if path not in self.ini["media_paths"]:
+                    self.ini["media_paths"][path] = "autodetect"
+        self.update_metadata()
+        
+        if not options.conf_file:
+            # Save the configuration in the global file as long as it's not
+            # a user-specified config file.  User specified files aren't
+            # overwritten, nor are user specified files saved in the global
+            # file
+            self.save_global_config_file()
         self.pdb = self.get_photo_database()
+    
+    def get_config_file_name(self):
+        conf_file = os.path.expanduser("~/.dinoteeth/settings.ini")
+        return conf_file
+    
+    def save_global_config_file(self):
+        name = self.get_config_file_name()
+        if not os.path.exists(name):
+            confdir = os.path.dirname(name)
+            if not os.path.exists(confdir):
+                try:
+                    os.mkdir(confdir)
+                except:
+                    log.error("Can't create configuration directory %s" % confdir)
+                    return
+        try:
+            with open(name, "w") as fh:
+                self.ini.write(fh)
+        except Exception, e:
+            log.error("Can't save configuration file %s: %s" % (name, e))
+    
+    def set_class_defaults(self):
+        BaseMetadata.imdb_country = self.options.imdb_country_code
+        BaseMetadata.iso_3166_1 = self.options.country_code
     
     def get_main_window(self):
         if self.main_window is None:
@@ -159,13 +169,20 @@ class Config(object):
         win.activate()
     
     def create_root(self):
-        self.root = RootMenu(self.db, self.theme, photo=self.pdb)
+        self.root = RootMenu(self)
         self.root.create_menus()
     
+    def get_metadata_pathname(self, option):
+        if not os.path.isabs(option) and self.options.metadata_root:
+            if not os.path.exists(self.options.metadata_root):
+                os.mkdir(self.options.metadata_root)
+            option = os.path.join(self.options.metadata_root, option)
+        log.debug("database: %s" % option)
+        return option
+    
     def get_media_database(self):
-        scanner = self.get_metadata_scanner()
-        db = DictDatabase(media_scanner=scanner)
-        db.loadStateFromFile(self.options.database)
+        db = MediaScanDatabase()
+        db.loadStateFromFile(self.get_metadata_pathname(self.options.database))
         return db
     
     def get_photo_database(self):
@@ -175,41 +192,87 @@ class Config(object):
                 db.add_path(path)
         return db
     
-    def get_metadata_scanner(self):
-        return MPlayerInfo
-    
     def get_metadata_database(self):
-        umdb = UnifiedMetadataDatabase()
-        umdb.loadStateFromFile(self.options.umdb)
-        return umdb
+        mmdb = MovieMetadataDatabase(
+            imdb_cache_dir=self.get_metadata_pathname(self.options.imdb_cache_dir),
+            tmdb_cache_dir=self.get_metadata_pathname(self.options.tmdb_cache_dir),
+            tvdb_cache_dir=self.get_metadata_pathname(self.options.tvdb_cache_dir),
+            language=self.options.language)
+        statefile = self.get_metadata_pathname(self.options.mmdb)
+        print "Loading from %s" % statefile
+        mmdb.loadStateFromFile(statefile)
+        return mmdb
     
-    def parse_dir(self, db, path, force_category=None):
-        valid = self.get_video_extensions()
-        regexps = self.get_custom_video_regexps()
-        for pathname in iter_dir(path, valid):
-            if not db.is_current(pathname):
-                filename = decode_title_text(pathname)
-                guess = None
-                if regexps:
-                    guess = guess_custom(filename, regexps)
-                if not guess:
-                    guess = guess_media_info(filename)
-                guess['pathname'] = pathname
-                db.add(guess)
+    def update_metadata(self):
+        removed_keys, new_keys = self.parse_dirs(self.ini["media_paths"])
+        if removed_keys:
+            print "Found files that have been removed! %s" % str(removed_keys)
+            self.remove_metadata(removed_keys)
+        if new_keys:
+            print "Found files that have been added! %s" % str(new_keys)
+            self.add_metadata(new_keys)
         self.db.saveStateToFile()
+        self.mmdb.saveStateToFile()
+    
+    def remove_metadata(self, removed_keys):
+        for i, key in enumerate(removed_keys):
+            title_key = self.db.get_title_key(key)
+            imdb_id = self.db.get_imdb_id(title_key)
+            print "%d: removing imdb=%s %s" % (i, imdb_id, str(title_key))
+            self.mmdb.remove(imdb_id)
+            self.db.remove(key)
+    
+    def add_metadata(self, new_keys):
+        artwork_loader = self.get_artwork_loader()
+        count = len(new_keys)
+        for i, key in enumerate(new_keys):
+            title_key = self.db.get_title_key(key)
+            try:
+                imdb_id = self.db.get_imdb_id(title_key)
+                print "%d/%d: imdb=%s %s" % (i, count, imdb_id, str(title_key))
+            except KeyError:
+                print "%d/%d: imdb=NOT FOUND %s" % (i, count, str(title_key))
+                scans = self.db.get_all_with_title_key(title_key)
+                movie = self.mmdb.best_guess_from_media_scans(title_key, scans)
+                if movie:
+                    imdb_id = movie.id
+                    self.db.set_imdb_id(title_key, imdb_id)
+                for j, media in enumerate(self.db.get_all_with_title_key(title_key)):
+                    log.info("  media #%d: %s" % (j, str(media)))
+            if imdb_id:
+                if not self.mmdb.contains_imdb_id(imdb_id):
+                    log.debug("Loading imdb_id %s" % imdb_id)
+                    self.mmdb.fetch_imdb_id(imdb_id)
+                if not artwork_loader.has_poster(imdb_id):
+                    log.debug("Loading posters for imdb_id %s" % imdb_id)
+                    self.mmdb.fetch_poster(imdb_id, artwork_loader)
+    
+    def parse_dirs(self, media_path_dict):
+        stored_keys = self.db.known_keys()
+        current_keys = set()
+        for path, flags in media_path_dict.iteritems():
+            print "Parsing path %s" % path
+            self.parse_dir(self.db, path, flags, current_keys)
+        self.db.saveStateToFile()
+        removed_keys = stored_keys - current_keys
+        new_keys = current_keys - stored_keys
+        return removed_keys, new_keys
+            
+    def parse_dir(self, db, path, flags="", current_keys=None):
+        valid = self.get_video_extensions()
+        if self.options.media_root and not os.path.isabs(path):
+            path = os.path.join(self.options.media_root, path)
+        for pathname in iter_dir(path, valid):
+            if not db.is_current(pathname, known_keys=current_keys):
+                media_scan = db.add(pathname, flags, known_keys=current_keys)
+                log.debug("added: %s" % db.get(media_scan.pathname))
+#            entry = db.get(pathname)
+#            log.debug("guess %s: %s" % (pathname, entry.guess))
+#            log.debug("scan %s: %s" % (pathname, entry))
 
     def get_video_extensions(self):
-        return ['.vob', '.mp4', '.avi', '.wmv', '.mov', '.mpg', '.mpeg', '.mpeg4', '.mkv', '.flv', '.webm']
-    
-    def get_custom_video_regexps(self):
-        return [
-            r"(.+/)*(?P<series>.+)-[Ss](?P<season>[0-9]{1,2})-?[Ee](?P<episodeNumber>[0-9]{1,2})-?(?P<title>.+)?",
-            r"(.+/)*(?P<series>.+)-[Ss](?P<season>[0-9]{1,2})-?[Xx](?P<extraNumber>[0-9]{1,2})-?(?P<title>.+)?",
-            r"(.+/)*(?P<franchise>.+)-[Ff](?P<episodeNumber>[0-9]{1,2})(-(?P<title>.+))(-[Xx](?P<extraNumber>[0-9]{1,2}))(-(?P<extraTitle>.+))?",
-            r"(.+/)*(?P<franchise>.+)-[Ff](?P<episodeNumber>[0-9]{1,2})(-[Xx](?P<extraNumber>[0-9]{1,2}))(-(?P<extraTitle>.+))?",
-            r"(.+/)*(?P<title>.+)-[Xx](?P<extraNumber>[0-9]{1,2})(-(?P<extraTitle>.+))?",
-            r"(.+/)*(?P<franchise>.+)-[Ff](?P<episodeNumber>[0-9]{1,2})(-(?P<title>.+))?",
-            ]
+        """Get list of known video extensions from enzyme"""
+        return enzyme_extensions()
     
     def get_root(self, window):
         return self.root
@@ -218,13 +281,16 @@ class Config(object):
         return MenuDetail2ColumnLayout(window, margins, self)
     
     def get_font_name(self):
-        return "Helvetica"
+        return "Arial"
     
     def get_font_size(self):
-        return 20
+        return 16
+    
+    def get_detail_font_size(self):
+        return 12
     
     def get_selected_font_size(self):
-        return 26
+        return 22
 
     def get_title_renderer(self, window, box, fonts):
         return TitleRenderer(window, box, fonts, self)
@@ -239,7 +305,12 @@ class Config(object):
         return MenuTheme()
     
     def get_artwork_loader(self):
-        return ArtworkLoader(self.options.image_dir, "../graphics/artwork-not-available.png")
+        if not hasattr(self, "artwork_loader"):
+            system_image_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../graphics"))
+            na = os.path.join(system_image_dir, "artwork-not-available.png")
+            print na
+            self.artwork_loader = ArtworkLoader(self.get_metadata_pathname(self.options.image_dir), na, poster_width=self.options.poster_width)
+        return self.artwork_loader
     
     def get_media_client(self):
         return MPlayerClient(self)
@@ -266,12 +337,12 @@ def setup(args):
 def get_global_config():
     return Config.global_config
 
-def iter_dir(path, valid_extensions=None, exclude=None, verbose=False):
+def iter_dir(path, valid_extensions=None, exclude=None, verbose=False, recurse=False):
     if exclude is not None:
         try:
             exclude = re.compile(exclude)
         except:
-            print("Invalid regular expression %s" % exclude)
+            log.warning("Invalid regular expression %s" % exclude)
             pass
     videos = glob.glob(os.path.join(path, "*"))
     for video in videos:
@@ -281,17 +352,18 @@ def iter_dir(path, valid_extensions=None, exclude=None, verbose=False):
                 if exclude:
                     match = cls.exclude.search(video)
                     if match:
-                        if verbose: print("Skipping dir %s" % video)
+                        log.debug("Skipping dir %s" % video)
                         continue
-                if verbose: print("Checking dir %s" % video)
-                yield video
+                log.debug("Checking dir %s" % video)
+                if recurse:
+                    iter_dir(video, valid_extensions, exclude, verbose, True)
         elif os.path.isfile(video):
-            if verbose: print("Checking %s" % video)
+            log.debug("Checking %s" % video)
             if valid_extensions:
                 for ext in valid_extensions:
                     if video.endswith(ext):
                         valid = True
-                        if verbose: print ("Found valid media: %s" % video)
+                        log.debug("Found valid media: %s" % video)
                         break
             else:
                 valid = True

@@ -2,11 +2,12 @@ import os, sys, glob, bisect
 
 
 class MenuItem(object):
-    def __init__(self, title, enabled=True, action=None, populate=None, media=None, theme=None, metadata=None, **kwargs):
+    def __init__(self, title, enabled=True, action=None, populate=None, populate_children=None, media=None, theme=None, metadata=None, **kwargs):
         self.title = title
         self.enabled = enabled
         self.action = action
         self.populate = populate
+        self.populate_children = populate_children
         self.media = media
         self.theme = theme
         self.parent = None
@@ -42,6 +43,18 @@ class MenuItem(object):
             if self.action:
                 self.action(**kwargs)
     
+    def do_audio(self, **kwargs):
+        print "audio!"
+        if self.metadata and self.metadata['media_scan']:
+            media_scan = self.metadata['media_scan']
+            media_scan.next_audio()
+    
+    def do_subtitle(self, **kwargs):
+        print "subtitle!"
+        if self.metadata and self.metadata['media_scan']:
+            media_scan = self.metadata['media_scan']
+            media_scan.next_subtitle()
+    
     def do_populate(self):
         if not self.populated:
             if self.populate:
@@ -49,6 +62,10 @@ class MenuItem(object):
                 hierarchy = self.populate()
                 theme = self.get_theme()
                 theme.add_menu_hierarchy(self, hierarchy)
+            elif self.populate_children:
+                print "populating children!"
+                for child in self.populate_children(self):
+                    self.add(child)
             self.populated = True
 
     def get_item(self, i):
