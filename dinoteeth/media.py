@@ -11,7 +11,7 @@ def enzyme_scan(path):
         scan = enzyme.parse(path)
     except:
         for (parser_name, parser_mimetypes, parser_extensions) in enzyme.PARSERS:
-            mod = __import__("third_party.enzyme.enzyme.%s" % parser_name, globals=globals(), locals=locals(), fromlist=[parser_name], level=-1)
+            mod = __import__("third_party.enzyme.%s" % parser_name, globals=globals(), locals=locals(), fromlist=[parser_name], level=-1)
             try:
                 with open(path, 'rb') as f:
                     scan = mod.Parser(f)
