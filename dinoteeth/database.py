@@ -556,10 +556,10 @@ class MovieMetadataDatabase(MetadataDatabase):
                         # average time and the number of episodes in the full
                         # series, including additional fuzz factor in scale
                         num_episodes_full_season = movie.expected_episodes()
-                        total_runtime = avg_runtime * num_episodes_full_season
-                        total_scale = avg_scale * 5 * num_episodes_full_season
-                        print "mini series!", num_episodes_full_season, total_runtime, total_scale
-                        if r - total_scale < total_runtime < r + total_scale:
+                        runtime = avg_runtime * num_episodes_full_season
+                        scale = avg_scale * 5 * num_episodes_full_season
+                        print "mini series!", num_episodes_full_season, runtime, scale
+                        if r - scale < runtime < r + scale:
                             return movie
                     else:
                         log.debug("IMDb runtimes of %s = %s; avg/w comm/total runtime = %s, %s, %s.  Skipping" % (movie.title, str(movie.runtimes), avg_runtime, with_commercials, total_runtime))
