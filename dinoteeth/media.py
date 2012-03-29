@@ -191,7 +191,7 @@ class MediaScan(object):
     season = property(get_season)
     
     def get_episode(self):
-        return self.guess.get('episode', 0)
+        return self.guess.get('episodeNumber', 0)
     
     episode = property(get_episode)
     
