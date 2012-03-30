@@ -224,8 +224,7 @@ class Config(object):
                 log.info("%d: orphaned title key %s has no imdb_id" % (i, str(title_key)))
                 continue
             print "%d: removing imdb=%s %s" % (i, imdb_id, str(title_key))
-            self.mmdb.remove(imdb_id)
-            self.db.remove(key)
+            self.db.remove(key, self.mmdb)
     
     def add_metadata(self, new_keys):
         artwork_loader = self.get_artwork_loader()

@@ -107,12 +107,12 @@ class MediaScanDatabase(PickleSerializerMixin):
         log.debug("added %s" % str(media_scan))
         return media_scan
     
-    def remove(self, name):
+    def remove(self, name, mmdb):
         media_scan = self.db[name]
         del self.db[name]
-        self.remove_media(media_scan)
+        self.remove_media(media_scan, mmdb)
     
-    def remove_media(self, media_scan):
+    def remove_media(self, media_scan, mmdb):
         title_key = media_scan.title_key
         if title_key in self.title_key_map:
             media_scan_list = self.title_key_map[title_key]
@@ -126,6 +126,7 @@ class MediaScanDatabase(PickleSerializerMixin):
                     imdb_id = self.title_key_to_imdb[title_key]
                     del self.title_key_to_imdb[title_key]
                     del self.imdb_to_title_key[imdb_id]
+                    mmdb.remove(imdb_id)
     
     def get(self, name):
         return self.db[name]
