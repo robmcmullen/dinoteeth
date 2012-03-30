@@ -36,7 +36,8 @@ class MediaScan(object):
     
     def __init__(self, pathname, flags=None):
         self.pathname = pathname
-        self.reset(flags)
+        self.flags = flags
+        self.reset()
     
     def __str__(self):
         return "%s: %s %d audio, %d subtitles, length=%s, mtime=%d" % (self.pathname, self.type, len(self.audio), len(self.subtitles), self.length, self.mtime)
@@ -59,7 +60,7 @@ class MediaScan(object):
              g.get('bonusTitle', ""),
              )
     
-    def reset(self, flags):
+    def reset(self):
         # Rather than saving a copy of the entire Enzyme scan, just save the
         # parts that we are going to use later.  This reduces database size by
         # almost an order of magnitude
@@ -76,14 +77,14 @@ class MediaScan(object):
         else:
             self.mtime = -1
         
-        if "basename" in flags:
+        if "basename" in self.flags:
             name = os.path.basename(self.pathname)
         else:
             name = self.pathname
         name = utils.decode_title_text(name)
-        if "series" in flags or "episode" in flags:
+        if "series" in self.flags or "episode" in self.flags:
             category = "episode"
-        elif "movie" in flags:
+        elif "movie" in self.flags:
             category = "movie"
         else:
             category = "autodetect"
@@ -106,17 +107,21 @@ class MediaScan(object):
     
     def get_audio_options(self):
         options = []
-        for audio in self.iter_audio():
+        for i, audio in enumerate(self.iter_audio()):
             print "audio track: %s" % audio
             title = audio.title
             if not title:
-                if audio.channels == 1:
-                    title = "Mono"
-                elif audio.channels == 2:
-                    title = "Stereo"
+                channels = audio.channels
+                if not channels:
+                    title = "Audio Track %d" % (i + 1)
                 else:
-                    title = "%d Channels" % audio.channels
-            options.append((audio.id, audio.id == self.selected_audio_id, title))
+                    if audio.channels == 1:
+                        title = "Mono"
+                    elif audio.channels == 2:
+                        title = "Stereo"
+                    else:
+                        title = "%d Channels" % audio.channels
+            options.append((i, i == self.selected_audio_id, title))
         if not options:
             # "No audio" is not an option by default; only if there really is
             # no audio available in the media
@@ -144,9 +149,9 @@ class MediaScan(object):
         # Unlike audio, "No subtitles" should always be an option in case
         # people don't want to view subtitles
         options = [(-1, -1 == self.selected_subtitle_id, "No subtitles")]
-        for subtitle in self.iter_subtitles():
+        for i, subtitle in enumerate(self.iter_subtitles()):
             print "subtitle track: %s" % subtitle
-            options.append((subtitle.id, subtitle.id == self.selected_subtitle_id, subtitle.title))
+            options.append((i, i == self.selected_subtitle_id, subtitle.title))
         return options
     
     def set_subtitle_options(self, id=-1, **kwargs):
