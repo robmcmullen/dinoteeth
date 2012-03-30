@@ -1478,6 +1478,8 @@ def main():
         ("Leonard and Penny deal with the idea of starting a relationship again and Raj finally finds a \"woman\" he can talk to without being drunk, in the form of Siri on his new phone. Meanwhile, Sheldon decides to start a YouTube series entitled \"Sheldon Cooper presents Fun with Flags\" with the help of Amy.",
          "Leonard and Penny deal with the idea of starting a relationship again and Raj finally finds a \"woman\" he can talk to without being drunk, in the form of Siri on his new phone."),
         ("A sentence (with parens) and stuff.",),
+        ("\"Leading quotation\" -- by whoever.  And another sentence.",
+         "\"Leading quotation\" -- by whoever."),
         ]
     for data in sentences:
         if len(data) == 1:
@@ -1486,8 +1488,9 @@ def main():
         else:
             text = data[0]
             first = data[1]
+        text = text.replace("\"", "zQzQzQzQz")
         t = tokenize(text)
-        output = first_sentence(text)
+        output = first_sentence(text).replace("zQzQzQzQz", "\"")
         if output != first:
             print "incorrect."
             print str(list(t))
