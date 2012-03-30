@@ -1,116 +1,91 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# GuessIt - A library for guessing information from filenames
-# Copyright (c) 2011 Nicolas Wack <wackou@gmail.com>
-#
-# GuessIt is free software; you can redistribute it and/or modify it under
-# the terms of the Lesser GNU General Public License as published by
-# the Free Software Foundation; either version 3 of the License, or
-# (at your option) any later version.
-#
-# GuessIt is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# Lesser GNU General Public License for more details.
-#
-# You should have received a copy of the Lesser GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
 
-import unittest
-from guessittest import *
+from dinoteeth_test import *
 
-from dinoteeth.media import guess_custom
-from dinoteeth.config import Config
-from dinoteeth.database import DictDatabase
+from dinoteeth.database import MediaScanDatabase
+from dinoteeth.utils import iter_dir
+
+class MockMovie(object):
+    def __init__(self, imdb_id):
+        self.id = imdb_id
+        
+class MockMMDB(object):
+    imdb_index = 1
+    def __init__(self):
+        self.title_keys = {}
+        self.imdb_list = set()
+        
+    def remove(self, imdb_id):
+        self.imdb_list.discard(imdb_id)
+        
+    def best_guess_from_media_scans(self, title_key, scans):
+        if title_key[0].startswith("The "):
+            title_key = (title_key[0][4:], title_key[1], title_key[2])
+        print title_key
+        if title_key not in self.title_keys:
+            self.title_keys[title_key] = "tt%07d" % self.imdb_index
+            self.imdb_index += 1
+        imdb_id = self.title_keys[title_key]
+        self.imdb_list.add(imdb_id)
+        return MockMovie(imdb_id)
+    
+    def contains_imdb_id(self, imdb_id):
+        return imdb_id in self.imdb_list
+    
+    def saveStateToFile(self):
+        pass
+
+class MockArtworkLoader(object):
+    def has_poster(self, imdb_id):
+        return True
 
 class TestDatabaseMovies1(TestCase):
     def setUp(self):
-        self.config = Config([])
-        self.db = DictDatabase()
-        self.config.parse_dir(self.db, "movies1")
+        self.db = MediaScanDatabase(mock=True)
+        self.mmdb = MockMMDB()
+        self.artwork_loader = MockArtworkLoader()
+        self.path_dict = {"movies1": "basename, movies"}
+        self.db.update_metadata(self.path_dict, self.mmdb, self.artwork_loader)
         
-    def testFind(self):
-        results = self.db.find("movie")
-        assert len(results) == 38
-    
-    def testFindOne(self):
-        results = self.db.find("movie", lambda s:s['title'] == "Toy Story")
-        assert len(results) == 1
-    
-    def testFindSeries1(self):
-        results = self.db.find("movie", lambda s:s['title'] == "Moon")
-        assert len(results) == 5
-    
-    def testFindSeries2(self):
-        results = self.db.find("movie", lambda s:s['title'] == "The Social Network")
-        assert len(results) == 7
-    
-    def testFindMain1(self):
-        results = self.db.find("movie", lambda s:s['title'] == "Moon" and 'extraNumber' not in s)
-        assert len(results) == 0
-    
-    def testFindMain2(self):
-        results = self.db.find("movie", lambda s:s['title'] == "The Social Network" and 'extraNumber' not in s)
-        assert len(results) == 1
-    
-    def testSort1(self):
-        results = self.db.find("movie")
-        assert len(results) == 38
-        self.assertEqual(results[0]['title'], "Battle Los Angeles")
-        self.assertEqual(results[1]['title'], "Death at a Funeral")
-        self.assertEqual(results[25]['title'], "Shaun of the Dead")
-        self.assertEqual(results[-1]['title'], "Toy Story 3")
-    
-    def testFindFranchise1(self):
-        results = self.db.find("movie", lambda s:s.get('franchise') == "Toy Story")
-        assert len(results) == 3
-        self.assertEqual(results[0]['title'], "Toy Story")
-        self.assertEqual(results[1]['title'], "Toy Story 2")
-        self.assertEqual(results[2]['title'], "Toy Story 3")
-
-
-class TestDatabaseSeries1(TestCase):
-    def setUp(self):
-        self.config = Config([])
-        self.db = DictDatabase()
-        self.config.parse_dir(self.db, "series1")
+    def testSize(self):
+        self.assertEqual(len(self.db.db), 38)
+        self.assertEqual(len(self.db.title_key_map), 14)
         
-    def testFind(self):
-        results = self.db.find("episode")
-        self.assertEqual(len(results), 32)
+    def testRemove(self):
+        self.db.remove("movies1/The_Social_Network-x01.mkv", self.mmdb)
+        self.assertEqual(len(self.db.db), 37)
+        self.assertEqual(len(self.db.title_key_map), 14)
+        
+    def testUpdateMetadata(self):
+        keys = set(["movies1/The_Social_Network-x01.mkv"])
+        print self.db.db.keys()
+        self.db.remove_metadata(keys, self.mmdb)
+        self.assertEqual(len(self.db.db), 37)
+        self.assertEqual(len(self.db.title_key_map), 14)
+        keys = set(["movies1/The_Hunt_for_Red_October.mkv", "movies1/The_Hunt_for_Red_October-x01.mkv", ])
+        print self.db.db.keys()
+        self.db.remove_metadata(keys, self.mmdb)
+        self.assertEqual(len(self.db.db), 35)
+        self.assertEqual(len(self.db.title_key_map), 13)
+        self.db.update_metadata(self.path_dict, self.mmdb, self.artwork_loader)
+        print self.db.db.keys()
+        self.assertEqual(len(self.db.db), 38)
+        self.assertEqual(len(self.db.title_key_map), 14)
+        self.db.update_metadata(self.path_dict, self.mmdb, self.artwork_loader, valid_extensions=["x01.mkv"])
+        print self.db.db.keys()
+        self.assertEqual(len(self.db.db), 3)
+        self.assertEqual(len(self.db.title_key_map), 3)
+        
+    def testSameTitleKey(self):
+        path_dict = {"movies1a": "basename, movies"}
+        path_dict.update(self.path_dict)
+        save = len(self.db.imdb_to_title_key)
+        self.db.update_metadata(path_dict, self.mmdb, self.artwork_loader)
+        self.assertEqual(len(self.db.db), 39)
+        self.assertEqual(len(self.db.title_key_map), 15)
+        self.assertEqual(len(self.db.imdb_to_title_key), save)
     
-    def testFindOne(self):
-        results = self.db.find("movie", lambda s:s['series'] == "The Wire")
-        self.assertEqual(len(results), 0)
-        results = self.db.find("episode", lambda s:s['series'] == "The Wire")
-        self.assertEqual(len(results), 3)
-    
-    def testFindExtra(self):
-        results = self.db.find("episode", lambda s:s['series'] == "The Big Bang Theory" and s['season'] == 1)
-        self.assertEqual(len(results), 4)
-        self.assertEqual(results[0]['season'], 1)
-        self.assertEqual(results[0]['episodeNumber'], 1)
-        self.assertEqual(results[1]['season'], 1)
-        self.assertEqual(results[1]['episodeNumber'], 2)
-        self.assertEqual(results[2]['season'], 1)
-        self.assertEqual(results[2]['episodeNumber'], 3)
-        self.assertEqual(results[3]['season'], 1)
-        self.assertEqual(results[3]['extraNumber'], 1)
-        results = self.db.find("episode", lambda s:s['series'] == "The Big Bang Theory" and s['season'] == 1 and 'extraNumber' not in s)
-        self.assertEqual(len(results), 3)
-        results = self.db.find("episode", lambda s:s['series'] == "The Big Bang Theory" and s['season'] == 1 and 'extraNumber' in s)
-        self.assertEqual(len(results), 1)
-        results = self.db.find("episode", lambda s:s['series'] == "The Big Bang Theory" and s['season'] == 2)
-        self.assertEqual(len(results), 6)
-        self.assertEqual(results[0]['season'], 2)
-        self.assertEqual(results[0]['episodeNumber'], 1)
-        self.assertEqual(results[5]['season'], 2)
-        self.assertEqual(results[5]['extraNumber'], 3)
-
 
 if __name__ == '__main__':
-    for case in [TestDatabaseMovies1, TestDatabaseSeries1]:
-        suite = unittest.TestLoader().loadTestsFromTestCase(case)
-        TextTestRunner(verbosity=2).run(suite)
+    test_all()

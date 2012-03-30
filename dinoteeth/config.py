@@ -204,71 +204,14 @@ class Config(object):
         return mmdb
     
     def update_metadata(self):
-        removed_keys, new_keys = self.parse_dirs(self.ini["media_paths"])
-        if removed_keys:
-            print "Found files that have been removed! %s" % str(removed_keys)
-            self.remove_metadata(removed_keys)
-        if new_keys:
-            print "Found files that have been added! %s" % str(new_keys)
-            self.add_metadata(new_keys)
-        self.db.fix_missing_metadata(self.mmdb)
-        self.db.saveStateToFile()
-        self.mmdb.saveStateToFile()
-    
-    def remove_metadata(self, removed_keys):
-        for i, key in enumerate(removed_keys):
-            title_key = self.db.get_title_key(key)
-            try:
-                imdb_id = self.db.get_imdb_id(title_key)
-            except KeyError:
-                log.info("%d: orphaned title key %s has no imdb_id" % (i, str(title_key)))
-                continue
-            print "%d: removing imdb=%s %s" % (i, imdb_id, str(title_key))
-            self.db.remove(key, self.mmdb)
-    
-    def add_metadata(self, new_keys):
-        artwork_loader = self.get_artwork_loader()
-        count = len(new_keys)
-        for i, key in enumerate(new_keys):
-            title_key = self.db.get_title_key(key)
-            try:
-                imdb_id = self.db.get_imdb_id(title_key)
-                print "%d/%d: imdb=%s %s" % (i, count, imdb_id, str(title_key))
-            except KeyError:
-                print "%d/%d: imdb=NOT FOUND %s" % (i, count, str(title_key))
-                imdb_id = self.db.add_metadata_from_mmdb(title_key, self.mmdb)
-                for j, media in enumerate(self.db.get_all_with_title_key(title_key)):
-                    log.info("  media #%d: %s" % (j, str(media)))
-            if imdb_id:
-                if not self.mmdb.contains_imdb_id(imdb_id):
-                    log.debug("Loading imdb_id %s" % imdb_id)
-                    self.mmdb.fetch_imdb_id(imdb_id)
-                if not artwork_loader.has_poster(imdb_id):
-                    log.debug("Loading posters for imdb_id %s" % imdb_id)
-                    self.mmdb.fetch_poster(imdb_id, artwork_loader)
-    
-    def parse_dirs(self, media_path_dict):
-        stored_keys = self.db.known_keys()
-        current_keys = set()
-        for path, flags in media_path_dict.iteritems():
-            print "Parsing path %s" % path
-            self.parse_dir(self.db, path, flags, current_keys)
-        self.db.saveStateToFile()
-        removed_keys = stored_keys - current_keys
-        new_keys = current_keys - stored_keys
-        return removed_keys, new_keys
-            
-    def parse_dir(self, db, path, flags="", current_keys=None):
         valid = self.get_video_extensions()
-        if self.options.media_root and not os.path.isabs(path):
-            path = os.path.join(self.options.media_root, path)
-        for pathname in iter_dir(path, valid):
-            if not db.is_current(pathname, known_keys=current_keys):
-                media_scan = db.add(pathname, flags, known_keys=current_keys)
-                log.debug("added: %s" % db.get(media_scan.pathname))
-#            entry = db.get(pathname)
-#            log.debug("guess %s: %s" % (pathname, entry.guess))
-#            log.debug("scan %s: %s" % (pathname, entry))
+        media_path_dict = {}
+        for path, flags in self.ini["media_paths"].iteritems():
+            if self.options.media_root and not os.path.isabs(path):
+                path = os.path.join(self.options.media_root, path)
+            media_path_dict[path] = flags
+        artwork_loader = self.get_artwork_loader()
+        self.db.update_metadata(media_path_dict, self.mmdb, artwork_loader, valid)
 
     def get_video_extensions(self):
         """Get list of known video extensions from enzyme"""
@@ -336,36 +279,3 @@ def setup(args):
 
 def get_global_config():
     return Config.global_config
-
-def iter_dir(path, valid_extensions=None, exclude=None, verbose=False, recurse=False):
-    if exclude is not None:
-        try:
-            exclude = re.compile(exclude)
-        except:
-            log.warning("Invalid regular expression %s" % exclude)
-            pass
-    videos = glob.glob(os.path.join(path, "*"))
-    for video in videos:
-        valid = False
-        if os.path.isdir(video):
-            if not video.endswith(".old"):
-                if exclude:
-                    match = cls.exclude.search(video)
-                    if match:
-                        log.debug("Skipping dir %s" % video)
-                        continue
-                log.debug("Checking dir %s" % video)
-                if recurse:
-                    iter_dir(video, valid_extensions, exclude, verbose, True)
-        elif os.path.isfile(video):
-            log.debug("Checking %s" % video)
-            if valid_extensions:
-                for ext in valid_extensions:
-                    if video.endswith(ext):
-                        valid = True
-                        log.debug("Found valid media: %s" % video)
-                        break
-            else:
-                valid = True
-            if valid:
-                yield video

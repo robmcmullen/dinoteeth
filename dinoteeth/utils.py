@@ -1,4 +1,4 @@
-import os, sys, glob, urllib, logging
+import os, sys, glob, urllib, logging, re
 from PIL import Image
 
 log = logging.getLogger("dinoteeth.utils")
@@ -144,3 +144,36 @@ class ArtworkLoader(object):
                 self.cache[imagepath] = (filename, image)
             return image
         return self.get_default_poster()
+
+def iter_dir(path, valid_extensions=None, exclude=None, verbose=False, recurse=False):
+    if exclude is not None:
+        try:
+            exclude = re.compile(exclude)
+        except:
+            log.warning("Invalid regular expression %s" % exclude)
+            pass
+    videos = glob.glob(os.path.join(path, "*"))
+    for video in videos:
+        valid = False
+        if os.path.isdir(video):
+            if not video.endswith(".old"):
+                if exclude:
+                    match = cls.exclude.search(video)
+                    if match:
+                        log.debug("Skipping dir %s" % video)
+                        continue
+                log.debug("Checking dir %s" % video)
+                if recurse:
+                    iter_dir(video, valid_extensions, exclude, verbose, True)
+        elif os.path.isfile(video):
+            log.debug("Checking %s" % video)
+            if valid_extensions:
+                for ext in valid_extensions:
+                    if video.endswith(ext):
+                        valid = True
+                        log.debug("Found valid media: %s" % video)
+                        break
+            else:
+                valid = True
+            if valid:
+                yield video

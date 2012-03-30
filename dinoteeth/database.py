@@ -1,6 +1,6 @@
 import os, collections, logging
 
-import utils
+from utils import iter_dir
 from serializer import PickleSerializerMixin, FilePickleDict
 from media import MediaScan
 from metadata import Company, Person, FilmSeries, MovieMetadata, SeriesMetadata
@@ -125,7 +125,9 @@ class MediaScanDatabase(PickleSerializerMixin):
                 if title_key in self.title_key_to_imdb:
                     imdb_id = self.title_key_to_imdb[title_key]
                     del self.title_key_to_imdb[title_key]
-                    del self.imdb_to_title_key[imdb_id]
+                    self.imdb_to_title_key[imdb_id].discard(title_key)
+                    if len(self.imdb_to_title_key[imdb_id]) == 0:
+                        del self.imdb_to_title_key[imdb_id]
                     mmdb.remove(imdb_id)
     
     def get(self, name):
@@ -152,11 +154,17 @@ class MediaScanDatabase(PickleSerializerMixin):
         return self.title_key_map.get(title_key, MediaScanList())
     
     def get_all_with_imdb_id(self, imdb_id):
-        title_key = self.imdb_to_title_key[imdb_id]
-        return self.get_all_with_title_key(title_key)
+        m = MediaScanList()
+        for title_key in self.imdb_to_title_key[imdb_id]:
+            m.extend(self.get_all_with_title_key(title_key))
+        return m
     
     def set_imdb_id(self, title_key, imdb_id):
-        self.imdb_to_title_key[imdb_id] = title_key
+        # Multiple title keys may share the same imdb_id! E.g.  "TopGear" and
+        # "Top Gear" mapping to the same show.
+        if imdb_id not in self.imdb_to_title_key:
+            self.imdb_to_title_key[imdb_id] = set()
+        self.imdb_to_title_key[imdb_id].add(title_key)
         self.title_key_to_imdb[title_key] = imdb_id
     
     def get_imdb_id(self, title_key):
@@ -192,6 +200,69 @@ class MediaScanDatabase(PickleSerializerMixin):
             self.set_imdb_id(title_key, imdb_id)
             return imdb_id
         return None
+    
+    def scan_files(self, path_iterable, flags, known_keys=None):
+        """Scan files from an iterable object and add them to the database
+        """
+        for pathname in path_iterable:
+            if not self.is_current(pathname, known_keys=known_keys):
+                media_scan = self.add(pathname, flags, known_keys=known_keys)
+                log.debug("added: %s" % self.get(media_scan.pathname))
+    
+    def scan_dirs(self, media_path_dict, valid_extensions=None):
+        stored_keys = self.known_keys()
+        current_keys = set()
+        for path, flags in media_path_dict.iteritems():
+            print "Parsing path %s" % path
+            dir_iterator = iter_dir(path, valid_extensions)
+            self.scan_files(dir_iterator, flags, current_keys)
+        self.saveStateToFile()
+        removed_keys = stored_keys - current_keys
+        new_keys = current_keys - stored_keys
+        return removed_keys, new_keys
+    
+    def update_metadata(self, media_path_dict, mmdb, artwork_loader, valid_extensions=None):
+        removed_keys, new_keys = self.scan_dirs(media_path_dict, valid_extensions)
+        if removed_keys:
+            print "Found files that have been removed! %s" % str(removed_keys)
+            self.remove_metadata(removed_keys, mmdb)
+        if new_keys:
+            print "Found files that have been added! %s" % str(new_keys)
+            self.add_metadata(new_keys, mmdb, artwork_loader)
+        self.fix_missing_metadata(mmdb)
+        self.saveStateToFile()
+        mmdb.saveStateToFile()
+    
+    def remove_metadata(self, removed_keys, mmdb):
+        for i, key in enumerate(removed_keys):
+            title_key = self.get_title_key(key)
+            try:
+                imdb_id = self.get_imdb_id(title_key)
+            except KeyError:
+                log.info("%d: orphaned title key %s has no imdb_id" % (i, str(title_key)))
+                continue
+            print "%d: removing imdb=%s %s" % (i, imdb_id, str(title_key))
+            self.remove(key, mmdb)
+    
+    def add_metadata(self, new_keys, mmdb, artwork_loader):
+        count = len(new_keys)
+        for i, key in enumerate(new_keys):
+            title_key = self.get_title_key(key)
+            try:
+                imdb_id = self.get_imdb_id(title_key)
+                print "%d/%d: imdb=%s %s" % (i, count, imdb_id, str(title_key))
+            except KeyError:
+                print "%d/%d: imdb=NOT FOUND %s" % (i, count, str(title_key))
+                imdb_id = self.add_metadata_from_mmdb(title_key, mmdb)
+                for j, media in enumerate(self.get_all_with_title_key(title_key)):
+                    log.info("  media #%d: %s" % (j, str(media)))
+            if imdb_id:
+                if not mmdb.contains_imdb_id(imdb_id):
+                    log.debug("Loading imdb_id %s" % imdb_id)
+                    mmdb.fetch_imdb_id(imdb_id)
+                if not artwork_loader.has_poster(imdb_id):
+                    log.debug("Loading posters for imdb_id %s" % imdb_id)
+                    mmdb.fetch_poster(imdb_id, artwork_loader)
 
 
 class FileProxy(object):
