@@ -211,13 +211,18 @@ class Config(object):
         if new_keys:
             print "Found files that have been added! %s" % str(new_keys)
             self.add_metadata(new_keys)
+        self.db.fix_missing_metadata(self.mmdb)
         self.db.saveStateToFile()
         self.mmdb.saveStateToFile()
     
     def remove_metadata(self, removed_keys):
         for i, key in enumerate(removed_keys):
             title_key = self.db.get_title_key(key)
-            imdb_id = self.db.get_imdb_id(title_key)
+            try:
+                imdb_id = self.db.get_imdb_id(title_key)
+            except KeyError:
+                log.info("%d: orphaned title key %s has no imdb_id" % (i, str(title_key)))
+                continue
             print "%d: removing imdb=%s %s" % (i, imdb_id, str(title_key))
             self.mmdb.remove(imdb_id)
             self.db.remove(key)
@@ -232,11 +237,7 @@ class Config(object):
                 print "%d/%d: imdb=%s %s" % (i, count, imdb_id, str(title_key))
             except KeyError:
                 print "%d/%d: imdb=NOT FOUND %s" % (i, count, str(title_key))
-                scans = self.db.get_all_with_title_key(title_key)
-                movie = self.mmdb.best_guess_from_media_scans(title_key, scans)
-                if movie:
-                    imdb_id = movie.id
-                    self.db.set_imdb_id(title_key, imdb_id)
+                imdb_id = self.db.add_metadata_from_mmdb(title_key, self.mmdb)
                 for j, media in enumerate(self.db.get_all_with_title_key(title_key)):
                     log.info("  media #%d: %s" % (j, str(media)))
             if imdb_id:

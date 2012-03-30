@@ -124,6 +124,11 @@ class MediaScanDatabase(PickleSerializerMixin):
         for k,v in self.title_key_map.iteritems():
             yield k
     
+    def iter_title_keys_without_imdb(self):
+        for k,v in self.title_key_map.iteritems():
+            if k not in self.title_key_to_imdb:
+                yield k
+    
     def get_all_with_title_key(self, title_key):
         return self.title_key_map.get(title_key, MediaScanList())
     
@@ -137,6 +142,20 @@ class MediaScanDatabase(PickleSerializerMixin):
     
     def get_imdb_id(self, title_key):
         return self.title_key_to_imdb[title_key]
+    
+    def fix_missing_metadata(self, mmdb):
+        for i, title_key in enumerate(self.iter_title_keys_without_imdb()):
+            print "%i: missing metadata for %s" % (i, str(title_key))
+            self.add_metadata_from_mmdb(title_key, mmdb)
+    
+    def add_metadata_from_mmdb(self, title_key, mmdb):
+        scans = self.get_all_with_title_key(title_key)
+        movie = mmdb.best_guess_from_media_scans(title_key, scans)
+        if movie:
+            imdb_id = movie.id
+            self.set_imdb_id(title_key, imdb_id)
+            return imdb_id
+        return None
 
 
 class FileProxy(object):
