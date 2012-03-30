@@ -773,6 +773,9 @@ class MovieMetadataDatabase(MetadataDatabase):
 
     def fetch_poster_tvdb(self, imdb_id, media, artwork_loader):
         show = self.tvdb_api.get_imdb_id(imdb_id)
+        if not show:
+            log.debug("No tvdb entry for %s: %s" % (imdb_id, unicode(media.title).encode('utf8')))
+            return
         self.fetch_poster_tvdb_series(show, imdb_id, media, artwork_loader)
         self.fetch_poster_tvdb_seasons(show, imdb_id, media, artwork_loader)
         
