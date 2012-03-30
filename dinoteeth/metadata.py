@@ -535,17 +535,17 @@ class SeriesMetadata(BaseMetadata):
             return
         seasons = len(show) - 1
         print "%s on %s, nominal runtime: %s" % (show.data['seriesname'], show.data['network'], show.data['runtime'])
-        print "Total seasons (not including specials): %d" % seasons
+#        print "Total seasons (not including specials): %d" % seasons
         for season in range(1,seasons+1):
             if season not in show:
                 continue
             episodes = len(show[season])
-            print "  Season #%d: %d episodes" % (season, episodes)
+#            print "  Season #%d: %d episodes" % (season, episodes)
             episode_keys = show[season].keys()
             s = dict()
             for episode in episode_keys:
                 e = show[season][episode]
-                print (u"    Episode #%s (abs=%s dvd=%s): %s" % (e['episodenumber'], e['absolute_number'], e['dvd_episodenumber'], e['episodename'])).encode('utf8')
+#                print (u"    Episode #%s (abs=%s dvd=%s): %s" % (e['episodenumber'], e['absolute_number'], e['dvd_episodenumber'], e['episodename'])).encode('utf8')
                 epnum = episode
                 for key in ['dvd_episodenumber', 'episodenumber']:
                     val = e.get(key, -1)
