@@ -324,7 +324,10 @@ class MovieMetadata(BaseMetadata):
         self.title = self.get_title(movie_obj, self.imdb_country)
         self.year = movie_obj['year']
         self.title_index = movie_obj.get('imdbIndex', "")
-        cert = self.get_tmdb_country_list(tmdb_obj['releases'], 'certification', self.iso_3166_1, if_empty="")
+        if tmdb_obj:
+            cert = self.get_tmdb_country_list(tmdb_obj['releases'], 'certification', self.iso_3166_1, if_empty="")
+        else:
+            cert = None
         if not cert:
             cert = self.get_imdb_country_list(movie_obj, 'certificates', self.imdb_country, skip="TV rating", if_empty="unrated")
         self.certificate = cert
@@ -356,7 +359,7 @@ class MovieMetadata(BaseMetadata):
         companies = self.get_obj(movie_obj, 'production companies')
         self.companies = db.prune_companies(companies)
         
-        if tmdb_obj['belongs_to_collection']:
+        if tmdb_obj and tmdb_obj['belongs_to_collection']:
             film_series = db.get_film_series(tmdb_obj['belongs_to_collection'])
         else:
             film_series = None
@@ -495,7 +498,7 @@ class SeriesMetadata(BaseMetadata):
         companies = self.get_obj(movie_obj, 'production companies')
         self.companies = db.prune_companies(companies)
         
-        if tvdb_obj.data['network']:
+        if tvdb_obj and tvdb_obj.data['network']:
             network = db.get_company_by_name(tvdb_obj.data['network'])
         else:
             distributors = self.get_obj(movie_obj, 'distributors')
@@ -527,11 +530,15 @@ class SeriesMetadata(BaseMetadata):
         return "\n".join(lines)
     
     def parse_tvdb_obj(self, show):
-        seasons = len(show) - 1
         self.seasons = dict()
+        if not show:
+            return
+        seasons = len(show) - 1
         print "%s on %s, nominal runtime: %s" % (show.data['seriesname'], show.data['network'], show.data['runtime'])
         print "Total seasons (not including specials): %d" % seasons
         for season in range(1,seasons+1):
+            if season not in show:
+                continue
             episodes = len(show[season])
             print "  Season #%d: %d episodes" % (season, episodes)
             episode_keys = show[season].keys()
