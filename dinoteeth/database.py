@@ -94,9 +94,12 @@ class MediaScanDatabase(PickleSerializerMixin):
     
     def add(self, pathname, flags="", known_keys=None):
         media_scan = MediaScan(pathname, flags=flags)
-        self.db[pathname] = media_scan
+        return self.add_media(media_scan, known_keys)
+    
+    def add_media(self, media_scan, known_keys=None):
+        self.db[media_scan.pathname] = media_scan
         if known_keys is not None:
-            known_keys.add(pathname)
+            known_keys.add(media_scan.pathname)
         key = media_scan.title_key
         if key not in self.title_key_map:
             self.title_key_map[key] = MediaScanList()
@@ -107,13 +110,22 @@ class MediaScanDatabase(PickleSerializerMixin):
     def remove(self, name):
         media_scan = self.db[name]
         del self.db[name]
+        self.remove_media(media_scan)
+    
+    def remove_media(self, media_scan):
         title_key = media_scan.title_key
         if title_key in self.title_key_map:
-            del self.title_key_map[title_key]
-        if title_key in self.title_key_to_imdb:
-            imdb_id = self.title_key_to_imdb[title_key]
-            del self.title_key_to_imdb[title_key]
-            del self.imdb_to_title_key[imdb_id]
+            media_scan_list = self.title_key_map[title_key]
+            media_scan_list.remove(media_scan)
+            if len(media_scan_list) == 0:
+                # If we've removed the last entry in the list for this title
+                # key, remove all traces of the title key and associated
+                # mappings
+                del self.title_key_map[title_key]
+                if title_key in self.title_key_to_imdb:
+                    imdb_id = self.title_key_to_imdb[title_key]
+                    del self.title_key_to_imdb[title_key]
+                    del self.imdb_to_title_key[imdb_id]
     
     def get(self, name):
         return self.db[name]
@@ -150,9 +162,26 @@ class MediaScanDatabase(PickleSerializerMixin):
         return self.title_key_to_imdb[title_key]
     
     def fix_missing_metadata(self, mmdb):
+        rescan = []
         for i, title_key in enumerate(self.iter_title_keys_without_imdb()):
             print "%i: missing metadata for %s" % (i, str(title_key))
-            self.add_metadata_from_mmdb(title_key, mmdb)
+            imdb_id = self.add_metadata_from_mmdb(title_key, mmdb)
+            if imdb_id is None:
+                rescan.append(title_key)
+        self.rescan_title_keys(rescan, mmdb)
+    
+    def rescan_title_keys(self, rescan_list, mmdb):
+        for title_key in rescan_list:
+            if title_key not in self.title_key_map:
+                continue
+            old_media = self.title_key_map[title_key]
+            for media_scan in old_media:
+                self.remove_media(media_scan)
+                log.info("  before reset: %s %s" % (str(media_scan.title_key), str(media_scan)))
+                # perform new guessit in case guessit has been updated
+                media_scan.reset()
+                self.add_media(media_scan)
+                log.info("  after reset: %s %s" % (str(media_scan.title_key), str(media_scan)))
     
     def add_metadata_from_mmdb(self, title_key, mmdb):
         scans = self.get_all_with_title_key(title_key)
