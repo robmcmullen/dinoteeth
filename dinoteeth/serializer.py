@@ -68,10 +68,11 @@ class PickleSerializerMixin(object):
     be cascaded, so that moving to version 1 to version 3 would call, in
     succession: convertVersion1ToVersion2 and convertVersion2ToVersion3
     """
-    def __init__(self, default_version=1, **kwargs):
+    def __init__(self, default_version=1, mock=False, **kwargs):
         self._ps_default_version = default_version
         self._ps_restored = False
         self._ps_database_filename = None
+        self._ps_mock = mock
     
     def getSerializedFilename(self):
         """Construct and return the filename to be used to store the pickled
@@ -171,6 +172,8 @@ class PickleSerializerMixin(object):
         except RuntimeError:
             filename = self._ps_database_filename
         if filename is None:
+            if self._ps_mock:
+                return
             raise RuntimeError("Serialized filename must be specified")
         
         if version is None:
