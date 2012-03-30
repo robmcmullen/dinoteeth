@@ -384,6 +384,8 @@ class MetadataDatabase(PickleSerializerMixin):
         self.db = data
 
 class MovieMetadataDatabase(MetadataDatabase):
+    imdb_allowed_kinds = ['movie', 'video movie', 'tv movie', 'series', 'tv series', 'tv mini series']
+    
     def __init__(self, imdb_cache_dir=None, tmdb_cache_dir=None, tvdb_cache_dir=None, language="en", default_version=4):
         MetadataDatabase.__init__(self, default_version)
         self.imdb_api = IMDbFileProxy(imdb_cache_dir)
@@ -514,11 +516,15 @@ class MovieMetadataDatabase(MetadataDatabase):
             imdb_id = result.imdb_id
             if imdb_id is None:
                 continue
-            if (find == "movie" or find == "series") and result['kind'] != "tv movie":
+            kind = result['kind']
+            if kind not in self.imdb_allowed_kinds:
+                log.warning("Unrecognized IMDb kind %s for %s; skipping" % (kind, imdb_id))
+                continue
+            elif (find == "movie" or find == "series") and kind != "tv movie":
                 # TV Movies are treated as possible matches for both movies
                 # and series
                 pass
-            elif find is not None and find not in result['kind']:
+            elif find is not None and find not in kind:
                 # Other than TV Movies, skip results different from the
                 # requested kind
                 #
