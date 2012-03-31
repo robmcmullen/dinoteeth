@@ -92,7 +92,7 @@ class Config(object):
         self.parser = parser
         (self.options, self.args) = self.parser.parse_known_args(extra_args)
         
-        debuglogs = ["dinoteeth.metadata", "dinoteeth.database", "dinoteeth.utils"]
+        debuglogs = ["dinoteeth.metadata", "dinoteeth.database"]
         if self.options.verbose == 1:
             level = logging.DEBUG
         elif self.options.verbose > 1:

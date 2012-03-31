@@ -932,13 +932,13 @@ class MovieMetadataDatabase(MetadataDatabase):
         for m in self.media.values():
             if media_categories is None or m.media_category in media_categories:
                 if m.match(credit, criteria):
-                    log.debug("matched %s" % m.title)
                     results.add(m)
         order = []
         for m in results:
             sort_key = m.sort_key(credit)
             order.append((sort_key, m))
         order.sort()
+        log.debug("sort key: %s; sorted: %s" % (credit, str([(item[0], item[1].title) for item in order])))
         return [item[1] for item in order]
 
     def get_credit_entries(self, media_categories, credit, criteria=None):

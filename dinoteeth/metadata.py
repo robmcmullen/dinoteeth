@@ -115,17 +115,17 @@ class BaseMetadata(object):
         if credit and hasattr(self, credit):
             if credit == "film_series":
                 sort_key = (self.film_series.name, self.film_number)
-            else:
-                sort_key = getattr(self, credit)
-            return sort_key
-        else:
-            t = self.title.lower()
-            for article in self.ignore_leading_articles:
-                a = "%s " % article.lower()
-                if t.startswith(a):
-                    t = t[len(a):] + ", %s" % t[0:len(article)]
-                    break
-            return (t, self.year, self.title_index)
+                return sort_key
+#            else:
+#                sort_key = getattr(self, credit)
+#            return sort_key
+        t = self.title.lower()
+        for article in self.ignore_leading_articles:
+            a = "%s " % article.lower()
+            if t.startswith(a):
+                t = t[len(a):] + ", %s" % t[0:len(article)]
+                break
+        return (t, self.year, self.title_index)
     
     def get_tmdb_country_list(self, tmdb_obj, key, country, if_empty="", coerce=None):
         for block in tmdb_obj:
@@ -222,7 +222,7 @@ class BaseMetadata(object):
             item = getattr(self, credit)
             if item is None:
                 return False
-            log.debug("match: credit=%s, item=%s %s" % (credit, item, type(item)))
+            log.debug("match: %s credit=%s, item=%s %s" % (self.title, credit, item, type(item)))
             if isinstance(item, basestring):
                 return criteria(item)
             elif isinstance(item, collections.Iterable):
