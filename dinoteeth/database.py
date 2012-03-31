@@ -171,26 +171,29 @@ class MediaScanDatabase(PickleSerializerMixin):
         return self.title_key_to_imdb[title_key]
     
     def fix_missing_imdb_id(self, mmdb):
-        rescan = []
+        rescan = set()
         for i, title_key in enumerate(self.iter_title_keys_without_imdb()):
             print "%i: missing metadata for %s" % (i, str(title_key))
             imdb_id = self.add_imdb_id(title_key, mmdb)
             if imdb_id is None:
-                rescan.append(title_key)
-        self.rescan_title_keys(rescan, mmdb)
+                rescan.add(title_key)
+        return self.rescan_title_keys(rescan, mmdb)
     
     def rescan_title_keys(self, rescan_list, mmdb):
+        valid_title_keys = set()
         for title_key in rescan_list:
             if title_key not in self.title_key_map:
                 continue
+            valid_title_keys.add(title_key)
             old_media = self.title_key_map[title_key]
             for media_scan in old_media:
-                self.remove_media(media_scan)
+                self.remove_media(media_scan, mmdb)
                 log.info("  before reset: %s %s" % (str(media_scan.title_key), str(media_scan)))
                 # perform new guessit in case guessit has been updated
                 media_scan.reset()
                 self.add_media(media_scan)
                 log.info("  after reset: %s %s" % (str(media_scan.title_key), str(media_scan)))
+        return valid_title_keys
     
     def add_imdb_id(self, title_key, mmdb):
         scans = self.get_all_with_title_key(title_key)
@@ -229,8 +232,8 @@ class MediaScanDatabase(PickleSerializerMixin):
         if new_keys:
             print "Found files that have been added! %s" % str(new_keys)
             self.add_metadata(new_keys, mmdb, artwork_loader)
-        self.fix_missing_imdb_id(mmdb)
-        self.update_new_title_keys_metadata(new_keys, mmdb)
+        missing_title_keys = self.fix_missing_imdb_id(mmdb)
+        self.update_new_title_keys_metadata(new_keys, missing_title_keys, mmdb)
         self.saveStateToFile()
         mmdb.saveStateToFile()
     
@@ -265,8 +268,8 @@ class MediaScanDatabase(PickleSerializerMixin):
                     log.debug("Loading posters for imdb_id %s" % imdb_id)
                     mmdb.fetch_poster(imdb_id, artwork_loader)
 
-    def update_new_title_keys_metadata(self, new_keys, mmdb):
-        new_title_keys = set()
+    def update_new_title_keys_metadata(self, new_keys, missing_title_keys, mmdb):
+        new_title_keys = set(missing_title_keys)
         for key in new_keys:
             media_scan = self.db[key]
             new_title_keys.add(media_scan.title_key)
