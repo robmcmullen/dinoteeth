@@ -265,6 +265,10 @@ class BaseMetadata(object):
         return len(self.seasons[season])
     
     def update_with_media_scans(self, media_scans):
+        for scan in media_scans:
+            if scan.mtime > self.date_added:
+                self.date_added = scan.mtime
+
         pass
     
     def get_audio_html(self, media_scan):
@@ -365,10 +369,12 @@ class MovieMetadata(BaseMetadata):
             film_series = None
         self.film_series = film_series
         self.film_number = 1
+        self.date_added = -1
     
     def update_with_media_scans(self, media_scans):
+        BaseMetadata.update_with_media_scans(self, media_scans)
         scan = media_scans.get_main_feature()
-        print (u"update_with_media_scans: %s: %s" % (self.title, scan)).encode('utf8')
+        log.debug(u"update_with_media_scans: %s: %s" % (self.title, scan)).encode('utf8')
         if scan is None:
             return
         self.film_number = scan.film_number
@@ -508,6 +514,7 @@ class SeriesMetadata(BaseMetadata):
             else:
                 network = None
         self.network = network
+        self.date_added = -1
         
         self.parse_tvdb_obj(tvdb_obj)
     

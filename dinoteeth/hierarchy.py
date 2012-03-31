@@ -1,4 +1,4 @@
-import os, sys, glob, re, logging
+import os, sys, glob, re, logging, time
 
 from model import MenuItem
 from metadata import MovieMetadata, SeriesMetadata
@@ -63,7 +63,7 @@ class TopLevelLookup(MMDBLookup):
         
     def iter_create(self):
         yield "All", MediaLookup(self.config, self.media_categories)
-        yield "Recently Added", MediaLookup(self.config, self.media_categories)
+        yield "Recently Added", RecentLookup(self.config, self.media_categories)
         
         # Note that all credit maps are the same because it is defined as a
         # class attribute in the base class
@@ -77,6 +77,29 @@ class TopLevelLookup(MMDBLookup):
             'imagegen': self.thumbnail_mosaic,
             }
 
+class RecentLookup(MMDBLookup):
+    def __init__(self, config, media_categories=None):
+        MMDBLookup.__init__(self, config)
+        self.media_categories = media_categories
+    
+    def get_media(self):
+        media = self.config.mmdb.get_media_by(self.media_categories, "date_added", "")
+        return media
+    
+    media = property(get_media)
+        
+    def iter_create(self):
+        yield "Last Week", MediaLookup(self.config, self.media_categories, "date_added", value=lambda m: m >= time.time() - 7*24*3600)
+        yield "Last Month", MediaLookup(self.config, self.media_categories, "date_added", value=lambda m: m >= time.time() - 31*24*3600)
+        yield "Last 2 Months", MediaLookup(self.config, self.media_categories, "date_added", value=lambda m: m >= time.time() - 62*24*3600)
+        yield "Last 3 Months", MediaLookup(self.config, self.media_categories, "date_added", value=lambda m: m >= time.time() - 93*24*3600)
+        yield "Last 6 Months", MediaLookup(self.config, self.media_categories, "date_added", value=lambda m: m >= time.time() - 182*24*3600)
+        yield "Last Year", MediaLookup(self.config, self.media_categories, "date_added", value=lambda m: m >= 365*24*3600)
+
+    def get_metadata(self):
+        return {
+            'imagegen': self.thumbnail_mosaic,
+            }
 
 class CreditLookup(MMDBLookup):
     def __init__(self, config, media_categories=None, credit=None):
