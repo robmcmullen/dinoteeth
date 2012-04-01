@@ -169,6 +169,9 @@ class MovieTopLevel(PlayableEntries):
         media_scans.sort()
         for m in media_scans:
             yield unicode(m.display_title), MediaPlay(self.config, self.imdb_id, m)
+            if m.is_paused():
+                yield "  Resume", MediaPlay(self.config, self.imdb_id, m, resume=True)
+                
     
     def get_metadata(self):
         return {
@@ -204,6 +207,8 @@ class SeriesEpisodes(PlayableEntries):
     def iter_create(self):
         for m in self.episodes:
             yield unicode(m.display_title), MediaPlay(self.config, self.imdb_id, m, season=self.season)
+            if m.is_paused():
+                yield "  Resume", MediaPlay(self.config, self.imdb_id, m, season=self.season, resume=True)
 
     def get_metadata(self):
         return {
@@ -213,17 +218,20 @@ class SeriesEpisodes(PlayableEntries):
 
 
 class MediaPlay(MMDBLookup):
-    def __init__(self, config, imdb_id, media_scan, season=None):
+    def __init__(self, config, imdb_id, media_scan, season=None, resume=False):
         MMDBLookup.__init__(self, config)
         self.imdb_id = imdb_id
         self.media_scan = media_scan
         self.season = season
+        self.resume = resume
         
     def play(self, config=None):
         self.config.prepare_for_external_app()
         client = self.config.get_media_client()
-        last_pos = client.play(self.media_scan)
+        last_pos = client.play(self.media_scan, resume=self.resume)
         self.config.restore_after_external_app()
+        self.media_scan.set_last_played(last_pos)
+        self.config.db.saveStateToFile()
     
     def get_metadata(self):
         return {

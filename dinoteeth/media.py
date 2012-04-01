@@ -1,4 +1,4 @@
-import os, sys, re, bisect
+import os, sys, re, bisect, time
 
 import utils
 
@@ -37,6 +37,8 @@ class MediaScan(object):
     def __init__(self, pathname, flags=None):
         self.pathname = pathname
         self.flags = flags
+        self.last_time = -1
+        self.last_pos = 0
         self.reset()
     
     def __str__(self):
@@ -246,6 +248,15 @@ class MediaScan(object):
     
     film_number = property(get_film_number)
 
+    def set_last_played(self, last_pos):
+        self.last_pos = last_pos
+        self.last_time = time.time()
+    
+    def is_paused(self):
+        return self.last_pos > 0
+    
+    def get_last_played(self):
+        return self.last_pos
 
 
 if __name__ == "__main__":

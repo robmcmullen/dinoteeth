@@ -7,11 +7,13 @@ class MPlayerClient(object):
     def __init__(self, config):
         self.config = config
         
-    def play(self, media_scan):
+    def play(self, media_scan, resume=False):
         escaped_path = utils.shell_escape_path(media_scan.pathname)
         opts = self.config.get_mplayer_opts(media_scan.pathname)
         self.audio_opts(opts, media_scan.selected_audio_id)
         self.subtitle_opts(opts, media_scan.selected_subtitle_id)
+        if resume:
+            self.resume_opts(opts, media_scan.get_last_played())
         last_pos = self.play_slave(escaped_path, opts)
         return last_pos
     
@@ -26,6 +28,13 @@ class MPlayerClient(object):
                 opts.extend(["-noautosub", "-nosub"])
             else:
                 opts.extend(["-sid", str(id)])
+    
+    def resume_opts(self, opts, last_pos):
+        # Some fuzziness in mplayer when restarting (perhaps can only start on
+        # I-frame?) so subtract some time and start from there.
+        last_pos -= 10
+        if last_pos > 0:
+            opts.extend(["-ss", str(last_pos)])
     
     def play_slave(self, escaped_path, opts):
         last_pos = 0
