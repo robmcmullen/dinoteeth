@@ -255,6 +255,9 @@ class MediaScan(object):
     def is_paused(self):
         return self.last_pos > 0
     
+    def paused_at_text(self):
+        return utils.time_format(int(self.last_pos))
+    
     def get_last_played(self):
         return self.last_pos
 

@@ -208,7 +208,7 @@ class SeriesEpisodes(PlayableEntries):
         for m in self.episodes:
             yield unicode(m.display_title), MediaPlay(self.config, self.imdb_id, m, season=self.season)
             if m.is_paused():
-                yield "  Resume", MediaPlay(self.config, self.imdb_id, m, season=self.season, resume=True)
+                yield "  Resume (Paused at %s)" % m.paused_at_text(), MediaPlay(self.config, self.imdb_id, m, season=self.season, resume=True)
 
     def get_metadata(self):
         return {
