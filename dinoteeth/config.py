@@ -61,7 +61,6 @@ class Config(object):
                           help="Media under this directory will be stored in the database as relative paths, permitting the structure to be moved to other machines without rebuilding the database")
         parser.add_argument("-l", "--language", action="store", default="en")
         parser.add_argument("-w", "--window", action="store_false", dest="fullscreen", default=True)
-        parser.add_argument("-p", "--photo-dir", action="append", dest="photo_dirs", default=None)
         parser.add_argument("--window-width", action="store", type=int, default=1280)
         parser.add_argument("--window-height", action="store", type=int, default=720)
         parser.add_argument("--top-margin", action="store", type=int, default=0)
@@ -189,9 +188,8 @@ class Config(object):
     
     def get_photo_database(self):
         db = PhotoDB()
-        if self.options.photo_dirs:
-            for path in self.options.photo_dirs:
-                db.add_path(path)
+        for path, flags in self.ini["photo_paths"].iteritems():
+            db.add_path(path)
         return db
     
     def get_metadata_database(self):

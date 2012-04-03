@@ -2,6 +2,7 @@ import os, sys, glob, re, logging, time
 
 from model import MenuItem, MenuPopulator
 from metadata import MovieMetadata, SeriesMetadata
+from photo import TopLevelPhoto
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -223,6 +224,7 @@ class RootMenu(MenuItem):
             ("Just Movies", TopLevelLookup(self.config, [MovieMetadata])),
             ("Just Series", TopLevelLookup(self.config, [SeriesMetadata])),
             ("Paused...", self.get_empty_root),
+            ("Photos", TopLevelPhoto(self.config)),
             ("Games", self.get_empty_root),
             ]
         self.categories = {}
@@ -233,7 +235,6 @@ class RootMenu(MenuItem):
             self.add(item)
             if hasattr(populator, 'get_metadata'):
                 item.metadata = populator.get_metadata()
-        self.create_photo_menu()
     
     def create_movies_genres(self, *args):
         results = self.db.find("movie")
@@ -249,17 +250,6 @@ class RootMenu(MenuItem):
             entry = MenuItem(genre, populate=subset.hierarchy)
             entry.metadata = {'imagegen': subset.thumbnail_mosaic}
             menu.add(entry)
-    
-    def create_photo_menu(self, *args):
-        menu = MenuItem("Photos")
-        #menu.metadata = {'imagegen': photodb.thumbnail_mosaic}
-        self.add(menu)
-        entry = MenuItem("By Folder", populate=self.config.pdb.hierarchy)
-        #entry.metadata = {'imagegen': photodb.thumbnail_mosaic}
-        menu.add(entry)
-        entry = MenuItem("Slideshows")
-        #entry.metadata = {'imagegen': results.thumbnail_mosaic}
-        menu.add(entry)
     
     def get_empty_root(self, parent):
         raise StopIteration
