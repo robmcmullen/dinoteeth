@@ -34,6 +34,7 @@ def enzyme_extensions():
 
 class MediaScan(object):
     ignore_leading_articles = ["a", "an", "the"]
+    percent_considered_complete = 0.96
     
     def __init__(self, pathname, flags=None):
         self.pathname = pathname
@@ -258,7 +259,9 @@ class MediaScan(object):
             return obj
         return None
 
-    def set_last_played(self, last_pos):
+    def set_last_position(self, last_pos):
+        if last_pos >= self.percent_considered_complete * self.length:
+            last_pos = -1.0
         from dinoteeth.standalone.models import LastPlayed
         obj = self.get_database_object()
         if obj:
@@ -277,10 +280,10 @@ class MediaScan(object):
         return False
     
     def paused_at_text(self):
-        seconds = int(self.get_last_played())
+        seconds = int(self.get_last_position())
         return utils.time_format(seconds)
     
-    def get_last_played(self):
+    def get_last_position(self):
         obj = self.get_database_object()
         if obj:
             seconds = obj.position

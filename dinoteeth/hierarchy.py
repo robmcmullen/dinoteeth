@@ -228,10 +228,13 @@ class MediaPlay(MMDBLookup):
     def play(self, config=None):
         self.config.prepare_for_external_app()
         client = self.config.get_media_client()
-        last_pos = client.play(self.media_scan, resume=self.resume)
+        if self.resume:
+            resume_at = self.media_scan.get_last_position()
+        else:
+            resume_at = 0.0
+        last_pos = client.play(self.media_scan, resume_at=resume_at)
         self.config.restore_after_external_app()
-        self.media_scan.set_last_played(last_pos)
-        self.config.db.saveStateToFile()
+        self.media_scan.set_last_position(last_pos)
     
     def get_metadata(self):
         return {

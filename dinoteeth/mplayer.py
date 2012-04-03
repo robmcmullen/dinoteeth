@@ -7,13 +7,13 @@ class MPlayerClient(object):
     def __init__(self, config):
         self.config = config
         
-    def play(self, media_scan, resume=False):
+    def play(self, media_scan, resume_at=0.0):
         escaped_path = utils.shell_escape_path(media_scan.pathname)
         opts = self.config.get_mplayer_opts(media_scan.pathname)
         self.audio_opts(opts, media_scan.selected_audio_id)
         self.subtitle_opts(opts, media_scan.selected_subtitle_id)
-        if resume:
-            self.resume_opts(opts, media_scan.get_last_played())
+        if resume_at > 0:
+            self.resume_opts(opts, resume_at)
         last_pos = self.play_slave(escaped_path, opts)
         return last_pos
     
