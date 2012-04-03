@@ -1,4 +1,5 @@
 import os, sys, re, bisect, time
+from datetime import datetime
 
 import utils
 
@@ -37,8 +38,6 @@ class MediaScan(object):
     def __init__(self, pathname, flags=None):
         self.pathname = pathname
         self.flags = flags
-        self.last_time = -1
-        self.last_pos = 0
         self.reset()
     
     def __str__(self):
@@ -248,18 +247,46 @@ class MediaScan(object):
     
     film_number = property(get_film_number)
 
+    # ORM interface
+
+    def get_database_object(self):
+        from dinoteeth.standalone.models import LastPlayed
+        objs = LastPlayed.objects.filter(pathname=self.pathname)
+        if len(objs):
+            obj = objs[0]
+            print "FOUND!!!", obj
+            return obj
+        return None
+
     def set_last_played(self, last_pos):
-        self.last_pos = last_pos
-        self.last_time = time.time()
+        from dinoteeth.standalone.models import LastPlayed
+        obj = self.get_database_object()
+        if obj:
+            obj.play_date = datetime.utcnow()
+            obj.position = last_pos
+        else:
+            obj = LastPlayed(pathname=self.pathname, play_date=datetime.utcnow(),
+                             position=last_pos)
+            print "CREATING!!!", obj
+        obj.save()
     
     def is_paused(self):
-        return self.last_pos > 0
+        obj = self.get_database_object()
+        if obj:
+            return obj.position > 0
+        return False
     
     def paused_at_text(self):
-        return utils.time_format(int(self.last_pos))
+        seconds = int(self.get_last_played())
+        return utils.time_format(seconds)
     
     def get_last_played(self):
-        return self.last_pos
+        obj = self.get_database_object()
+        if obj:
+            seconds = obj.position
+        else:
+            seconds = 0.0
+        return seconds
 
 
 if __name__ == "__main__":

@@ -51,6 +51,7 @@ class Config(object):
                           help="Default metadata/database root directory for those databases and the image directories that don't specify a full path")
         parser.add_argument("--db", action="store", dest="database", default="dinoteeth.db")
         parser.add_argument("--mmdb", action="store", dest="mmdb", default="dinoteeth.mmdb")
+        parser.add_argument("--stats-db", action="store", default="dinoteeth-stats.db")
         parser.add_argument("--imdb-cache-dir", action="store", default="imdb-cache")
         parser.add_argument("--tmdb-cache-dir", action="store", default="tmdb-cache")
         parser.add_argument("--tvdb-cache-dir", action="store", default="tvdb-cache")
@@ -108,6 +109,7 @@ class Config(object):
         
         self.db = self.get_media_database()
         self.mmdb = self.get_metadata_database()
+        self.init_orm_databases()
         self.theme = self.get_menu_theme()
         if self.args:
             for path in self.args:
@@ -213,6 +215,11 @@ class Config(object):
         artwork_loader = self.get_artwork_loader()
         self.db.update_metadata(media_path_dict, self.mmdb, artwork_loader, valid)
 
+    def init_orm_databases(self):
+        db = self.get_metadata_pathname(self.options.stats_db)
+        from dinoteeth.standalone.conf import init_orm
+        init_orm(db)
+    
     def get_video_extensions(self):
         """Get list of known video extensions from enzyme"""
         return enzyme_extensions()
