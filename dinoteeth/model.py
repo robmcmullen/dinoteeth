@@ -202,10 +202,10 @@ class MenuPopulator(object):
             yield item
     
     def iter_create(self):
-        raise StopIteration
+        return []
     
     def iter_image_path(self, artwork_loader):
-        raise RuntimeError("abstract method must be overridden in subclass")
+        return []
 
     def thumbnail_mosaic(self, artwork_loader, thumbnail_factory, x, y, w, h):
         min_x = x

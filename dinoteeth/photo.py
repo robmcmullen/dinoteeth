@@ -26,18 +26,25 @@ class PhotoDB(object):
 
 
 class TopLevelPhoto(MenuPopulator):
-    def iter_image_path(self, artwork_loader):
-        raise StopIteration
-        
     def iter_create(self):
         yield "By Folder", PhotoFolderLookup(self.config)
         yield "Slideshows", SlideshowLookup(self.config)
+
+    def get_metadata(self):
+        return {
+            'imagegen': self.thumbnail_mosaic,
+            }
 
 class PhotoFolderLookup(MenuPopulator):
     def iter_create(self):
         db = self.config.get_photo_database()
         for path in db.paths:
-            yield os.path.basename(path), PhotoFolder(self.config, path)
+            yield utils.decode_title_text(os.path.basename(path)), PhotoFolder(self.config, path)
+
+    def get_metadata(self):
+        return {
+            'imagegen': self.thumbnail_mosaic,
+            }
 
 class PhotoFolder(MenuPopulator):
     valid_image_types = ['.jpg', '.png']
@@ -60,7 +67,7 @@ class PhotoFolder(MenuPopulator):
         dirs.sort()
         for path in dirs:
             if os.path.isdir(path):
-                yield os.path.basename(path), PhotoFolder(self.config, path)
+                yield utils.decode_title_text(os.path.basename(path)), PhotoFolder(self.config, path)
 
     def play(self, config=None):
         self.config.prepare_for_external_app()
