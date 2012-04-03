@@ -58,6 +58,12 @@ def time_since(d, now=None):
     if days < 2:
         return "yesterday"
     if days < 7:
+        # FIXME: add day of the week when it's less than a week's time, e.g.
+        # when the current day is Thursday, show "this past Tuesday" (or
+        # maybe just "Tuesday"), continuing back until "last Friday".  This
+        # mode won't show a week ago Thursday.  It could depend on the locale
+        # as to which day of the week starts the week (Sunday or Monday),
+        # which would change the modifier from "this past" to "last"
         return "this past week"
     if days < 31:
         return "%d days ago" % int(days)
