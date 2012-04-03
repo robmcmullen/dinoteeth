@@ -1,4 +1,6 @@
-import os, sys, glob, bisect
+import os, sys, glob, bisect, logging
+
+log = logging.getLogger("dinoteeth.model")
 
 
 class MenuItem(object):
@@ -213,7 +215,11 @@ class MenuPopulator(object):
         nominal_x = 100
         nominal_y = 140
         for imgpath in self.iter_image_path(artwork_loader):
-            thumb_image = thumbnail_factory.get_image(imgpath)
+            try:
+                thumb_image = thumbnail_factory.get_image(imgpath)
+            except:
+                log.warning("Failed creating thumbnail image for %s" % imgpath)
+                continue
             if x + nominal_x > max_x:
                 x = min_x
                 y -= nominal_y
