@@ -1,4 +1,6 @@
 import os, sys, glob, urllib, logging, re
+from datetime import datetime, timedelta
+
 from PIL import Image
 
 log = logging.getLogger("dinoteeth.utils")
@@ -19,6 +21,57 @@ def time_format(seconds):
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
     return "%d:%02d:%02d" % (h, m, s)
+
+def time_since(d, now=None):
+    """Fuzzy date printer, adapted from:
+    
+    http://jehiah.cz/a/printing-relative-dates-in-python
+    http://stackoverflow.com/questions/11/how-do-i-calculate-relative-time
+    """
+    if not isinstance(d, datetime):
+        d = datetime(d.year, d.month, d.day)
+    if now and not isinstance(now, datetime):
+        now = datetime(now.year, now.month, now.day)
+    if not now:
+        now = datetime.utcnow()
+    delta = now - d
+    minutes = delta.days * 24 * 60 + delta.seconds / 60
+    
+    if minutes < 0:
+        return "not yet"
+    if minutes < 1:
+        return "just now"
+    if minutes < 2:
+        return "a minute ago"
+    if minutes < 5:
+        return "a few minutes ago"
+    if minutes < 45:
+        return "%d minutes ago" % int(minutes / 60)
+    if minutes < 90:
+        return "an hour ago"
+    if minutes < 5 * 60:
+        return "a few hours ago"
+    
+    days = minutes / 24 / 60
+    if days < 1:
+        return "%d hours ago" % int(minutes / 60)
+    if days < 2:
+        return "yesterday"
+    if days < 7:
+        return "this past week"
+    if days < 31:
+        return "%d days ago" % int(days)
+    
+    months = days / 30
+    if months <= 1:
+        return "one month ago"
+    if months < 12:
+        return "%d months ago" % months
+    
+    years = months / 12
+    if years <= 1:
+        return "one year ago"
+    return "%d years ago" % years
 
 def canonical_filename(title, film_series, season=-1, episode_char='e', episode=-1, episode_name='', ext="mkv"):
     name = []
@@ -177,3 +230,13 @@ def iter_dir(path, valid_extensions=None, exclude=None, verbose=False, recurse=F
                 valid = True
             if valid:
                 yield video
+
+if __name__ == "__main__":
+    print time_since(datetime(2012,4,3), datetime(2012,4,3))
+    print time_since(datetime(2012,4,2), datetime(2012,4,3))
+    print time_since(datetime(2012,3,30), datetime(2012,4,3))
+    print time_since(datetime(2012,3,12), datetime(2012,4,3))
+    print time_since(datetime(2012,2,12), datetime(2012,4,3))
+    print time_since(datetime(2012,2,12), datetime(2012,4,3))
+    print time_since(datetime(2012,1,12), datetime(2012,4,3))
+    print time_since(datetime(2011,1,12), datetime(2012,4,3))
