@@ -190,3 +190,46 @@ class Toggle(MenuItem):
     
     def is_toggle(self):
         return True
+
+
+class MenuPopulator(object):
+    autosort = False
+    
+    def __init__(self, config):
+        self.config = config
+        self.children = []
+    
+    def __call__(self, parent):
+        items = []
+        for title, populator in self.iter_create():
+            items.append((title, populator))
+        if self.autosort:
+            items.sort()
+        for title, populator in items:
+            if hasattr(populator, 'play'):
+                item = MenuItem(title, action=populator.play)
+            else:
+                item = MenuItem(title, populate_children=populator)
+            if hasattr(populator, 'get_metadata'):
+                item.metadata = populator.get_metadata()
+            yield item
+    
+    def iter_image_path(self, artwork_loader):
+        raise RuntimeError("abstract method must be overridden in subclass")
+
+    def thumbnail_mosaic(self, artwork_loader, thumbnail_factory, x, y, w, h):
+        min_x = x
+        max_x = x + w
+        min_y = y
+        y = y + h
+        nominal_x = 100
+        nominal_y = 140
+        for imgpath in self.iter_image_path(artwork_loader):
+            thumb_image = thumbnail_factory.get_image(imgpath)
+            if x + nominal_x > max_x:
+                x = min_x
+                y -= nominal_y
+            if y < min_y:
+                break
+            thumb_image.blit(x + (nominal_x - thumb_image.width) / 2, y - nominal_y + (nominal_y - thumb_image.height) / 2, 0)
+            x += nominal_x

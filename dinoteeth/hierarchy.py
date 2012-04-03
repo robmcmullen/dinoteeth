@@ -1,6 +1,6 @@
 import os, sys, glob, re, logging, time
 
-from model import MenuItem
+from model import MenuItem, MenuPopulator
 from metadata import MovieMetadata, SeriesMetadata
 
 logging.basicConfig(level=logging.WARNING)
@@ -8,50 +8,16 @@ logging.basicConfig(level=logging.WARNING)
 log = logging.getLogger("dinoteeth.hierarchy")
 
 
-class MMDBLookup(object):
-    autosort = False
-    def __init__(self, config):
-        self.config = config
-        self.children = []
-    
-    def __call__(self, parent):
-        items = []
-        for title, populator in self.iter_create():
-            items.append((title, populator))
-        if self.autosort:
-            items.sort()
-        for title, populator in items:
-            if hasattr(populator, 'play'):
-                item = MenuItem(title, action=populator.play)
-            else:
-                item = MenuItem(title, populate_children=populator)
-            if hasattr(populator, 'get_metadata'):
-                item.metadata = populator.get_metadata()
-            yield item
-
-    def thumbnail_mosaic(self, artwork_loader, thumbnail_factory, x, y, w, h):
-        min_x = x
-        max_x = x + w
-        min_y = y
-        y = y + h
-        nominal_x = 100
-        nominal_y = 140
+class MMDBPopulator(MenuPopulator):
+    def iter_image_path(self, artwork_loader):
         for media in self.media:
             imgpath = artwork_loader.get_poster_filename(media.id)
             if imgpath is not None:
-                thumb_image = thumbnail_factory.get_image(imgpath)
-                if x + nominal_x > max_x:
-                    x = min_x
-                    y -= nominal_y
-                if y < min_y:
-                    break
-                thumb_image.blit(x + (nominal_x - thumb_image.width) / 2, y - nominal_y + (nominal_y - thumb_image.height) / 2, 0)
-                x += nominal_x
+                yield imgpath
 
-
-class TopLevelLookup(MMDBLookup):
+class TopLevelLookup(MMDBPopulator):
     def __init__(self, config, metadata_classes):
-        MMDBLookup.__init__(self, config)
+        MMDBPopulator.__init__(self, config)
         self.metadata_classes = metadata_classes
         self.media_categories = [m.media_category for m in metadata_classes]
     
@@ -77,9 +43,9 @@ class TopLevelLookup(MMDBLookup):
             'imagegen': self.thumbnail_mosaic,
             }
 
-class RecentLookup(MMDBLookup):
+class RecentLookup(MMDBPopulator):
     def __init__(self, config, media_categories=None):
-        MMDBLookup.__init__(self, config)
+        MMDBPopulator.__init__(self, config)
         self.media_categories = media_categories
     
     def get_media(self):
@@ -101,9 +67,9 @@ class RecentLookup(MMDBLookup):
             'imagegen': self.thumbnail_mosaic,
             }
 
-class CreditLookup(MMDBLookup):
+class CreditLookup(MMDBPopulator):
     def __init__(self, config, media_categories=None, credit=None):
-        MMDBLookup.__init__(self, config)
+        MMDBPopulator.__init__(self, config)
         self.media_categories = media_categories
         self.credit = credit
     
@@ -120,9 +86,9 @@ class CreditLookup(MMDBLookup):
             yield name, MediaLookup(self.config, self.media_categories, self.credit, item)
 
 
-class MediaLookup(MMDBLookup):
+class MediaLookup(MMDBPopulator):
     def __init__(self, config, media_categories=None, credit=None, value=""):
-        MMDBLookup.__init__(self, config)
+        MMDBPopulator.__init__(self, config)
         self.media_categories = media_categories
         self.credit = credit
         self.value = value
@@ -147,7 +113,7 @@ class MediaLookup(MMDBLookup):
             }
 
 
-class PlayableEntries(MMDBLookup):
+class PlayableEntries(MMDBPopulator):
     def __call__(self, parent):
         items = []
         for title, playable in self.iter_create():
@@ -161,7 +127,7 @@ class PlayableEntries(MMDBLookup):
 
 class MovieTopLevel(PlayableEntries):
     def __init__(self, config, imdb_id):
-        MMDBLookup.__init__(self, config)
+        MMDBPopulator.__init__(self, config)
         self.imdb_id = imdb_id
         
     def iter_create(self):
@@ -179,9 +145,9 @@ class MovieTopLevel(PlayableEntries):
             }
 
 
-class SeriesTopLevel(MMDBLookup):
+class SeriesTopLevel(MMDBPopulator):
     def __init__(self, config, imdb_id):
-        MMDBLookup.__init__(self, config)
+        MMDBPopulator.__init__(self, config)
         self.imdb_id = imdb_id
         
     def iter_create(self):
@@ -199,7 +165,7 @@ class SeriesTopLevel(MMDBLookup):
 
 class SeriesEpisodes(PlayableEntries):
     def __init__(self, config, imdb_id, season, episodes):
-        MMDBLookup.__init__(self, config)
+        PlayableEntries.__init__(self, config)
         self.imdb_id = imdb_id
         self.season = season
         self.episodes = episodes
@@ -217,9 +183,9 @@ class SeriesEpisodes(PlayableEntries):
             }
 
 
-class MediaPlay(MMDBLookup):
+class MediaPlay(MMDBPopulator):
     def __init__(self, config, imdb_id, media_scan, season=None, resume=False):
-        MMDBLookup.__init__(self, config)
+        MMDBPopulator.__init__(self, config)
         self.imdb_id = imdb_id
         self.media_scan = media_scan
         self.season = season
