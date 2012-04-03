@@ -213,7 +213,7 @@ class MediaPlay(MMDBPopulator):
 
 class RootMenu(MenuItem):
     def __init__(self, config):
-        MenuItem.__init__(self, "Dinoteeth Media Launcher", theme=config.theme)
+        MenuItem.__init__(self, "Dinoteeth Media Launcher")
         self.config = config
         self.metadata = {
             'image': 'background-merged.jpg',

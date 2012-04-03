@@ -2,14 +2,13 @@ import os, sys, glob, bisect
 
 
 class MenuItem(object):
-    def __init__(self, title, enabled=True, action=None, populate=None, populate_children=None, media=None, theme=None, metadata=None, **kwargs):
+    def __init__(self, title, enabled=True, action=None, populate=None, populate_children=None, media=None, metadata=None, **kwargs):
         self.title = title
         self.enabled = enabled
         self.action = action
         self.populate = populate
         self.populate_children = populate_children
         self.media = media
-        self.theme = theme
         self.parent = None
         self.metadata = metadata
         self.populated = False
@@ -27,14 +26,6 @@ class MenuItem(object):
         print "%s%s" % (level, self.title)
         for child in self.children:
             child.pprint(level + "  ")
-    
-    def get_theme(self):
-        item = self
-        while item.theme is None:
-            item = item.parent
-            if item is None:
-                raise RuntimeError("Theme not found in menu hierarchy")
-        return item.theme
     
     def do_action(self, **kwargs):
         if self.enabled:
@@ -57,12 +48,7 @@ class MenuItem(object):
     
     def do_populate(self):
         if not self.populated:
-            if self.populate:
-                print "populating!"
-                hierarchy = self.populate()
-                theme = self.get_theme()
-                theme.add_menu_hierarchy(self, hierarchy)
-            elif self.populate_children:
+            if self.populate_children:
                 print "populating children!"
                 for child in self.populate_children(self):
                     self.add(child)

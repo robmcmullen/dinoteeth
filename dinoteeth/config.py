@@ -7,7 +7,6 @@ from dinoteeth.third_party.configobj import ConfigObj
 
 from view import *
 from database import MovieMetadataDatabase, MediaScanDatabase
-from theme import MenuTheme
 from mplayer import MPlayerClient
 from utils import decode_title_text, ArtworkLoader
 from hierarchy import RootMenu
@@ -109,7 +108,6 @@ class Config(object):
         self.db = self.get_media_database()
         self.mmdb = self.get_metadata_database()
         self.init_orm_databases()
-        self.theme = self.get_menu_theme()
         if self.args:
             for path in self.args:
                 if path not in self.ini["media_paths"]:
@@ -248,9 +246,6 @@ class Config(object):
 
     def get_detail_renderer(self, window, box, fonts):
         return DetailRenderer(window, box, fonts, self)
-    
-    def get_menu_theme(self):
-        return MenuTheme()
     
     def get_artwork_loader(self):
         if not hasattr(self, "artwork_loader"):
