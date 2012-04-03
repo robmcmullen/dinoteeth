@@ -317,6 +317,21 @@ class BaseMetadata(object):
 %s""" % (audio, subtitle)
         return text
 
+    def get_last_played_pyglet_text(self, media_scan):
+        date, position = media_scan.get_last_played_stats()
+        text = u""
+        if date is not None:
+            if position is not None:
+                text += """{}\n
+{}
+{bold True}Paused:{bold False} %s{}
+{bold True}Paused At:{bold False} %s{}\n""" % (date, position)
+            else:
+                text += """{}\n
+{}
+{bold True}Last Played:{bold False} %s{}\n""" % date
+        return text
+
 
 class MovieMetadata(BaseMetadata):
     media_category = "movies"
@@ -452,6 +467,7 @@ class MovieMetadata(BaseMetadata):
                           "release date goes here", genres)
         if media_scan:
             text += self.get_audio_pyglet_text(media_scan)
+            text += self.get_last_played_pyglet_text(media_scan)
         else:
             text += u"""{}
 {bold True}Directed by:{bold False} %s{}
@@ -645,6 +661,7 @@ class SeriesMetadata(BaseMetadata):
             except KeyError:
                 pass
             text += self.get_audio_pyglet_text(media_scan)
+            text += self.get_last_played_pyglet_text(media_scan)
         else:
             text += """{}
 %s{}

@@ -290,6 +290,16 @@ class MediaScan(object):
         else:
             seconds = 0.0
         return seconds
+    
+    def get_last_played_stats(self):
+        obj = self.get_database_object()
+        if obj:
+            date = utils.time_since(obj.play_date)
+            if obj.position > 0:
+                return date, "%2d%%, elapsed time %s" % (obj.position * 100 / self.length, utils.time_format(obj.position))
+            else:
+                return date, None
+        return None, "Never played"
 
 
 if __name__ == "__main__":
