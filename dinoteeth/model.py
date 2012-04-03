@@ -206,13 +206,15 @@ class MenuPopulator(object):
         if self.autosort:
             items.sort()
         for title, populator in items:
+            item = MenuItem(title, populate_children=populator)
             if hasattr(populator, 'play'):
-                item = MenuItem(title, action=populator.play)
-            else:
-                item = MenuItem(title, populate_children=populator)
+                item.action=populator.play
             if hasattr(populator, 'get_metadata'):
                 item.metadata = populator.get_metadata()
             yield item
+    
+    def iter_create(self):
+        raise StopIteration
     
     def iter_image_path(self, artwork_loader):
         raise RuntimeError("abstract method must be overridden in subclass")
