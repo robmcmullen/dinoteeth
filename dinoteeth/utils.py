@@ -49,22 +49,21 @@ def time_since(d, now=None):
         return "%d minutes ago" % int(minutes / 60)
     if minutes < 90:
         return "an hour ago"
-    if minutes < 5 * 60:
-        return "a few hours ago"
     
-    days = minutes / 24 / 60
-    if days < 1:
-        return "%d hours ago" % int(minutes / 60)
+    hours = minutes / 60;
+    if hours < 4:
+        return "a few hours ago"
+    if hours < 24:
+        return "%d hours ago" % int(hours)
+    
+    midnight = datetime(now.year, now.month, now.day)
+    hours_since_midnight = now - midnight
+    days_since_midnight = delta - hours_since_midnight
+    days = days_since_midnight.days + 1
     if days < 2:
         return "yesterday"
     if days < 7:
-        # FIXME: add day of the week when it's less than a week's time, e.g.
-        # when the current day is Thursday, show "this past Tuesday" (or
-        # maybe just "Tuesday"), continuing back until "last Friday".  This
-        # mode won't show a week ago Thursday.  It could depend on the locale
-        # as to which day of the week starts the week (Sunday or Monday),
-        # which would change the modifier from "this past" to "last"
-        return "this past week"
+        return d.strftime("%A")
     if days < 31:
         return "%d days ago" % int(days)
     
@@ -238,11 +237,24 @@ def iter_dir(path, valid_extensions=None, exclude=None, verbose=False, recurse=F
                 yield video
 
 if __name__ == "__main__":
-    print time_since(datetime(2012,4,3), datetime(2012,4,3))
-    print time_since(datetime(2012,4,2), datetime(2012,4,3))
-    print time_since(datetime(2012,3,30), datetime(2012,4,3))
-    print time_since(datetime(2012,3,12), datetime(2012,4,3))
-    print time_since(datetime(2012,2,12), datetime(2012,4,3))
-    print time_since(datetime(2012,2,12), datetime(2012,4,3))
-    print time_since(datetime(2012,1,12), datetime(2012,4,3))
-    print time_since(datetime(2011,1,12), datetime(2012,4,3))
+    now = datetime(2012,4,3,12,34,56)
+    print "Now: %s" % now.strftime("%A, %d %B %Y %I:%M%p")
+    for d in [
+        datetime(2012,4,3,1,23,45),
+        datetime(2012,4,2,12,23,45),
+        datetime(2012,4,2,1,23,45),
+        datetime(2012,4,1,23,1,2),
+        datetime(2012,4,1,1,23,45),
+        datetime(2012,3,31,1,23,45),
+        datetime(2012,3,30,1,23,45),
+        datetime(2012,3,29,1,23,45),
+        datetime(2012,3,28,1,23,45),
+        datetime(2012,3,27,1,23,45),
+        datetime(2012,3,12),
+        datetime(2012,3,3),
+        datetime(2012,2,12),
+        datetime(2012,2,2),
+        datetime(2012,1,12),
+        datetime(2011,1,12),
+        ]:
+        print "%s: %s" % (d.strftime("%A, %d %B %Y %I:%M%p"), time_since(d, now))
