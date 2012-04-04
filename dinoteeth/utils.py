@@ -46,7 +46,7 @@ def time_since(d, now=None):
     if minutes < 5:
         return "a few minutes ago"
     if minutes < 45:
-        return "%d minutes ago" % int(minutes / 60)
+        return "%d minutes ago" % int(minutes)
     if minutes < 90:
         return "an hour ago"
     
