@@ -255,7 +255,7 @@ class MediaScan(object):
         objs = LastPlayed.objects.filter(pathname=self.pathname)
         if len(objs):
             obj = objs[0]
-            print "FOUND!!!", obj
+#            print "FOUND!!!", obj
             return obj
         return None
 
@@ -270,7 +270,7 @@ class MediaScan(object):
         else:
             obj = LastPlayed(pathname=self.pathname, play_date=datetime.utcnow(),
                              position=last_pos)
-            print "CREATING!!!", obj
+#            print "CREATING!!!", obj
         obj.save()
     
     def is_paused(self):
