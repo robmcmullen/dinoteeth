@@ -236,21 +236,6 @@ class RootMenu(MenuItem):
             if hasattr(populator, 'get_metadata'):
                 item.metadata = populator.get_metadata()
     
-    def create_movies_genres(self, *args):
-        results = self.db.find("movie")
-        menu = MenuItem("Movies")
-        menu.metadata = {'imagegen': results.thumbnail_mosaic}
-        self.add(menu)
-        entry = MenuItem("All", populate=self.get_movies_root)
-        entry.metadata = {'imagegen': results.thumbnail_mosaic}
-        menu.add(entry)
-        genres = sorted(list(results.all_metadata('genres')))
-        for genre in genres:
-            subset = results.subset_by_metadata('genres', genre)
-            entry = MenuItem(genre, populate=subset.hierarchy)
-            entry.metadata = {'imagegen': subset.thumbnail_mosaic}
-            menu.add(entry)
-    
     def get_empty_root(self, parent):
         raise StopIteration
     

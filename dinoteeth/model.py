@@ -4,11 +4,10 @@ log = logging.getLogger("dinoteeth.model")
 
 
 class MenuItem(object):
-    def __init__(self, title, enabled=True, action=None, populate=None, populate_children=None, media=None, metadata=None, **kwargs):
+    def __init__(self, title, enabled=True, action=None, populate_children=None, media=None, metadata=None, **kwargs):
         self.title = title
         self.enabled = enabled
         self.action = action
-        self.populate = populate
         self.populate_children = populate_children
         self.media = media
         self.parent = None
