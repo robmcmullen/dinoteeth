@@ -391,7 +391,7 @@ class MovieMetadata(BaseMetadata):
         scan = media_scans.get_main_feature()
         if scan is None:
             return
-        log.debug(u"update_with_media_scans: %s: %s" % (self.title, scan)).encode('utf8')
+        log.debug((u"update_with_media_scans: %s: %s" % (self.title, scan)).encode('utf8'))
         self.film_number = scan.film_number
     
     def __unicode__(self):
