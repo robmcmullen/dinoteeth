@@ -109,7 +109,7 @@ class MediaScan(object):
     def get_audio_options(self):
         options = []
         for i, audio in enumerate(self.iter_audio()):
-            print "audio track: %s" % audio
+#            print "audio track: %s" % audio
             title = audio.title
             if not title:
                 channels = audio.channels
@@ -151,7 +151,7 @@ class MediaScan(object):
         # people don't want to view subtitles
         options = [(-1, -1 == self.selected_subtitle_id, "No subtitles")]
         for i, subtitle in enumerate(self.iter_subtitles()):
-            print "subtitle track: %s" % subtitle
+#            print "subtitle track: %s" % subtitle
             options.append((i, i == self.selected_subtitle_id, subtitle.title))
         return options
     
