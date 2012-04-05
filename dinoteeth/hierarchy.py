@@ -127,6 +127,9 @@ class PlayableEntries(MMDBPopulator):
         for title, playable in items:
             item = MenuItem(title, action=playable.play, metadata=playable.get_metadata())
             yield item
+    
+    def get_resume_entry(self, m, season=None):
+        return "  Resume (Paused at %s)" % m.paused_at_text(), MediaPlay(self.config, self.imdb_id, m, season=season, resume=True)
 
 
 class MovieTopLevel(PlayableEntries):
@@ -145,7 +148,7 @@ class MovieTopLevel(PlayableEntries):
                 found_bonus = True
             yield unicode(m.display_title), MediaPlay(self.config, self.imdb_id, m)
             if m.is_paused():
-                yield "  Resume", MediaPlay(self.config, self.imdb_id, m, resume=True)
+                yield self.get_resume_entry(m)
                 
     
     def get_metadata(self):
@@ -192,7 +195,7 @@ class SeriesEpisodes(PlayableEntries):
                 found_bonus = True
             yield unicode(m.display_title), MediaPlay(self.config, self.imdb_id, m, season=self.season)
             if m.is_paused():
-                yield "  Resume (Paused at %s)" % m.paused_at_text(), MediaPlay(self.config, self.imdb_id, m, season=self.season, resume=True)
+                yield self.get_resume_entry(m, self.season)
 
     def get_metadata(self):
         return {
