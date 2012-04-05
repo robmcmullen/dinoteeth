@@ -54,6 +54,35 @@ class MenuItem(object):
                 for child in self.populate_children(self):
                     self.add(child)
             self.populated = True
+    
+    def do_repopulate(self):
+        """Refresh this menu and attempt to keep the cursor on the same item
+        even if the new menu is re-sorted
+        """
+        if not self.populate_children:
+            print "can't refresh static menu"
+            return
+        print "refreshing menu"
+        current_cursor = self.cursor
+        current_title = self.children[current_cursor].title
+        self.populated = False
+        self.children = []
+        self.do_populate()
+        
+        # Attempt to match cursor position by title
+        self.cursor = None
+        for i, child in enumerate(self.children):
+            if child.title == current_title:
+                print "Fount cursor position at %s" % current_title.encode('utf8')
+                self.cursor = i
+                break
+        
+        # Fallback to original cursor position if title was removed
+        if self.cursor is None:
+            print "Fallback to original cursor position"
+            self.cursor = current_cursor
+            if self.cursor >= len(self.children):
+                self.cursor = len(self.children) - 1
 
     def get_item(self, i):
         self.do_populate()

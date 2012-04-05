@@ -164,6 +164,7 @@ class Config(object):
     def restore_after_external_app(self):
         win = self.get_main_window()
         win.set_fullscreen(not self.options.fullscreen)
+        win.layout.refresh() # refresh menu without redraw as it will be redrawn when fullscreened
         win.set_fullscreen(self.options.fullscreen)
         win.activate()
     

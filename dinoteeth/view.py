@@ -35,6 +35,11 @@ class MainWindow(pyglet.window.Window):
         self.clear()
         self.layout.draw()
     
+    def refresh(self):
+#        print "refresh"
+        self.layout.refresh()
+        self.flip()
+    
     def on_text_motion(self, motion):
         self.controller.process_motion(motion)
         self.flip()
@@ -99,6 +104,13 @@ class AbstractLayout(object):
             
     def get_controller(self):
         return self.controller
+    
+    def refresh(self):
+        self.refresh_menu()
+    
+    def refresh_menu(self):
+        menu = self.get_menu()
+        menu.do_repopulate()
     
     def draw(self, menu):
         pass

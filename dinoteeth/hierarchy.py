@@ -200,8 +200,8 @@ class MediaPlay(MMDBPopulator):
         else:
             resume_at = 0.0
         last_pos = client.play(self.media_scan, resume_at=resume_at)
-        self.config.restore_after_external_app()
         self.media_scan.set_last_position(last_pos)
+        self.config.restore_after_external_app()
     
     def get_metadata(self):
         return {

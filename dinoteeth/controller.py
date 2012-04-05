@@ -39,6 +39,8 @@ class VerticalMenuController(object):
             self.process_audio()
         elif symbol == k.S:
             self.process_subtitle()
+        elif symbol == k.R:
+            self.layout.window.refresh()
     
     def process_select(self):
         if self.layout.select_child_menu():
