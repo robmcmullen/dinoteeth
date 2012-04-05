@@ -666,11 +666,14 @@ class SeriesMetadata(BaseMetadata):
             text += """{}
 %s{}
 {}
-{bold True}Network:{bold False} %s %s{}
-{bold True}Number of Seasons:{bold False} %s{}
+{bold True}Network:{bold False} %s %s{}""" % (self.plot, self.network, self.series_years)
+            if not self.is_mini_series():
+                text += """
+{bold True}Number of Seasons:{bold False} %s{}""" % self.num_seasons
+            text += """
 {bold True}Rated:{bold False} %s{}
 {bold True}Genre:{bold False} %s{}
-""" % (self.plot, self.network, self.series_years, self.num_seasons, self.certificate, genres)
+""" % (self.certificate, genres)
             text += u"""{}
 {bold True}Produced by:{bold False} %s{}
 {bold True}Directed by:{bold False} %s{}

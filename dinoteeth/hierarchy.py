@@ -104,7 +104,10 @@ class MediaLookup(MMDBPopulator):
         for m in self.media:
             if not self.media_categories or (m.media_category in self.media_categories):
                 if m.media_category == "series":
-                    yield unicode(m.title), SeriesTopLevel(self.config, m.id)
+                    if m.is_mini_series():
+                        yield unicode(m.title), SeriesEpisodes(self.config, m.id)
+                    else:
+                        yield unicode(m.title), SeriesTopLevel(self.config, m.id)
                 elif m.media_category == "movies":
                     yield unicode(m.title), MovieTopLevel(self.config, m.id)
     
@@ -165,10 +168,14 @@ class SeriesTopLevel(MMDBPopulator):
 
 
 class SeriesEpisodes(PlayableEntries):
-    def __init__(self, config, imdb_id, season, episodes):
+    def __init__(self, config, imdb_id, season=0, episodes=None):
         PlayableEntries.__init__(self, config)
         self.imdb_id = imdb_id
         self.season = season
+        if episodes is None:
+            media_scans = self.config.db.get_all_with_imdb_id(self.imdb_id)
+            episodes = media_scans[:]
+            episodes.sort()
         self.episodes = episodes
         
     def iter_create(self):
