@@ -187,8 +187,9 @@ class Config(object):
     
     def get_photo_database(self):
         db = PhotoDB()
-        for path, flags in self.ini["photo_paths"].iteritems():
-            db.add_path(path)
+        if 'photo_paths' in self.ini:
+            for path, flags in self.ini["photo_paths"].iteritems():
+                db.add_path(path)
         return db
     
     def get_metadata_database(self):
