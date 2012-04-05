@@ -1,5 +1,6 @@
-import os, sys, glob
+import os, sys, glob, time
 import pyglet
+from threading import Thread
 
 USE_OBJGRAPH = False
 USE_HEAPY = False
@@ -12,6 +13,33 @@ if USE_HEAPY:
 
 from controller import *
 from thumbnail import PygletThumbnailFactory
+
+class ClockTimer(pyglet.event.EventDispatcher):
+    def tick(self):
+        self.dispatch_event('on_status_update')
+ClockTimer.register_event_type('on_status_update')
+
+class ClockThread(Thread):
+    def __init__(self, notify_window):
+        Thread.__init__(self)
+        self._notify_window = notify_window
+        self._want_abort = False
+        self._ignore = False
+        self._ticks_per_second = 10
+        self._run = True
+        self.start()
+
+    def run(self):
+        while True:
+            time.sleep(1.0)
+            print "Thread awake!"
+            self._notify_window.timer.tick()
+            if self._want_abort:
+                return
+
+    def abort(self):
+        # Method for use by main thread to signal an abort
+        self._want_abort = 1
 
 class MainWindow(pyglet.window.Window):
     def __init__(self, config, fullscreen=True, width=800, height=600, margins=None):
@@ -29,6 +57,9 @@ class MainWindow(pyglet.window.Window):
             objgraph.show_growth()
         if USE_HEAPY:
             print hp.heap()
+        self.timer = ClockTimer()
+        self.timer.push_handlers(self)
+        self.thread = ClockThread(self)
     
     def on_draw(self):
 #        print "draw"
@@ -58,6 +89,13 @@ class MainWindow(pyglet.window.Window):
             objgraph.show_growth()
         if USE_HEAPY:
             print hp.heap()
+    
+    def on_status_update(self):
+        print "status update from thread!!!"
+    
+    def stop_threads(self):
+        self.thread.abort()
+
 
 class AbstractLayout(object):
     def __init__(self, window, margins, config):

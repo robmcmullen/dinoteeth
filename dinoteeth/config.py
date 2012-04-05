@@ -269,7 +269,9 @@ class Config(object):
     def get_leading_articles(self):
         return ["a", "an", "the"]
     
-    def save_state(self):
+    def quit_veto(self):
+        # Return True to veto the user quit
+        self.main_window.stop_threads()
         self.root.save_state()
 
 
