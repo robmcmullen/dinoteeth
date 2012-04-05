@@ -48,6 +48,11 @@ class MediaScanList(list):
             if not m.is_bonus():
                 runtimes.append(m.length / 60.0)
         runtimes.sort()
+        
+        # Handle pathological case
+        if len(runtimes) == 0:
+            return (0, 1)
+        
         # Throw out largest and smallest, replace with median
         print "get_total_runtime: %s: before=%s" % (m.title, runtimes)
         num = len(runtimes)
@@ -722,7 +727,7 @@ class MovieMetadataDatabase(MetadataDatabase):
         if avg_runtime > 0:
             best = best_loop()
         else:
-            best = guesses[0]
+            best = self.fetch(guesses[0], store=False)
         if best:
             log.info("best guess: %s, %s" % (best.title.encode('utf8'), best.runtimes))
             self.media[best.id] = best
