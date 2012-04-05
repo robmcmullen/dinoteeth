@@ -137,7 +137,12 @@ class MovieTopLevel(PlayableEntries):
     def iter_create(self):
         media_scans = self.config.db.get_all_with_imdb_id(self.imdb_id)
         media_scans.sort()
+        bonus = media_scans.get_bonus()
+        found_bonus = False
         for m in media_scans:
+            if not found_bonus and m.is_bonus() and len(bonus) > 1:
+                yield "Play All Bonus Features", MediaPlayMultiple(self.config, self.imdb_id, bonus)
+                found_bonus = True
             yield unicode(m.display_title), MediaPlay(self.config, self.imdb_id, m)
             if m.is_paused():
                 yield "  Resume", MediaPlay(self.config, self.imdb_id, m, resume=True)
@@ -179,7 +184,12 @@ class SeriesEpisodes(PlayableEntries):
         self.episodes = episodes
         
     def iter_create(self):
+        bonus = [m for m in self.episodes if m.is_bonus()]
+        found_bonus = False
         for m in self.episodes:
+            if not found_bonus and m.is_bonus() and len(bonus) > 1:
+                yield "Play All Bonus Features", MediaPlayMultiple(self.config, self.imdb_id, bonus)
+                found_bonus = True
             yield unicode(m.display_title), MediaPlay(self.config, self.imdb_id, m, season=self.season)
             if m.is_paused():
                 yield "  Resume (Paused at %s)" % m.paused_at_text(), MediaPlay(self.config, self.imdb_id, m, season=self.season, resume=True)
@@ -214,6 +224,35 @@ class MediaPlay(MMDBPopulator):
         return {
             'mmdb': self.config.mmdb.get(self.imdb_id),
             'media_scan': self.media_scan,
+            'season': self.season,
+            }
+
+class MediaPlayMultiple(MMDBPopulator):
+    def __init__(self, config, imdb_id, media_scans, season=None, resume=False):
+        MMDBPopulator.__init__(self, config)
+        self.imdb_id = imdb_id
+        self.media_scans = media_scans
+        self.season = season
+        self.resume = resume
+        
+    def play(self, config=None):
+        self.config.prepare_for_external_app()
+        client = self.config.get_media_client()
+        for m in self.media_scans:
+            if self.resume:
+                resume_at = m.get_last_position()
+            else:
+                resume_at = 0.0
+            last_pos = client.play(m)
+            m.set_last_position(last_pos)
+            if not m.is_considered_complete(last_pos):
+                # Stop the playlist if the user quits in the middle of playback
+                break
+        self.config.restore_after_external_app()
+    
+    def get_metadata(self):
+        return {
+            'mmdb': self.config.mmdb.get(self.imdb_id),
             'season': self.season,
             }
 

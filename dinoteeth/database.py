@@ -29,6 +29,14 @@ class MediaScanList(list):
         episodes.sort()
         return episodes
     
+    def get_bonus(self, season_number=-1):
+        bonus = []
+        for m in self:
+            if (season_number < 0 or m.season == season_number) and m.is_bonus():
+                bonus.append(m)
+        bonus.sort()
+        return bonus
+    
     def get_total_runtime(self):
         """Return best guess for runtime of main feature, or total time
         of episodes (ignoring bonus features)
