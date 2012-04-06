@@ -158,6 +158,7 @@ class Config(object):
     
     def prepare_for_external_app(self):
         win = self.get_main_window()
+        win.set_using_external_app(True)
         if self.options.fullscreen:
             win.set_fullscreen(False)
     
@@ -167,6 +168,7 @@ class Config(object):
         win.layout.refresh() # refresh menu without redraw as it will be redrawn when fullscreened
         win.set_fullscreen(self.options.fullscreen)
         win.activate()
+        win.set_using_external_app(False)
     
     def create_root(self):
         self.root = RootMenu(self)
@@ -269,8 +271,7 @@ class Config(object):
     def get_leading_articles(self):
         return ["a", "an", "the"]
     
-    def quit_veto(self):
-        # Return True to veto the user quit
+    def do_shutdown_tasks(self):
         self.main_window.stop_threads()
         self.root.save_state()
 

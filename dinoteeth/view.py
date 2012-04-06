@@ -1,6 +1,5 @@
 import os, sys, glob, time, random, Queue
 import pyglet
-from threading import Thread
 
 USE_OBJGRAPH = False
 USE_HEAPY = False
@@ -13,33 +12,7 @@ if USE_HEAPY:
 
 from controller import *
 from thumbnail import PygletThumbnailFactory
-
-class ClockThread(Thread):
-    def __init__(self, notify_window):
-        Thread.__init__(self)
-        self._notify_window = notify_window
-        self._want_abort = False
-        self._ignore = False
-        self._ticks_per_second = 10
-        self._run = True
-        self._count = 0
-        self.start()
-
-    def run(self):
-        while True:
-#            time.sleep(random.random() * 5)
-            time.sleep(0.2)
-            print "Thread awake!"
-            pyglet.app.platform_event_loop.post_event(self._notify_window, 'on_status_update', "Number %d" % self._count)
-            self._count += 1
-            if self._count % 5 == 0:
-                time.sleep(3)
-            if self._want_abort or self._count > 100:
-                return
-
-    def abort(self):
-        # Method for use by main thread to signal an abort
-        self._want_abort = 1
+from thread import TestStatusThread
 
 class MainWindow(pyglet.window.Window):
     def __init__(self, config, fullscreen=True, width=800, height=600, margins=None):
@@ -57,8 +30,9 @@ class MainWindow(pyglet.window.Window):
             objgraph.show_growth()
         if USE_HEAPY:
             print hp.heap()
-        self.thread = ClockThread(self)
+        self.thread = TestStatusThread(self)
         self.status_text = Queue.Queue()
+        self.using_external_app = False
     
     def on_draw(self):
         print "draw"
@@ -89,14 +63,27 @@ class MainWindow(pyglet.window.Window):
         if USE_HEAPY:
             print hp.heap()
     
+    def on_close(self):
+        self.stop_threads()
+        pyglet.window.Window.on_close(self)
+    
     def on_status_update(self, text):
-        print "status update from thread!!! %s" % text
-        self.status_text.put(text)
-        self.flip()
+        if self.using_external_app:
+            print "ignoring status; external app in use"
+        else:
+            print "status update from thread!!! %s" % text
+            self.status_text.put(text)
+            self.flip()
+    
+    def set_using_external_app(self, state):
+        self.using_external_app = state
     
     def on_status_clear(self, *args):
-        print "clearing status bar"
-        self.flip()
+        if self.using_external_app:
+            print "ignoring status; external app in use"
+        else:
+            print "clearing status bar"
+            self.flip()
     
     def stop_threads(self):
         self.thread.abort()
