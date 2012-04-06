@@ -6,14 +6,17 @@ log = logging.getLogger("dinoteeth.thread")
 
 
 class PygletTask(Thread):
-    def __init__(self, notify_window, notify_event):
+    def __init__(self, notify_window, notify_event, *args, **kwargs):
         Thread.__init__(self)
         self._notify_window = notify_window
         self._notify_event = notify_event
-        self._want_abort = False
-        self.task_setup()
+        self.init_hook()
+        self.task_setup(*args, **kwargs)
         TaskManager.new_task(self)
         self.start()
+    
+    def init_hook(self):
+        self._want_abort = False
 
     def run(self):
         self.task()
@@ -25,7 +28,23 @@ class PygletTask(Thread):
 
     def abort(self):
         # Method for use by main thread to signal an abort
-        self._want_abort = 1
+        self._want_abort = True
+
+class PygletCommandQueue(PygletTask):
+    def init_hook(self):
+        PygletTask.init_hook(self)
+        self._command_queue = Queue.Queue()
+    
+    def _next_command(self):
+        return self._command_queue.get() # Blocking
+
+    def put_command(self, cmd):
+        self._command_queue.put(cmd)
+
+    def abort(self):
+        # Method for use by main thread to signal an abort
+        self._command_queue.put("abort")
+        self._want_abort = True
 
 
 class TaskManager(object):
@@ -70,7 +89,7 @@ class TaskManager(object):
 
 
 class TestStatusThread(PygletTask):
-    def task_setup(self):
+    def task_setup(self, *args, **kwargs):
         self._count = 0
         
     def task(self):

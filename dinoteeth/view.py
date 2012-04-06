@@ -31,7 +31,7 @@ class MainWindow(pyglet.window.Window):
             objgraph.show_growth()
         if USE_HEAPY:
             print hp.heap()
-        self.thread = TestStatusThread(self, 'on_status_update')
+#        self.thread = TestStatusThread(self, 'on_status_update')
         self.status_text = Queue.Queue()
         self.using_external_app = False
         
@@ -345,19 +345,32 @@ class SimpleStatusRenderer(StatusRenderer):
     def compute_params(self, conf):
         self.last_item = None
         self.expire_time = time.time()
-        self.display_interval = 2
+        self.display_interval = 5
     
     def draw(self):
-        try:
-            item = self.window.status_text.get(False)
-            self.last_item = item
+        found = False
+        while True:
+            try:
+                # Pull as many status updates off the queue as there are; only
+                # display the most recent update
+                item = self.window.status_text.get(False)
+                found = True
+                self.last_item = item
+            except Queue.Empty:
+                break
+        if found:
+            # New item found means resetting the countdown timer back to the
+            # maximum
             self.expire_time = time.time() + self.display_interval
             pyglet.clock.unschedule(self.window.on_status_clear)
             pyglet.clock.schedule_once(self.window.on_status_clear, self.display_interval)
-        except:
+        else:
+            # No items found means that the countdown timer is left as-is
             print "no status available"
-            if time.time() > self.expire_time:
-                return
+            
+        if time.time() > self.expire_time:
+            # If the countdown timer has expired, no drawing takes place
+            return
         print "status drawing! (%d,%d) %s" % (self.x, self.y, self.last_item)
         verts = (
             self.x + self.w, self.y + self.h,
