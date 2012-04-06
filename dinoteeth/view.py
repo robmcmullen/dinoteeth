@@ -1,4 +1,4 @@
-import os, sys, glob, time
+import os, sys, glob, time, random, Queue
 import pyglet
 from threading import Thread
 
@@ -14,11 +14,6 @@ if USE_HEAPY:
 from controller import *
 from thumbnail import PygletThumbnailFactory
 
-class ClockTimer(pyglet.event.EventDispatcher):
-    def tick(self):
-        self.dispatch_event('on_status_update')
-ClockTimer.register_event_type('on_status_update')
-
 class ClockThread(Thread):
     def __init__(self, notify_window):
         Thread.__init__(self)
@@ -27,14 +22,19 @@ class ClockThread(Thread):
         self._ignore = False
         self._ticks_per_second = 10
         self._run = True
+        self._count = 0
         self.start()
 
     def run(self):
         while True:
-            time.sleep(1.0)
+#            time.sleep(random.random() * 5)
+            time.sleep(0.2)
             print "Thread awake!"
-            self._notify_window.timer.tick()
-            if self._want_abort:
+            pyglet.app.platform_event_loop.post_event(self._notify_window, 'on_status_update', "Number %d" % self._count)
+            self._count += 1
+            if self._count % 5 == 0:
+                time.sleep(3)
+            if self._want_abort or self._count > 100:
                 return
 
     def abort(self):
@@ -57,12 +57,11 @@ class MainWindow(pyglet.window.Window):
             objgraph.show_growth()
         if USE_HEAPY:
             print hp.heap()
-        self.timer = ClockTimer()
-        self.timer.push_handlers(self)
         self.thread = ClockThread(self)
+        self.status_text = Queue.Queue()
     
     def on_draw(self):
-#        print "draw"
+        print "draw"
         self.clear()
         self.layout.draw()
     
@@ -90,11 +89,19 @@ class MainWindow(pyglet.window.Window):
         if USE_HEAPY:
             print hp.heap()
     
-    def on_status_update(self):
-        print "status update from thread!!!"
+    def on_status_update(self, text):
+        print "status update from thread!!! %s" % text
+        self.status_text.put(text)
+        self.flip()
+    
+    def on_status_clear(self, *args):
+        print "clearing status bar"
+        self.flip()
     
     def stop_threads(self):
         self.thread.abort()
+
+MainWindow.register_event_type('on_status_update')
 
 
 class AbstractLayout(object):
@@ -173,6 +180,7 @@ class MenuDetail2ColumnLayout(AbstractLayout):
         self.title_renderer = config.get_title_renderer(window, self.title_box, self.fonts)
         self.menu_renderer = config.get_menu_renderer(window, self.menu_box, self.fonts)
         self.detail_renderer = config.get_detail_renderer(window, self.detail_box, self.fonts)
+        self.status_renderer = SimpleStatusRenderer(window, self.status_box, self.fonts, config)
     
     def compute_layout(self):
         self.title_height = self.fonts.size + 10
@@ -182,12 +190,14 @@ class MenuDetail2ColumnLayout(AbstractLayout):
         self.title_box = (self.box[0], self.box[3] - self.title_height + 1, self.box[2], self.title_height)
         self.menu_box = (self.box[0], self.box[1], self.menu_width, self.box[3] - self.title_height)
         self.detail_box = (self.menu_width, self.box[1], self.box[2] - self.menu_width, self.box[3] - self.title_height)
+        self.status_box = (self.menu_width, self.box[1], self.box[2] - self.menu_width, self.title_height)
     
     def draw(self):
         self.title_renderer.draw(self.hierarchy)
         menu = self.get_menu()
         self.menu_renderer.draw(menu)
         self.detail_renderer.draw(menu)
+        self.status_renderer.draw()
 
 
 class Renderer(object):
@@ -336,3 +346,33 @@ class DetailRenderer(Renderer):
         document = pyglet.text.decode_attributed(text)
         self.label.document = document
         self.batch_cache[True].draw()
+
+class StatusRenderer(Renderer):
+    def draw(self):
+        pass
+
+class SimpleStatusRenderer(StatusRenderer):
+    def compute_params(self, conf):
+        self.last_item = None
+        self.expire_time = time.time()
+        self.display_interval = 2
+    
+    def draw(self):
+        try:
+            item = self.window.status_text.get(False)
+            self.last_item = item
+            self.expire_time = time.time() + self.display_interval
+            pyglet.clock.unschedule(self.window.on_status_clear)
+            pyglet.clock.schedule_once(self.window.on_status_clear, self.display_interval)
+        except:
+            print "no status available"
+            if time.time() > self.expire_time:
+                return
+        print "status drawing! (%d,%d) %s" % (self.x, self.y, self.last_item)
+        label = pyglet.text.Label(self.last_item,
+                                  font_name=self.fonts.name,
+                                  font_size=self.fonts.size,
+                                  bold=True, italic=True, color=(255,0,0,255),
+                                  x=self.x, y=self.y,
+                                  anchor_x='left', anchor_y='bottom')
+        label.draw()
