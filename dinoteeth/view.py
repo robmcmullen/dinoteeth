@@ -13,7 +13,7 @@ if USE_HEAPY:
 
 from controller import *
 from thumbnail import PygletThumbnailFactory
-from thread import TestStatusThread
+from thread import TaskManager, TestStatusThread
 
 class MainWindow(pyglet.window.Window):
     def __init__(self, config, fullscreen=True, width=800, height=600, margins=None):
@@ -31,7 +31,7 @@ class MainWindow(pyglet.window.Window):
             objgraph.show_growth()
         if USE_HEAPY:
             print hp.heap()
-        self.thread = TestStatusThread(self)
+        self.thread = TestStatusThread(self, 'on_status_update')
         self.status_text = Queue.Queue()
         self.using_external_app = False
         
@@ -70,7 +70,7 @@ class MainWindow(pyglet.window.Window):
             print hp.heap()
     
     def on_close(self):
-        self.stop_threads()
+        TaskManager.stop_all()
         pyglet.window.Window.on_close(self)
     
     def on_status_update(self, text):
@@ -90,9 +90,6 @@ class MainWindow(pyglet.window.Window):
         else:
             print "clearing status bar"
             self.flip()
-    
-    def stop_threads(self):
-        self.thread.abort()
 
 MainWindow.register_event_type('on_status_update')
 

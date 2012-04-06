@@ -13,6 +13,7 @@ from hierarchy import RootMenu
 from photo import PhotoDB
 from media import enzyme_extensions
 from metadata import BaseMetadata
+from thread import TaskManager
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -272,7 +273,7 @@ class Config(object):
         return ["a", "an", "the"]
     
     def do_shutdown_tasks(self):
-        self.main_window.stop_threads()
+        TaskManager.stop_all()
         self.root.save_state()
 
 
