@@ -180,7 +180,7 @@ class MenuDetail2ColumnLayout(AbstractLayout):
         self.title_box = (self.box[0], self.box[3] - self.title_height + 1, self.box[2], self.title_height)
         self.menu_box = (self.box[0], self.box[1], self.menu_width, self.box[3] - self.title_height)
         self.detail_box = (self.menu_width, self.box[1], self.box[2] - self.menu_width, self.box[3] - self.title_height)
-        self.status_box = (self.menu_width, self.box[1], self.box[2] - self.menu_width, self.title_height)
+        self.status_box = (self.menu_width + 10, self.box[1] + 10, self.box[2] - self.menu_width - 20, self.title_height + 20)
     
     def draw(self):
         self.title_renderer.draw(self.hierarchy)
@@ -366,17 +366,23 @@ class SimpleStatusRenderer(StatusRenderer):
             self.x + self.w, self.y
         )
         colors = (
-            000, 000, 255, 128,
-            000, 000, 255, 128,
-            000, 000, 255, 128,
-            000, 000, 255, 128,
+            255, 255, 255, 128,
+            255, 255, 255, 128,
+            255, 255, 255, 128,
+            255, 255, 255, 128,
         )
-        print verts
         pyglet.graphics.draw(4, GL_QUADS, ('v2i', verts), ('c4B', colors))
+        colors = (
+            255, 255, 255, 255,
+            255, 255, 255, 255,
+            255, 255, 255, 255,
+            255, 255, 255, 255,
+        )
+        pyglet.graphics.draw(4, GL_LINE_LOOP, ('v2i', verts), ('c4B', colors))
         label = pyglet.text.Label(self.last_item,
                                   font_name=self.fonts.name,
                                   font_size=self.fonts.size,
                                   bold=True, italic=True, color=(255,0,0,255),
-                                  x=self.x, y=self.y,
-                                  anchor_x='left', anchor_y='bottom')
+                                  x=self.x + 10, y=self.y + (self.h / 2),
+                                  anchor_x='left', anchor_y='center')
         label.draw()
