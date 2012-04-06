@@ -1,5 +1,6 @@
 import os, sys, glob, time, random, Queue
 import pyglet
+from pyglet.gl import *
 
 USE_OBJGRAPH = False
 USE_HEAPY = False
@@ -33,6 +34,11 @@ class MainWindow(pyglet.window.Window):
         self.thread = TestStatusThread(self)
         self.status_text = Queue.Queue()
         self.using_external_app = False
+        
+        glEnable(GL_BLEND)
+        glShadeModel(GL_SMOOTH)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE)
+        glDisable(GL_DEPTH_TEST)
     
     def on_draw(self):
         print "draw"
@@ -356,6 +362,20 @@ class SimpleStatusRenderer(StatusRenderer):
             if time.time() > self.expire_time:
                 return
         print "status drawing! (%d,%d) %s" % (self.x, self.y, self.last_item)
+        verts = (
+            self.x + self.w, self.y + self.h,
+            self.x, self.y + self.h,
+            self.x, self.y,
+            self.x + self.w, self.y
+        )
+        colors = (
+            000, 000, 255, 128,
+            000, 000, 255, 128,
+            000, 000, 255, 128,
+            000, 000, 255, 128,
+        )
+        print verts
+        pyglet.graphics.draw(4, GL_QUADS, ('v2i', verts), ('c4B', colors))
         label = pyglet.text.Label(self.last_item,
                                   font_name=self.fonts.name,
                                   font_size=self.fonts.size,
