@@ -1,18 +1,16 @@
-import os, time, logging, Queue
-from threading import Thread
+import os, time, logging, threading, Queue
 import pyglet
 
 log = logging.getLogger("dinoteeth.thread")
 
 
-class PygletTask(Thread):
+class PygletTask(threading.Thread):
     def __init__(self, notify_window, notify_event, *args, **kwargs):
-        Thread.__init__(self)
+        threading.Thread.__init__(self)
         self._notify_window = notify_window
         self._notify_event = notify_event
         self.init_hook()
         self.task_setup(*args, **kwargs)
-        TaskManager.new_task(self)
         self.start()
     
     def init_hook(self):
@@ -20,7 +18,6 @@ class PygletTask(Thread):
 
     def run(self):
         self.task()
-        TaskManager.completed_task(self)
     
     def notify(self, *args, **kwargs):
         """Called from within the thread"""
@@ -33,6 +30,7 @@ class PygletTask(Thread):
 class PygletCommandQueue(PygletTask):
     def init_hook(self):
         PygletTask.init_hook(self)
+        self.setDaemon(True)
         self._command_queue = Queue.Queue()
     
     def _next_command(self):
@@ -48,44 +46,16 @@ class PygletCommandQueue(PygletTask):
 
 
 class TaskManager(object):
-    all_tasks = set()
-    completed_tasks = Queue.Queue()
-    
-    @classmethod
-    def housekeeping(cls):
-        try:
-            task = cls.completed_tasks.get(False)
-            if task.is_alive():
-                # Shouldn't happen
-                task.abort()
-                task.join()
-            cls.all_tasks.discard(task)
-            log.debug("reaped task %s" % task)
-        except:
-            log.debug("no tasks to reap")
-    
-    @classmethod
-    def new_task(cls, task):
-        cls.housekeeping()
-        cls.all_tasks.add(task)
-    
-    @classmethod
-    def completed_task(cls, task):
-        """Called from a thread"""
-        cls.completed_tasks.put(task)
-    
     @classmethod
     def stop_all(cls):
-        cls.housekeeping()
-        while True:
-            try:
-                task = cls.all_tasks.pop()
-            except KeyError:
-                break
-            log.debug("attempting to reap %s" % task)
-            if task.is_alive():
-                task.abort()
-            task.join()
+        main_thread = threading.currentThread()
+        for thread in threading.enumerate():
+            if thread == main_thread:
+                continue
+            log.debug("attempting to reap %s" % thread)
+            if thread.is_alive():
+                thread.abort()
+            thread.join()
 
 
 class TestStatusThread(PygletTask):
