@@ -1,4 +1,4 @@
-import os, sys, glob, urllib, logging, re
+import os, sys, glob, urllib, logging, re, threading
 from datetime import datetime, timedelta
 
 from PIL import Image
@@ -94,6 +94,8 @@ def canonical_filename(title, film_series, season=-1, episode_char='e', episode=
     return encode_title_text("-".join(name) + ".%s" % ext)
 
 class ArtworkLoader(object):
+    lock = threading.Lock()
+    
     def __init__(self, base_dir, default_poster, poster_width=-1, cache_size=100):
         self.base_dir = base_dir
         self.poster_dir = os.path.join(self.base_dir, "posters")
@@ -154,9 +156,11 @@ class ArtworkLoader(object):
         log.debug(pathname)
         if not os.path.exists(pathname) or os.stat(pathname)[6] == 0:
             log.debug("Downloading %s poster: %s" % (imdb_id, url))
-            fh = open(pathname, "wb")
-            fh.write(urllib.urlopen(url).read())
-            fh.close()
+            bytes = urllib.urlopen(url).read()
+            with self.lock:
+                fh = open(pathname, "wb")
+                fh.write(bytes)
+                fh.close()
             log.debug("Downloaded %s poster as %s" % (imdb_id, pathname))
             downloaded = True
         else:
@@ -171,10 +175,11 @@ class ArtworkLoader(object):
             img = Image.open(pathname)
             if img.size[0] <= self.poster_width:
                 return
-            height = img.size[1] * img.size[0] / self.poster_width
-            size = (self.poster_width, height)
-            img.thumbnail(size, Image.ANTIALIAS)
-            img.save(scaled_pathname, "JPEG", quality=90)
+            with self.lock:
+                height = img.size[1] * img.size[0] / self.poster_width
+                size = (self.poster_width, height)
+                img.thumbnail(size, Image.ANTIALIAS)
+                img.save(scaled_pathname, "JPEG", quality=90)
             log.debug("Created %s scaled poster: %s" % (imdb_id, scaled_pathname))
     
     def get_poster(self, imdb_id, season=None):
@@ -185,7 +190,8 @@ class ArtworkLoader(object):
         elif imdb_id is not None:
             filename = self.get_poster_filename(imdb_id, season)
             if filename is not None:
-                poster = pyglet.image.load(filename)
+                with self.lock:
+                    poster = pyglet.image.load(filename)
                 if self.use_cache:
                     self.cache[key] = (filename, poster)
                 return poster
@@ -197,7 +203,8 @@ class ArtworkLoader(object):
             return self.cache[imagepath][1]
         filename = os.path.join(self.base_dir, imagepath)
         if os.path.exists(filename):
-            image = pyglet.image.load(filename)
+            with self.lock:
+                image = pyglet.image.load(filename)
             if self.use_cache:
                 self.cache[imagepath] = (filename, image)
             return image

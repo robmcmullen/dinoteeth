@@ -6,7 +6,7 @@ except:
 from dinoteeth.third_party.configobj import ConfigObj
 
 from view import *
-from database import MovieMetadataDatabase, MediaScanDatabase
+from database import MovieMetadataDatabase, MediaScanDatabase, DatabaseTask
 from mplayer import MPlayerClient
 from utils import decode_title_text, ArtworkLoader
 from hierarchy import RootMenu
@@ -155,6 +155,9 @@ class Config(object):
                                           width=self.options.window_width,
                                           height=self.options.window_height,
                                           margins=margins)
+            
+            self.db_thread = DatabaseTask(self.main_window, 'on_status_update', self.db, self.mmdb, self.get_artwork_loader())
+            self.db_thread.update_all_posters()
         return self.main_window
     
     def prepare_for_external_app(self):
