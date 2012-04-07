@@ -277,9 +277,6 @@ class MediaScanDatabase(PickleSerializerMixin):
                 if not mmdb.contains_imdb_id(imdb_id):
                     log.debug("Loading imdb_id %s" % imdb_id)
                     mmdb.fetch_imdb_id(imdb_id)
-                if not artwork_loader.has_poster(imdb_id):
-                    log.debug("Loading posters for imdb_id %s" % imdb_id)
-                    mmdb.fetch_poster(imdb_id, artwork_loader)
 
     def update_new_title_keys_metadata(self, new_keys, missing_title_keys, mmdb):
         new_title_keys = set(missing_title_keys)
@@ -292,6 +289,55 @@ class MediaScanDatabase(PickleSerializerMixin):
             imdb_id = self.get_imdb_id(title_key)
             metadata = mmdb.get(imdb_id)
             metadata.update_with_media_scans(media_scans)
+
+from thread import PygletCommandQueue
+
+class DatabaseTask(PygletCommandQueue):
+    def __init__(self, window, event_name, db, mmdb, artwork_loader):
+        PygletCommandQueue.__init__(self, window, event_name, db, mmdb, artwork_loader)
+        
+    def task_setup(self, db, mmdb, artwork_loader):
+        self.db = db
+        self.mmdb = mmdb
+        self.artwork_loader = artwork_loader
+        print "Database thread started"
+        
+    def task(self):
+        while True:
+            print "Database thread waiting for command..."
+            next = self._next_command()
+            if next == "abort":
+                return
+            print "Database thread found command: %s" % next
+            if next == "update_all_posters":
+                self._update_all_posters()
+            else:
+                print "Unknown database thread command: %s" % next
+    
+    def _update_all_posters(self):
+        db = self.db
+        for i, title_key in enumerate(db.iter_title_keys()):
+            if title_key not in db.title_key_to_imdb:
+                continue
+            imdb_id = db.title_key_to_imdb[title_key]
+            if self.artwork_loader.has_poster(imdb_id):
+                self.notify("Already loaded posters for imdb_id %s" % imdb_id)
+            else:
+                self.notify("Loading posters for imdb_id %s" % imdb_id)
+                try:
+                    self.mmdb.fetch_poster(imdb_id, self.artwork_loader)
+                except KeyError:
+                    print "mmdb doesn't know about %s" % imdb_id
+                    raise
+            if self._want_abort:
+                return
+        self.notify("Finished loading posters")
+
+    def update_all_posters(self):
+        self.put_command("update_all_posters")
+
+
+
 
 class FileProxy(object):
     def __init__(self, cache_dir=None):

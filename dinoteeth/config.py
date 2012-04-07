@@ -6,13 +6,14 @@ except:
 from dinoteeth.third_party.configobj import ConfigObj
 
 from view import *
-from database import MovieMetadataDatabase, MediaScanDatabase
+from database import MovieMetadataDatabase, MediaScanDatabase, DatabaseTask
 from mplayer import MPlayerClient
 from utils import decode_title_text, ArtworkLoader
 from hierarchy import RootMenu
 from photo import PhotoDB
 from media import enzyme_extensions
 from metadata import BaseMetadata
+from thread import TaskManager
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -154,10 +155,14 @@ class Config(object):
                                           width=self.options.window_width,
                                           height=self.options.window_height,
                                           margins=margins)
+            
+            self.db_thread = DatabaseTask(self.main_window, 'on_status_update', self.db, self.mmdb, self.get_artwork_loader())
+            self.db_thread.update_all_posters()
         return self.main_window
     
     def prepare_for_external_app(self):
         win = self.get_main_window()
+        win.set_using_external_app(True)
         if self.options.fullscreen:
             win.set_fullscreen(False)
     
@@ -167,6 +172,7 @@ class Config(object):
         win.layout.refresh() # refresh menu without redraw as it will be redrawn when fullscreened
         win.set_fullscreen(self.options.fullscreen)
         win.activate()
+        win.set_using_external_app(False)
     
     def create_root(self):
         self.root = RootMenu(self)
@@ -269,7 +275,8 @@ class Config(object):
     def get_leading_articles(self):
         return ["a", "an", "the"]
     
-    def save_state(self):
+    def do_shutdown_tasks(self):
+        TaskManager.stop_all()
         self.root.save_state()
 
 
