@@ -293,6 +293,8 @@ class MediaScanDatabase(PickleSerializerMixin):
 from thread import PygletCommandQueue
 
 class DatabaseTask(PygletCommandQueue):
+    log = logging.getLogger("dinoteeth.database_task")
+    
     def __init__(self, window, event_name, db, mmdb, artwork_loader):
         PygletCommandQueue.__init__(self, window, event_name, db, mmdb, artwork_loader)
         
@@ -300,19 +302,19 @@ class DatabaseTask(PygletCommandQueue):
         self.db = db
         self.mmdb = mmdb
         self.artwork_loader = artwork_loader
-        print "Database thread started"
+        self.log.debug("Database thread started")
         
     def task(self):
         while True:
-            print "Database thread waiting for command..."
+            self.log.debug("Database thread waiting for command...")
             next = self._next_command()
             if next == "abort":
                 return
-            print "Database thread found command: %s" % next
+            self.log.debug("Database thread found command: %s" % next)
             if next == "update_all_posters":
                 self._update_all_posters()
             else:
-                print "Unknown database thread command: %s" % next
+                self.log.debug("Unknown database thread command: %s" % next)
     
     def _update_all_posters(self):
         db = self.db
