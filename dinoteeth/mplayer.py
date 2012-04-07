@@ -8,13 +8,17 @@ class MPlayerClient(object):
         self.config = config
         
     def play(self, media_scan, resume_at=0.0):
-        escaped_path = utils.shell_escape_path(media_scan.pathname)
         opts = self.config.get_mplayer_opts(media_scan.pathname)
         self.audio_opts(opts, media_scan.selected_audio_id)
         self.subtitle_opts(opts, media_scan.selected_subtitle_id)
         if resume_at > 0:
             self.resume_opts(opts, resume_at)
-        last_pos = self.play_slave(escaped_path, opts)
+        last_pos = self.play_slave(media_scan.pathname, opts)
+        return last_pos
+    
+    def play_file(self, pathname):
+        opts = self.config.get_mplayer_opts(pathname)
+        last_pos = self.play_slave(pathname, opts)
         return last_pos
     
     def audio_opts(self, opts, id):
@@ -36,11 +40,11 @@ class MPlayerClient(object):
         if last_pos > 0:
             opts.extend(["-ss", str(last_pos)])
     
-    def play_slave(self, escaped_path, opts):
+    def play_slave(self, path, opts):
         last_pos = 0
-        print("Playing: %s %s" % (escaped_path, str(opts)))
+        print("Playing: %s %s" % (path, str(opts)))
         try:
-            mp = MPlayer(escaped_path, *opts)
+            mp = MPlayer(path, *opts)
             while mp._is_running():
                 try:
                     last_pos = mp._get_current_pos()
