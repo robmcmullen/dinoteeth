@@ -273,7 +273,7 @@ class RootMenu(MenuItem):
             ("Just Movies", TopLevelLookup(self.config, [MovieMetadata])),
             ("Just Series", TopLevelLookup(self.config, [SeriesMetadata])),
             ("Paused...", self.get_empty_root),
-            ("Photos", TopLevelPhoto(self.config)),
+            ("Photos & Home Videos", TopLevelPhoto(self.config)),
             ("Games", self.get_empty_root),
             ]
         self.categories = {}
