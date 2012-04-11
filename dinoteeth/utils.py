@@ -1,7 +1,9 @@
-import os, sys, glob, urllib, logging, re, threading
+import os, sys, glob, urllib, logging, re
 from datetime import datetime, timedelta
 
 from PIL import Image
+
+from image import ImageAccess
 
 log = logging.getLogger("dinoteeth.utils")
 
@@ -94,8 +96,6 @@ def canonical_filename(title, film_series, season=-1, episode_char='e', episode=
     return encode_title_text("-".join(name) + ".%s" % ext)
 
 class ArtworkLoader(object):
-    lock = threading.Lock()
-    
     def __init__(self, base_dir, default_poster, poster_width=-1, cache_size=100):
         self.base_dir = base_dir
         self.poster_dir = os.path.join(self.base_dir, "posters")
@@ -183,28 +183,24 @@ class ArtworkLoader(object):
             log.debug("Created %s scaled poster: %s" % (imdb_id, scaled_pathname))
     
     def get_poster(self, imdb_id, season=None):
-        import pyglet
         key = (imdb_id, season)
         if key in self.cache:
             return self.cache[key][1]
         elif imdb_id is not None:
             filename = self.get_poster_filename(imdb_id, season)
             if filename is not None:
-                with self.lock:
-                    poster = pyglet.image.load(filename)
+                poster = ImageAccess.load(filename)
                 if self.use_cache:
                     self.cache[key] = (filename, poster)
                 return poster
         return self.get_default_poster()
     
     def get_image(self, imagepath):
-        import pyglet
         if imagepath in self.cache:
             return self.cache[imagepath][1]
         filename = os.path.join(self.base_dir, imagepath)
         if os.path.exists(filename):
-            with self.lock:
-                image = pyglet.image.load(filename)
+            image = ImageAccess.load(filename)
             if self.use_cache:
                 self.cache[imagepath] = (filename, image)
             return image
