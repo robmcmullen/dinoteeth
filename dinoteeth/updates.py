@@ -1,65 +1,51 @@
 import os, collections, logging
 
-from thread import PygletCommandQueue
+from thread import ThreadTaskManager, ProcessTaskManager
 
 log = logging.getLogger("dinoteeth.updates")
 
 
-class DatabaseTask(PygletCommandQueue):
-    log = logging.getLogger("dinoteeth.database_task")
+class PosterLoadTask(object):
+    def __init__(self, imdb_id, media_category, title):
+        self.imdb_id = imdb_id
+        self.media_category = media_category
+        self.title = title
+    
+    def __str__(self):
+        return "%s: imdb_id=%s" % (self.__class__.__name__, self.imdb_id)
+        
+    def __call__(self, posters=None, *args, **kwargs):
+        posters.fetch_poster(self.imdb_id, self.media_category)
+        return "Loaded artwork for %s" % self.title
+
+
+class UpdateManager(object):
+    poster_thread = None
     
     def __init__(self, window, event_name, db, mmdb, poster_fetcher):
-        PygletCommandQueue.__init__(self, window, event_name, db, mmdb, poster_fetcher)
-        
-    def task_setup(self, db, mmdb, poster_fetcher):
-        self.db = db
-        self.mmdb = mmdb
-        self.posters = poster_fetcher
-        self.log.debug("Database thread started")
-        
-    def task(self):
-        while True:
-            self.log.debug("Database thread waiting for command...")
-            next = self._next_command()
-            if next == "abort":
-                return
-            self.log.debug("Database thread found command: %s" % next)
-            if next == "update_all_posters":
-                self._update_all_posters()
-            else:
-                self.log.debug("Unknown database thread command: %s" % next)
+        cls = self.__class__
+        if cls.poster_thread is not None:
+            raise RuntimeError("UpdateManager already initialized")
+        cls.window = window
+        cls.event_name = event_name
+        cls.db = db
+        cls.mmdb = mmdb
+        cls.posters = poster_fetcher
+        #cls.poster_thread = ThreadTaskManager(window, event_name, posters=cls.posters)
+        cls.poster_thread = ProcessTaskManager(window, event_name, num_workers=1, posters=cls.posters)
     
-    def _update_all_posters(self):
-        db = self.db
+    @classmethod
+    def update_all_posters(cls):
+#        cls.poster_thread.test()
+        db = cls.db
         for i, title_key in enumerate(db.iter_title_keys()):
             if title_key not in db.title_key_to_imdb:
                 continue
             imdb_id = db.title_key_to_imdb[title_key]
-            if self.posters.has_poster(imdb_id):
-                self.notify("Already loaded posters for imdb_id %s" % imdb_id)
-            else:
-                self.notify("Loading posters for imdb_id %s" % imdb_id)
+            if not cls.posters.has_poster(imdb_id):
                 try:
-                    media = self.mmdb.get(imdb_id)
-                    self.posters.fetch_poster(imdb_id, media.media_category)
+                    media = cls.mmdb.get(imdb_id)
+                    task = PosterLoadTask(imdb_id, media.media_category, media.title)
+                    cls.poster_thread.add_task(task)
                 except KeyError:
-                    print "mmdb doesn't know about %s" % imdb_id
-                    raise
-            if self._want_abort:
-                return
-        self.notify("Finished loading posters")
-
-
-class UpdateManager(object):
-    db_thread = None
-    
-    def __init__(self, window, event_name, db, mmdb, poster_fetcher):
-        if self.__class__.db_thread is None:
-            self.__class__.db_thread = DatabaseTask(window, event_name, db, mmdb, poster_fetcher)
-        else:
-            raise RuntimeError("UpdateManager already initialized")
-    
-    @classmethod
-    def update_all_posters(cls):
-        cls.db_thread.put_command("update_all_posters")
-
+                    log.error("mmdb doesn't know about %s" % imdb_id)
