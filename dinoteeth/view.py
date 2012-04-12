@@ -307,7 +307,7 @@ class DetailRenderer(Renderer):
             self.draw_mmdb(item, m)
     
     def draw_image(self, item, m):
-        image = self.artwork_loader.get_image(m['image'])
+        image = self.artwork_loader.full_size_loader.get_image(m['image'])
         image.blit(self.x, self.h - image.height, 0)
     
     def draw_imagegen(self, item, m):

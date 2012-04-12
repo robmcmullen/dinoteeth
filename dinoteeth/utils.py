@@ -1,9 +1,5 @@
-import os, sys, glob, urllib, logging, re
+import os, sys, glob, logging, re
 from datetime import datetime, timedelta
-
-from PIL import Image
-
-from image import ImageAccess
 
 log = logging.getLogger("dinoteeth.utils")
 
@@ -94,117 +90,6 @@ def canonical_filename(title, film_series, season=-1, episode_char='e', episode=
     if episode_name:
         name.append(episode_name)
     return encode_title_text("-".join(name) + ".%s" % ext)
-
-class ArtworkLoader(object):
-    def __init__(self, base_dir, default_poster, poster_width=-1, cache_size=100):
-        self.base_dir = base_dir
-        self.poster_dir = os.path.join(self.base_dir, "posters")
-        self.thumbnail_dir = os.path.join(self.base_dir, "thumbnails")
-        self.poster_width = poster_width
-        if self.poster_width > 0:
-            self.scaled_poster_dir = os.path.join(self.base_dir, "posters-scaled-width-%d" % poster_width)
-        else:
-            self.scaled_poster_dir = None
-        self.use_cache = False
-        self.cache = {}
-        self.default_poster_path = default_poster
-        self.default_poster = None
-        self.check_dirs()
-    
-    def check_dirs(self):
-        if not os.path.exists(self.base_dir):
-            os.mkdir(self.base_dir)
-        for dir in [self.poster_dir, self.thumbnail_dir, self.scaled_poster_dir]:
-            if dir and not os.path.exists(dir):
-                os.mkdir(dir)
-    
-    def get_default_poster(self):
-        import pyglet
-        if self.default_poster is None:
-            self.default_poster = pyglet.image.load(self.default_poster_path)
-        return self.default_poster
-    
-    def get_poster_basename(self, imdb_id, season=None, ext=".jpg"):
-        if season is not None:
-            basename = "%s-%s%s" % (imdb_id, season, ext)
-        else:
-            basename = "%s%s" % (imdb_id, ext)
-        return basename
-    
-    def get_poster_filename(self, imdb_id, season=None):
-        if imdb_id in self.cache:
-            return self.cache[imdb_id][0]
-        elif imdb_id is not None:
-            basename = self.get_poster_basename(imdb_id, season)
-            if self.scaled_poster_dir:
-                filename = os.path.join(self.scaled_poster_dir, basename)
-                if os.path.exists(filename):
-                    return filename
-            filename = os.path.join(self.poster_dir, basename)
-            if os.path.exists(filename):
-                return filename
-        return None
-    
-    def has_poster(self, imdb_id, season=None):
-        return self.get_poster_filename(imdb_id, season) is not None
-    
-    def save_poster_from_url(self, imdb_id, url, season=None):
-        filename = url.split("/")[-1]
-        (name, extension) = os.path.splitext(filename)
-        basename = self.get_poster_basename(imdb_id, season, extension)
-        pathname = os.path.join(self.poster_dir, basename)
-        log.debug(pathname)
-        if not os.path.exists(pathname) or os.stat(pathname)[6] == 0:
-            log.debug("Downloading %s poster: %s" % (imdb_id, url))
-            bytes = urllib.urlopen(url).read()
-            with self.lock:
-                fh = open(pathname, "wb")
-                fh.write(bytes)
-                fh.close()
-            log.debug("Downloaded %s poster as %s" % (imdb_id, pathname))
-            downloaded = True
-        else:
-            log.debug("Found %s poster: %s" % (imdb_id, pathname))
-            downloaded = False
-        # Check for existence of scaled poster
-        if self.scaled_poster_dir:
-            scaled_pathname = os.path.join(self.scaled_poster_dir, basename)
-            if os.path.exists(scaled_pathname) and not downloaded:
-                log.debug("Found %s scaled poster: %s" % (imdb_id, scaled_pathname))
-                return
-            img = Image.open(pathname)
-            if img.size[0] <= self.poster_width:
-                return
-            with self.lock:
-                height = img.size[1] * img.size[0] / self.poster_width
-                size = (self.poster_width, height)
-                img.thumbnail(size, Image.ANTIALIAS)
-                img.save(scaled_pathname, "JPEG", quality=90)
-            log.debug("Created %s scaled poster: %s" % (imdb_id, scaled_pathname))
-    
-    def get_poster(self, imdb_id, season=None):
-        key = (imdb_id, season)
-        if key in self.cache:
-            return self.cache[key][1]
-        elif imdb_id is not None:
-            filename = self.get_poster_filename(imdb_id, season)
-            if filename is not None:
-                poster = ImageAccess.load(filename)
-                if self.use_cache:
-                    self.cache[key] = (filename, poster)
-                return poster
-        return self.get_default_poster()
-    
-    def get_image(self, imagepath):
-        if imagepath in self.cache:
-            return self.cache[imagepath][1]
-        filename = os.path.join(self.base_dir, imagepath)
-        if os.path.exists(filename):
-            image = ImageAccess.load(filename)
-            if self.use_cache:
-                self.cache[imagepath] = (filename, image)
-            return image
-        return self.get_default_poster()
 
 def iter_dir(path, valid_extensions=None, exclude=None, verbose=False, recurse=False):
     if exclude is not None:

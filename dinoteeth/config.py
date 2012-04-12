@@ -6,9 +6,12 @@ except:
 from dinoteeth.third_party.configobj import ConfigObj
 
 from view import *
+from proxies import Proxies
 from database import MovieMetadataDatabase, MediaScanDatabase, DatabaseTask
 from mplayer import MPlayerClient
-from utils import decode_title_text, ArtworkLoader
+from utils import decode_title_text
+from image import ArtworkLoader, ScaledArtworkLoader
+from posters import PosterFetcher
 from hierarchy import RootMenu
 from photo import PhotoDB
 from media import enzyme_extensions
@@ -106,6 +109,7 @@ class Config(object):
         
         self.set_class_defaults()
         
+        self.proxies = self.get_proxies()
         self.db = self.get_media_database()
         self.mmdb = self.get_metadata_database()
         self.init_orm_databases()
@@ -156,7 +160,7 @@ class Config(object):
                                           height=self.options.window_height,
                                           margins=margins)
             
-            self.db_thread = DatabaseTask(self.main_window, 'on_status_update', self.db, self.mmdb, self.get_artwork_loader())
+            self.db_thread = DatabaseTask(self.main_window, 'on_status_update', self.db, self.mmdb, self.get_poster_fetcher())
             self.db_thread.update_all_posters()
         return self.main_window
     
@@ -198,12 +202,19 @@ class Config(object):
                 db.add_path(path)
         return db
     
-    def get_metadata_database(self):
-        mmdb = MovieMetadataDatabase(
+    def get_proxies(self):
+        proxies = Proxies(
             imdb_cache_dir=self.get_metadata_pathname(self.options.imdb_cache_dir),
             tmdb_cache_dir=self.get_metadata_pathname(self.options.tmdb_cache_dir),
             tvdb_cache_dir=self.get_metadata_pathname(self.options.tvdb_cache_dir),
             language=self.options.language)
+        return proxies
+    
+    def get_poster_fetcher(self):
+        return PosterFetcher(self.get_proxies(), self.get_artwork_loader().clone())
+    
+    def get_metadata_database(self):
+        mmdb = MovieMetadataDatabase(self.proxies)
         statefile = self.get_metadata_pathname(self.options.mmdb)
         print "Loading from %s" % statefile
         mmdb.loadStateFromFile(statefile)
@@ -259,8 +270,8 @@ class Config(object):
         if not hasattr(self, "artwork_loader"):
             system_image_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../graphics"))
             na = os.path.join(system_image_dir, "artwork-not-available.png")
-            print na
-            self.artwork_loader = ArtworkLoader(self.get_metadata_pathname(self.options.image_dir), na, poster_width=self.options.poster_width)
+            full_size_loader = ArtworkLoader(self.get_metadata_pathname(self.options.image_dir), na)
+            self.artwork_loader = ScaledArtworkLoader(full_size_loader, self.options.poster_width)
         return self.artwork_loader
     
     def get_media_client(self):

@@ -5,10 +5,6 @@ from serializer import PickleSerializerMixin, FilePickleDict
 from media import MediaScan
 from metadata import Company, Person, FilmSeries, MovieMetadata, SeriesMetadata
 
-import imdb
-import tmdb3
-from third_party.tvdb_api import tvdb_api, tvdb_exceptions
-
 log = logging.getLogger("dinoteeth.database")
 
 
@@ -295,13 +291,13 @@ from thread import PygletCommandQueue
 class DatabaseTask(PygletCommandQueue):
     log = logging.getLogger("dinoteeth.database_task")
     
-    def __init__(self, window, event_name, db, mmdb, artwork_loader):
-        PygletCommandQueue.__init__(self, window, event_name, db, mmdb, artwork_loader)
+    def __init__(self, window, event_name, db, mmdb, poster_fetcher):
+        PygletCommandQueue.__init__(self, window, event_name, db, mmdb, poster_fetcher)
         
-    def task_setup(self, db, mmdb, artwork_loader):
+    def task_setup(self, db, mmdb, poster_fetcher):
         self.db = db
         self.mmdb = mmdb
-        self.artwork_loader = artwork_loader
+        self.posters = poster_fetcher
         self.log.debug("Database thread started")
         
     def task(self):
@@ -322,12 +318,13 @@ class DatabaseTask(PygletCommandQueue):
             if title_key not in db.title_key_to_imdb:
                 continue
             imdb_id = db.title_key_to_imdb[title_key]
-            if self.artwork_loader.has_poster(imdb_id):
+            if self.posters.has_poster(imdb_id):
                 self.notify("Already loaded posters for imdb_id %s" % imdb_id)
             else:
                 self.notify("Loading posters for imdb_id %s" % imdb_id)
                 try:
-                    self.mmdb.fetch_poster(imdb_id, self.artwork_loader)
+                    media = self.mmdb.get(imdb_id)
+                    self.posters.fetch_poster(imdb_id, media.media_category)
                 except KeyError:
                     print "mmdb doesn't know about %s" % imdb_id
                     raise
@@ -337,216 +334,6 @@ class DatabaseTask(PygletCommandQueue):
 
     def update_all_posters(self):
         self.put_command("update_all_posters")
-
-
-
-
-class FileProxy(object):
-    def __init__(self, cache_dir=None):
-        self.create_api_connection()
-        if cache_dir:
-            self.search_cache = FilePickleDict(cache_dir, "s")
-            self.movie_obj_cache = FilePickleDict(cache_dir, "")
-            self.use_cache = True
-        else:
-            self.search_cache = {}
-            self.movie_obj_cache = {}
-            self.use_cache = False
-        
-    def __str__(self):
-        lines = []
-        titles = sorted(self.search_cache.keys())
-        for title in titles:
-            lines.append("%s: %s" % (title, self.search_cache[title]))
-        return "\n".join(lines)
-    
-    def create_api_connection(self):
-        raise RuntimeError()
-        
-class IMDbFileProxy(FileProxy):
-    def create_api_connection(self):
-        self.imdb_api = imdb.IMDb(accessSystem='http', adultSearch=1)
-        
-    def search_movie(self, title):
-        if title in self.search_cache:
-            log.debug("*** FOUND %s in search cache: " % title)
-            results = self.search_cache[title]
-        else:
-            log.debug("*** NOT FOUND in search cache: %s" % title )
-            results = self.imdb_api.search_movie(title)
-            if self.use_cache:
-                log.debug("*** STORING %s in search cache: " % title)
-                self.search_cache[title] = results
-        for result in results:
-            result.imdb_id = "tt" + result.movieID
-        return results
-        
-    def get_movie(self, imdb_id):
-        if type(imdb_id) == int:
-            imdb_id = "tt%07d" % imdb_id
-        if imdb_id in self.movie_obj_cache:
-            log.debug("*** FOUND %s in movie cache: " % imdb_id)
-            movie_obj = self.movie_obj_cache[imdb_id]
-        else:
-            log.debug("*** NOT FOUND in movie cache: %s" % imdb_id)
-            movie_obj = self.imdb_api.get_movie(imdb_id[2:])
-            if self.use_cache and movie_obj:
-                log.debug("*** STORING %s in movie cache: " % imdb_id)
-                self.movie_obj_cache[imdb_id] = movie_obj
-        if movie_obj:
-            movie_obj.imdb_id = "tt" + movie_obj.movieID
-        return movie_obj
-
-class TMDbFileProxy(FileProxy):
-    def create_api_connection(self):
-        self.tmdb_api = tmdb3.TMDb3_API()
-    
-    def get_imdb_id(self, imdb_id):
-        if type(imdb_id) == int:
-            imdb_id = "tt%07d" % imdb_id
-        if not imdb_id.startswith("tt"):
-            imdb_id = "tt" + imdb_id
-        if imdb_id in self.movie_obj_cache:
-            log.debug("*** FOUND %s in tmdb cache: " % imdb_id)
-            return self.movie_obj_cache[imdb_id]
-        log.debug("*** NOT FOUND in tmdb cache: %s" % imdb_id)
-        movie_obj = self.tmdb_api.get_imdb_id(imdb_id)
-        log.debug("*** STORING %s in tmdb cache: " % imdb_id)
-        if self.use_cache:
-            self.movie_obj_cache[imdb_id] = movie_obj
-        return movie_obj
-
-class TvdbSelectByIMDb:
-    """Non-interactive UI for Tvdb_api which selects the result based on IMDb ID
-    
-    top_gear_australia_id = 1251819
-    t = tvdb_api.Tvdb(custom_ui=TvdbSelectByIMDb(top_gear_australia_id))
-    show = t['top gear']
-    print show
-    """
-    def __init__(self, imdb_id):
-        if type(imdb_id) == int:
-            self.imdb_id = "tt%07d" % imdb_id
-        elif not imdb_id.startswith("tt"):
-            self.imdb_id = "tt%s" % imdb_id
-        else:
-            self.imdb_id = imdb_id
-
-    def __call__(self, config):
-        self.config = config
-        return self
-
-    def selectSeries(self, allSeries):
-        for s in allSeries:
-            id = s.get('imdb_id', 'no IMDb id')
-            print "%s: %s %s" % (s['seriesname'], s.get('firstaired','unknown'), id)
-            if id == self.imdb_id:
-                return s
-        return allSeries[0]
-
-class TvdbPoster(object):
-    def __init__(self, info):
-        self.rating = float(info.get('rating','0'))
-        self.num_votes = int(info.get('ratingcount','0'))
-        self.url = info['_bannerpath']
-        
-    def __str__(self):
-        return "rating=%s (%s votes): %s" % (self.rating, self.num_votes, self.url)
-
-class TvdbPosterList(object):
-    def __init__(self, season=-1):
-        self.season = season
-        self.posters = []
-        self.num_with_votes = 0
-        self.sum_rating = 0.0
-        self.sum_votes = 0
-        self.sorted = False
-        
-    def append(self, poster):
-        self.posters.append(poster)
-        if poster.num_votes > 0:
-            self.num_with_votes += 1
-            self.sum_rating += poster.rating
-            self.sum_votes += poster.num_votes
-        self.sorted = False
-        
-    def sort(self):
-        """Sort using a bayesian average.
-        
-        Example from: http://www.thebroth.com/blog/118/bayesian-rating
-        """
-        if self.sorted:
-            return True
-        if self.num_with_votes == 0:
-            return
-        avg_num_votes = self.sum_votes / self.num_with_votes
-        avg_rating = self.sum_rating / self.num_with_votes
-        keylist = [(((avg_num_votes * avg_rating) + (p.num_votes * p.rating))/(avg_num_votes + p.num_votes), p) for p in self.posters]
-        keylist.sort()
-        keylist.reverse()
-        posters = []
-        for key, poster in keylist:
-            print poster
-            posters.append(poster)
-        self.posters = posters
-        self.sorted = True
-        
-    def best(self):
-        if self.posters:
-            self.sort()
-            return self.posters[0]
-
-class TvdbSeasonPosters(object):
-    def __init__(self):
-        self.seasons = {}
-        
-    def add(self, info):
-        poster = TvdbPoster(info)
-        s = int(info['season'])
-        if s not in self.seasons:
-            self.seasons[s] = TvdbPosterList(s)
-        self.seasons[s].append(poster)
-        
-    def sort(self):
-        seasons = self.seasons.keys()
-        seasons.sort()
-        for s in seasons:
-            print "Season %d" % s
-            self.seasons[s].sort()
-            
-    def best(self, season):
-        if season in self.seasons:
-            return self.seasons[season].best()
-    
-    def get_seasons(self):
-        s = self.seasons.keys()
-        s.sort()
-        return s
-
-class TVDbFileProxy(object):
-    def __init__(self, cache_dir=None):
-        self.cache_dir = cache_dir
-        if cache_dir:
-            self.use_cache = True
-        else:
-            self.use_cache = False
-        
-    def search_movie(self, title):
-        try:
-            t = tvdb_api.Tvdb(custom_ui=TvdbSelectByIMDb(imdb_id), cache=self.cache_dir, banners=True)
-            show = t[media.title]
-        except tvdb_exceptions.tvdb_shownotfound:
-            raise KeyError
-        return results
-        
-    def get_imdb_id(self, imdb_id):
-        try:
-            t = tvdb_api.Tvdb(cache=self.cache_dir, banners=True)
-            show = t[imdb_id]
-        except tvdb_exceptions.tvdb_shownotfound:
-            raise KeyError
-
-        return show
 
 
 class MetadataDatabase(PickleSerializerMixin):
@@ -569,12 +356,12 @@ class MetadataDatabase(PickleSerializerMixin):
 class MovieMetadataDatabase(MetadataDatabase):
     imdb_allowed_kinds = ['movie', 'video movie', 'tv movie', 'series', 'tv series', 'tv mini series']
     
-    def __init__(self, imdb_cache_dir=None, tmdb_cache_dir=None, tvdb_cache_dir=None, language="en", default_version=4):
+    def __init__(self, proxies, default_version=4):
         MetadataDatabase.__init__(self, default_version)
-        self.imdb_api = IMDbFileProxy(imdb_cache_dir)
-        self.tmdb_api = TMDbFileProxy(tmdb_cache_dir)
-        self.tvdb_api = TVDbFileProxy(tvdb_cache_dir)
-        self.language = language
+        self.imdb_api = proxies.imdb_api
+        self.tmdb_api = proxies.tmdb_api
+        self.tvdb_api = proxies.tvdb_api
+        self.language = proxies.language
     
     def __str__(self):
         lines = []
@@ -889,99 +676,6 @@ class MovieMetadataDatabase(MetadataDatabase):
         self.film_series[id] = film_series
         return film_series
     
-    def fetch_poster(self, imdb_id, artwork_loader):
-        if imdb_id in self.media:
-            media = self.media[imdb_id]
-            if media.media_category == 'series':
-                loaders = ['tvdb', 'tmdb']
-            else:
-                loaders = ['tmdb', 'tvdb']
-            
-            for loader in loaders:
-                try:
-                    if loader == 'tvdb':
-                        return self.fetch_poster_tvdb(imdb_id, media, artwork_loader)
-                    elif loader == 'tmdb':
-                        return self.fetch_poster_tmdb(imdb_id, artwork_loader)
-                except KeyError:
-                    pass
-            return None
-        else:
-            raise KeyError("IMDb title %s not in local database" % imdb_id)
-    
-    # TMDb specific poster lookup
-    def tmdb_poster_info(self, poster):
-        urls = {}
-        for key, url in poster.items():
-            if url.startswith("http") and "/t/p/" in url:
-                _, imginfo = url.split("/t/p/")
-                size, filename = imginfo.split("/")
-                if size.startswith("w") or size == "original":
-                    urls[size] = url
-                log.debug("%s: %s" % (size, url))
-        return urls
-    
-    def fetch_poster_tmdb(self, imdb_id, artwork_loader):
-        tfilm = self.tmdb_api.get_imdb_id(imdb_id)
-        if tfilm is None:
-            raise KeyError
-        found = tfilm.get_best_poster('w342', language=self.language)
-        if found:
-            log.debug("best poster: %s" % found)
-            artwork_loader.save_poster_from_url(imdb_id, found)
-        else:
-            log.debug("No poster for %s" % unicode(tfilm).encode('utf8'))
-
-    # Tvdb specific poster lookup
-    # second level dictionary keys
-    fanart_key='fanart'
-    banner_key='series'
-    poster_key='poster'
-    season_key='season'
-    # third level dictionay keys for select graphics URL(s)
-    poster_series_key='680x1000'
-    poster_season_key='season'
-    fanart_hires_key='1920x1080'
-    fanart_lowres_key='1280x720'
-    banner_series_key='graphical'
-    banner_season_key='seasonwide'
-
-    def fetch_poster_tvdb(self, imdb_id, media, artwork_loader):
-        show = self.tvdb_api.get_imdb_id(imdb_id)
-        if not show:
-            log.debug("No tvdb entry for %s: %s" % (imdb_id, unicode(media.title).encode('utf8')))
-            return
-        self.fetch_poster_tvdb_series(show, imdb_id, media, artwork_loader)
-        self.fetch_poster_tvdb_seasons(show, imdb_id, media, artwork_loader)
-        
-    def fetch_poster_tvdb_series(self, show, imdb_id, media, artwork_loader):
-        posters = show.data['_banners'][self.poster_key][self.poster_series_key]
-        series = TvdbPosterList()
-        for k,info in posters.iteritems():
-            if info['language'] != self.language:
-                continue
-            p = TvdbPoster(info)
-            series.append(p)
-        best = series.best()
-        if best:
-            log.debug("best poster: %s" % best)
-            artwork_loader.save_poster_from_url(imdb_id, best.url)
-        else:
-            log.debug("No poster for %s" % unicode(media.title).encode('utf8'))
-        
-    def fetch_poster_tvdb_seasons(self, show, imdb_id, media, artwork_loader):
-        posters = show.data['_banners'][self.season_key][self.poster_season_key]
-        seasons = TvdbSeasonPosters()
-        for k,info in posters.iteritems():
-            if info['language'] != self.language:
-                continue
-            seasons.add(info)
-        seasons.sort()
-        for i in seasons.get_seasons():
-            best = seasons.best(i)
-            log.debug("best poster for season #%d: %s" % (i, best))
-            artwork_loader.save_poster_from_url(imdb_id, best.url, season=i)
-
     def lambdaify(self, criteria):
         if isinstance(criteria, collections.Callable):
             return criteria
