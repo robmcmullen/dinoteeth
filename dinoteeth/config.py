@@ -7,7 +7,8 @@ from dinoteeth.third_party.configobj import ConfigObj
 
 from view import *
 from proxies import Proxies
-from database import MovieMetadataDatabase, MediaScanDatabase, DatabaseTask
+from database import MovieMetadataDatabase, MediaScanDatabase
+from updates import UpdateManager
 from mplayer import MPlayerClient
 from utils import decode_title_text
 from image import ArtworkLoader, ScaledArtworkLoader
@@ -160,8 +161,8 @@ class Config(object):
                                           height=self.options.window_height,
                                           margins=margins)
             
-            self.db_thread = DatabaseTask(self.main_window, 'on_status_update', self.db, self.mmdb, self.get_poster_fetcher())
-            self.db_thread.update_all_posters()
+            UpdateManager(self.main_window, 'on_status_update', self.db, self.mmdb, self.get_poster_fetcher())
+            UpdateManager.update_all_posters()
         return self.main_window
     
     def prepare_for_external_app(self):
