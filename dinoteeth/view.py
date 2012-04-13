@@ -100,6 +100,7 @@ class AbstractLayout(object):
         self.compute_params(margins)
         self.root = None
         self.hierarchy = []
+        self.stack = []
         self.controller = None
     
     def compute_params(self, margins):
@@ -116,6 +117,16 @@ class AbstractLayout(object):
     def set_root(self, root):
         self.root = root
         self.hierarchy = [root]
+    
+    def push_root(self, new_root):
+        self.stack.append((self.root, self.hierarchy))
+        self.set_root(new_root)
+    
+    def pop_root(self):
+        self.root, self.hierarchy = self.stack.pop()
+    
+    def in_sub_menu(self):
+        return len(self.stack) > 0
     
     def get_menu(self):
         return self.hierarchy[-1]
