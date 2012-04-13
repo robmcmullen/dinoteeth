@@ -286,9 +286,12 @@ class Config(object):
     def get_leading_articles(self):
         return ["a", "an", "the"]
     
+    def show_status(self, text):
+        win = self.get_main_window()
+        win.on_status_update(text)
+    
     def do_shutdown_tasks(self):
         TaskManager.stop_all()
-        self.root.save_state()
 
 
 def setup(args):
