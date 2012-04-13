@@ -16,6 +16,11 @@ class MenuItem(object):
         self.cursor = 0
         self.children = []
     
+    @classmethod
+    def create_root(cls, populator):
+        root = MenuItem(populator.root_title, populate_children=populator)
+        return root
+    
     def __cmp__(self, other):
         return cmp(self.title, other.title)
     
@@ -84,6 +89,14 @@ class MenuItem(object):
             if self.cursor >= len(self.children):
                 self.cursor = len(self.children) - 1
 
+    def do_create_edit_menu(self, **kwargs):
+        if self.enabled:
+            print "edit!"
+            if self.metadata and 'edit' in self.metadata:
+                populator = self.metadata['edit']
+                new_root = self.create_root(populator)
+                return new_root
+    
     def get_item(self, i):
         self.do_populate()
         return self.children[i]

@@ -35,6 +35,8 @@ class VerticalMenuController(object):
             self.process_back()
         elif symbol == k.Q or symbol == k.ESCAPE:
             self.process_quit()
+        elif symbol == k.E:
+            self.process_edit()
         elif symbol == k.A:
             self.process_audio()
         elif symbol == k.S:
@@ -49,6 +51,15 @@ class VerticalMenuController(object):
             menu = self.layout.get_menu()
             selected = menu.get_selected_item()
             selected.do_action(config=self.config)
+            if self.layout.in_sub_menu():
+                self.layout.pop_root()
+    
+    def process_edit(self):
+        menu = self.layout.get_menu()
+        selected = menu.get_selected_item()
+        new_root = selected.do_create_edit_menu(config=self.config)
+        if new_root is not None:
+            self.layout.push_root(new_root)
     
     def process_audio(self):
         menu = self.layout.get_menu()

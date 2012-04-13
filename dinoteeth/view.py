@@ -310,6 +310,8 @@ class DetailRenderer(Renderer):
     def draw(self, menu):
         item = menu.get_selected_item()
         m = item.get_metadata(self)
+        if m is None:
+            return
         if 'image' in m:
             self.draw_image(item, m)
         elif 'imagegen' in m:

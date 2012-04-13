@@ -42,6 +42,7 @@ class TopLevelLookup(MMDBPopulator):
     def get_metadata(self):
         return {
             'imagegen': self.thumbnail_mosaic,
+            'edit': EditTestRoot(self.config, None),
             }
 
 class RecentLookup(MMDBPopulator):
@@ -260,7 +261,31 @@ class MediaPlayMultiple(MMDBPopulator):
             }
 
 
+class EditTestRoot(MenuPopulator):
+    def __init__(self, config, imdb_id):
+        MenuPopulator.__init__(self, config)
+        self.root_title = "Edit Test!"
+        
+    def iter_create(self):
+        for name in ["test entry %d" % i for i in range(10)]:
+            test_id = name
+            yield name, EditTest(self.config, test_id)
+
+class EditTest(MenuPopulator):
+    def __init__(self, config, test_id):
+        MenuPopulator.__init__(self, config)
+        self.test_id = test_id
+        
+    def play(self, config=None):
+        status = "Selected %s" % self.test_id
+        self.config.show_status(status)
+
+
 class RootPopulator(MMDBPopulator):
+    def __init__(self, config):
+        MenuPopulator.__init__(self, config)
+        self.root_title = "Dinoteeth Media Launcher"
+        
     def iter_create(self):
         yield "Movies & Series", TopLevelLookup(self.config, [MovieMetadata, SeriesMetadata])
         yield "Just Movies", TopLevelLookup(self.config, [MovieMetadata])
@@ -273,8 +298,6 @@ class RootPopulator(MMDBPopulator):
         return {
             'image': 'background-merged.jpg',
             }
-    
-class RootMenu(MenuItem):
-    def __init__(self, config):
-        MenuItem.__init__(self, "Dinoteeth Media Launcher", populate_children=RootPopulator(config))
-        self.config = config
+
+def RootMenu(config):
+    return MenuItem.create_root(RootPopulator(config))
