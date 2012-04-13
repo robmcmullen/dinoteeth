@@ -1,8 +1,6 @@
-import os, collections, logging
+import os, logging
 
-from serializer import PickleSerializerMixin, FilePickleDict
-from media import MediaScan
-from metadata import Company, Person, FilmSeries, MovieMetadata, SeriesMetadata
+from serializer import FilePickleDict
 
 import imdb
 import tmdb3

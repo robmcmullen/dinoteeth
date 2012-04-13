@@ -1,7 +1,7 @@
 import os, collections, logging
 
 from utils import iter_dir
-from serializer import PickleSerializerMixin, FilePickleDict
+from serializer import PickleSerializerMixin
 from media import MediaScan
 from metadata import Company, Person, FilmSeries, MovieMetadata, SeriesMetadata
 

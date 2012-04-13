@@ -1,4 +1,4 @@
-import os, collections, logging
+import os, logging
 
 from thread import ThreadTaskManager, ProcessTaskManager
 
