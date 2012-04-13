@@ -260,33 +260,21 @@ class MediaPlayMultiple(MMDBPopulator):
             }
 
 
-class RootMenu(MenuItem):
-    def __init__(self, config):
-        MenuItem.__init__(self, "Dinoteeth Media Launcher")
-        self.config = config
-        self.metadata = {
+class RootPopulator(MMDBPopulator):
+    def iter_create(self):
+        yield "Movies & Series", TopLevelLookup(self.config, [MovieMetadata, SeriesMetadata])
+        yield "Just Movies", TopLevelLookup(self.config, [MovieMetadata])
+        yield "Just Series", TopLevelLookup(self.config, [SeriesMetadata])
+        yield "Paused...", TopLevelLookup(self.config, [])
+        yield "Photos & Home Videos", TopLevelPhoto(self.config)
+        yield "Games", TopLevelLookup(self.config, [])
+
+    def get_metadata(self):
+        return {
             'image': 'background-merged.jpg',
             }
-        
-        self.category_order = [
-            ("Movies & Series", TopLevelLookup(self.config, [MovieMetadata, SeriesMetadata])),
-            ("Just Movies", TopLevelLookup(self.config, [MovieMetadata])),
-            ("Just Series", TopLevelLookup(self.config, [SeriesMetadata])),
-            ("Paused...", self.get_empty_root),
-            ("Photos & Home Videos", TopLevelPhoto(self.config)),
-            ("Games", self.get_empty_root),
-            ]
-        self.categories = {}
     
-    def create_menus(self):
-        for cat, populator in self.category_order:
-            item = MenuItem(cat, populate_children=populator)
-            self.add(item)
-            if hasattr(populator, 'get_metadata'):
-                item.metadata = populator.get_metadata()
-    
-    def get_empty_root(self, parent):
-        raise StopIteration
-    
-    def save_state(self):
-        pass
+class RootMenu(MenuItem):
+    def __init__(self, config):
+        MenuItem.__init__(self, "Dinoteeth Media Launcher", populate_children=RootPopulator(config))
+        self.config = config

@@ -181,7 +181,6 @@ class Config(object):
     
     def create_root(self):
         self.root = RootMenu(self)
-        self.root.create_menus()
     
     def get_metadata_pathname(self, option):
         if not os.path.isabs(option) and self.options.metadata_root:
