@@ -227,8 +227,7 @@ class Config(object):
             if self.options.media_root and not os.path.isabs(path):
                 path = os.path.join(self.options.media_root, path)
             media_path_dict[path] = flags
-        artwork_loader = self.get_artwork_loader()
-        self.db.update_metadata(media_path_dict, self.mmdb, artwork_loader, valid)
+        self.db.update_metadata(media_path_dict, self.mmdb, valid)
 
     def init_orm_databases(self):
         db = self.get_metadata_pathname(self.options.stats_db)

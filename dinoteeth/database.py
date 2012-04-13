@@ -233,14 +233,14 @@ class MediaScanDatabase(PickleSerializerMixin):
         new_keys = current_keys - stored_keys
         return removed_keys, new_keys
     
-    def update_metadata(self, media_path_dict, mmdb, artwork_loader, valid_extensions=None):
+    def update_metadata(self, media_path_dict, mmdb, valid_extensions=None):
         removed_keys, new_keys = self.scan_dirs(media_path_dict, valid_extensions)
         if removed_keys:
             print "Found files that have been removed! %s" % str(removed_keys)
             self.remove_metadata(removed_keys, mmdb)
         if new_keys:
             print "Found files that have been added! %s" % str(new_keys)
-            self.add_metadata(new_keys, mmdb, artwork_loader)
+            self.add_metadata(new_keys, mmdb)
         missing_title_keys = self.fix_missing_imdb_id(mmdb)
         self.update_new_title_keys_metadata(new_keys, missing_title_keys, mmdb)
         self.saveStateToFile()
@@ -257,7 +257,7 @@ class MediaScanDatabase(PickleSerializerMixin):
             print "%d: removing imdb=%s %s" % (i, imdb_id, str(title_key))
             self.remove(key, mmdb)
     
-    def add_metadata(self, new_keys, mmdb, artwork_loader):
+    def add_metadata(self, new_keys, mmdb):
         count = len(new_keys)
         for i, key in enumerate(new_keys):
             title_key = self.get_title_key(key)
