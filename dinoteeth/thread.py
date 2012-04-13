@@ -2,7 +2,6 @@ import os, time, logging, threading, multiprocessing, Queue
 import pyglet
 
 log = logging.getLogger("dinoteeth.thread")
-log.setLevel(logging.DEBUG)
 
 class TestSleepTask(object):
     def __init__(self, num, sleep):
@@ -16,12 +15,12 @@ class TestSleepTask(object):
 
 class TaskManager(object):
     def add_task(self, task):
-        print("Adding task %s" % str(task))
+        log.debug("Adding task %s" % str(task))
         self._tasks.put(task)
     
     def _notify(self, result):
         """Called from within the thread"""
-        print "Got result: %s" % result
+        log.debug("Got result: %s" % result)
         pyglet.app.platform_event_loop.post_event(self._notify_window, self._notify_event, result)
 
     def abort(self):
@@ -64,9 +63,9 @@ class ThreadTaskManager(threading.Thread, TaskManager):
         self.start()
     
     def run(self):
-        print("starting thread...")
+        log.debug("starting thread...")
         while True:
-            print("waiting for tasks...")
+            log.debug("waiting for tasks...")
             task = self._tasks.get(True) # blocking
             if task is None or self._want_abort:
                 break
@@ -90,12 +89,12 @@ class Worker(multiprocessing.Process):
             task = self._tasks.get() # block to wait for new task
             if task is None:
                 # "poison pill" means shutdown this worker
-                print("%s: finished" % self.name)
+                log.debug("%s: finished" % self.name)
                 self._results.put(WorkerFinished())
                 break
-            print("%s: running task %s" % (self.name, task))
+            log.debug("%s: running task %s" % (self.name, task))
             result = task(*self.args, **self.kwargs)
-            print("%s: completed task %s with result %s" % (self.name, task, result))
+            log.debug("%s: completed task %s with result %s" % (self.name, task, result))
             self._results.put(result)
         return
 
@@ -123,10 +122,10 @@ class ProcessTaskManager(threading.Thread, TaskManager):
         self.start()
     
     def run(self):
-        print("starting multiprocess manager thread...")
+        log.debug("starting multiprocess manager thread...")
         while True:
             try:
-                print("waiting for results...")
+                log.debug("waiting for results...")
                 result = self._results.get(True, 1.0) # blocking
                 if type(result) is WorkerFinished:
                     self._num_workers -= 1
@@ -141,5 +140,5 @@ class ProcessTaskManager(threading.Thread, TaskManager):
         # Method for use by main thread to signal an abort
         self._want_abort = True
         for i in range(self._num_workers):
-            print "Sending poison pill"
+            log.debug("Sending poison pill")
             self.add_task(None)

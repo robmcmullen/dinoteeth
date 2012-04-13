@@ -55,7 +55,6 @@ class ImageAccess(object):
                 width, height = img.size
 
                 image = (width, height, img.mode, img.tostring())
-                print repr(image[3][0:200])
                 image = pyglet.image.ImageData(*image)
             except Exception, e:
                 cls.log.error("Error loading %s: %s" % (filename, e))
