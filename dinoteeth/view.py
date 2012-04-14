@@ -318,6 +318,8 @@ class DetailRenderer(Renderer):
             self.draw_imagegen(item, m)
         elif 'mmdb' in m:
             self.draw_mmdb(item, m)
+        elif 'imdb_search_result' in m:
+            self.draw_imdb_search_result(item, m)
     
     def draw_image(self, item, m):
         image = self.artwork_loader.full_size_loader.get_image(m['image'])
@@ -345,6 +347,37 @@ class DetailRenderer(Renderer):
             self.batch_cache[True] = batch
         
         text = "{font_name '%s'}{font_size %s}{color (255,255,255,255)}" % (self.fonts.name, self.fonts.detail_size) + m['mmdb'].get_pyglet_text(m.get('media_scan', None))
+        document = pyglet.text.decode_attributed(text)
+        self.label.document = document
+        self.batch_cache[True].draw()
+
+    def draw_imdb_search_result(self, item, m):
+        result = m['imdb_search_result']
+        print result
+        imdb_id = result.imdb_id
+        image = self.artwork_loader.get_poster(imdb_id, None)
+        image.blit(self.x, self.h - image.height, 0)
+        
+        if not self.batch_cache:
+            batch = pyglet.graphics.Batch()
+            document = pyglet.text.decode_attributed("")
+            self.label = pyglet.text.DocumentLabel(document,
+                                          x=self.x + image.width + 10, y=self.h,
+                                          anchor_x='left', anchor_y='top',
+                                          width=self.w - image.width - 10, multiline=True,
+                                          batch=batch)
+            self.batch_cache[True] = batch
+        
+        akas = "{}\n".join([a.replace('::', ' -- ') for a in result.get('akas',[])])
+        text = "{font_name '%s'}{font_size %s}{color (255,255,255,255)}" % (self.fonts.name, self.fonts.detail_size)
+        text += u"""{bold True}Title:{bold False} %s{}
+{bold True}Year:{bold False} %s{}
+{bold True}Type:{bold False} %s{}
+{}
+{bold True}Also known as:{bold False}{}
+%s{}
+""" % (result['title'], result['year'], result['kind'], akas)
+
         document = pyglet.text.decode_attributed(text)
         self.label.document = document
         self.batch_cache[True].draw()

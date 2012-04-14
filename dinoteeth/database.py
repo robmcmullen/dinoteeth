@@ -131,13 +131,18 @@ class MediaScanDatabase(PickleSerializerMixin):
                 # key, remove all traces of the title key and associated
                 # mappings
                 del self.title_key_map[title_key]
-                if title_key in self.title_key_to_imdb:
-                    imdb_id = self.title_key_to_imdb[title_key]
-                    del self.title_key_to_imdb[title_key]
-                    self.imdb_to_title_key[imdb_id].discard(title_key)
-                    if len(self.imdb_to_title_key[imdb_id]) == 0:
-                        del self.imdb_to_title_key[imdb_id]
-                    mmdb.remove(imdb_id)
+                self.remove_title_key_imdb_relation(title_key, mmdb)
+    
+    def remove_title_key_imdb_relation(self, title_key, mmdb):
+        old_imdb_id = self.title_key_to_imdb.pop(title_key, None)
+        if old_imdb_id is not None:
+            self.imdb_to_title_key[old_imdb_id].discard(title_key)
+            if len(self.imdb_to_title_key[old_imdb_id]) == 0:
+                del self.imdb_to_title_key[old_imdb_id]
+                # If no more title keys use this imdb_id, delete all traces of
+                # the imdb_id from the mmdb also
+                mmdb.remove(old_imdb_id)
+        return old_imdb_id
     
     def get(self, name):
         return self.db[name]
@@ -261,18 +266,22 @@ class MediaScanDatabase(PickleSerializerMixin):
         count = len(new_keys)
         for i, key in enumerate(new_keys):
             title_key = self.get_title_key(key)
-            try:
-                imdb_id = self.get_imdb_id(title_key)
-                print "%d/%d: imdb=%s %s" % (i, count, imdb_id, str(title_key))
-            except KeyError:
-                print "%d/%d: imdb=NOT FOUND %s" % (i, count, str(title_key))
-                imdb_id = self.add_imdb_id(title_key, mmdb)
-                for j, media in enumerate(self.get_all_with_title_key(title_key)):
-                    log.info("  media #%d: %s" % (j, str(media)))
-            if imdb_id:
-                if not mmdb.contains_imdb_id(imdb_id):
-                    log.debug("Loading imdb_id %s" % imdb_id)
-                    mmdb.fetch_imdb_id(imdb_id)
+            print "add_metadata: %d/%d: %s" % (i, count, str(title_key))
+            self.add_metadata_by_title_key(title_key, mmdb)
+    
+    def add_metadata_by_title_key(self, title_key, mmdb):
+        try:
+            imdb_id = self.get_imdb_id(title_key)
+            print "imdb=%s %s" % (imdb_id, str(title_key))
+        except KeyError:
+            print "imdb=NOT FOUND %s" % (str(title_key))
+            imdb_id = self.add_imdb_id(title_key, mmdb)
+            for j, media in enumerate(self.get_all_with_title_key(title_key)):
+                log.info("  media #%d: %s" % (j, str(media)))
+        if imdb_id:
+            if not mmdb.contains_imdb_id(imdb_id):
+                log.debug("Loading imdb_id %s" % imdb_id)
+                mmdb.fetch_imdb_id(imdb_id)
 
     def update_new_title_keys_metadata(self, new_keys, missing_title_keys, mmdb):
         new_title_keys = set(missing_title_keys)
@@ -281,10 +290,21 @@ class MediaScanDatabase(PickleSerializerMixin):
             new_title_keys.add(media_scan.title_key)
         log.debug("title keys with new files: %s" % str(new_title_keys))
         for title_key in new_title_keys:
-            media_scans = self.get_all_with_title_key(title_key)
-            imdb_id = self.get_imdb_id(title_key)
-            metadata = mmdb.get(imdb_id)
-            metadata.update_with_media_scans(media_scans)
+            self.update_metadata_from_media_scans(title_key, mmdb)
+    
+    def update_metadata_from_media_scans(self, title_key, mmdb):
+        media_scans = self.get_all_with_title_key(title_key)
+        imdb_id = self.get_imdb_id(title_key)
+        metadata = mmdb.get(imdb_id)
+        metadata.update_with_media_scans(media_scans)
+    
+    def change_imdb_id(self, title_key, new_imdb_id, mmdb):
+        old_imdb_id = self.remove_title_key_imdb_relation(title_key, mmdb)
+        self.set_imdb_id(title_key, new_imdb_id)
+        self.add_metadata_by_title_key(title_key, mmdb)
+        self.update_metadata_from_media_scans(title_key, mmdb)
+        self.saveStateToFile()
+        mmdb.saveStateToFile()
 
 
 class MetadataDatabase(PickleSerializerMixin):

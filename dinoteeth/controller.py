@@ -53,6 +53,7 @@ class VerticalMenuController(object):
             selected.do_action(config=self.config)
             if self.layout.in_sub_menu():
                 self.layout.pop_root()
+                self.layout.refresh()
     
     def process_edit(self):
         menu = self.layout.get_menu()
