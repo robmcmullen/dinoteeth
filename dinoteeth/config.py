@@ -12,6 +12,7 @@ from updates import UpdateManager
 from mplayer import MPlayerClient
 from utils import decode_title_text
 from image import ArtworkLoader, ScaledArtworkLoader
+from thumbnail import PygletThumbnailFactory
 from posters import PosterFetcher
 from hierarchy import RootMenu
 from photo import PhotoDB
@@ -59,6 +60,7 @@ class Config(object):
         parser.add_argument("--imdb-cache-dir", action="store", default="imdb-cache")
         parser.add_argument("--tmdb-cache-dir", action="store", default="tmdb-cache")
         parser.add_argument("--tvdb-cache-dir", action="store", default="tvdb-cache")
+        parser.add_argument("--thumbnail-dir", action="store", default="")
         parser.add_argument("-i", "--image-dir", action="store", dest="image_dir", default="graphics")
         parser.add_argument("--poster-width", action="store", type=int, default=-1, help="Maximum displayed poster width")
         parser.add_argument("--media-root", action="store", default="",
@@ -166,7 +168,7 @@ class Config(object):
                                           height=self.options.window_height,
                                           margins=margins)
             
-            UpdateManager(self.main_window, 'on_status_update', self.db, self.mmdb, self.get_poster_fetcher())
+            UpdateManager(self.main_window, 'on_status_update', self.db, self.mmdb, self.get_poster_fetcher(), self.get_thumbnail_loader())
             UpdateManager.update_all_posters()
         return self.main_window
     
@@ -277,6 +279,10 @@ class Config(object):
             full_size_loader = ArtworkLoader(self.get_metadata_pathname(self.options.image_dir), na)
             self.artwork_loader = ScaledArtworkLoader(full_size_loader, self.options.poster_width)
         return self.artwork_loader
+    
+    def get_thumbnail_loader(self):
+        thumbnail_factory = PygletThumbnailFactory(self.options.thumbnail_dir)
+        return thumbnail_factory
     
     def get_media_client(self):
         return MPlayerClient(self)

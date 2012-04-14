@@ -26,7 +26,7 @@ def get_default_thumbnail_dir():
 
 class ThumbnailFactory(object):
     def __init__(self, basedir=None, size=128):
-        if basedir is None:
+        if not basedir:
             basedir = get_default_thumbnail_dir()
         self.basedir = basedir
         if not os.path.isdir(self.basedir):
@@ -37,14 +37,16 @@ class ThumbnailFactory(object):
             size = 256
         self.size = (size, size)
     
-    def get_thumbnail_file(self, imgpath):
+    def get_thumbnail_file(self, imgpath, create=False):
         """Return a thumbnail path for the file at <path> by looking in the
         directory of stored thumbnails.  If no thumbnail for <path> can be
         produced (for whatever reason), return None.
         """
         thumbpath = self._path_to_thumbpath(imgpath)
         if not os.path.exists(thumbpath):
-            return self._create_thumbnail(imgpath)
+            if create:
+                return self._create_thumbnail(imgpath)
+            return None
         try:
             info = Image.open(thumbpath).info
             try:
@@ -159,8 +161,10 @@ class PygletThumbnailFactory(ThumbnailFactory):
         import pyglet
         
         thumbpath = self.get_thumbnail_file(imgpath)
-        image = pyglet.image.load(thumbpath)
-        return image
+        if thumbpath is not None:
+            image = pyglet.image.load(thumbpath)
+            return image
+        return None
 
 
 if __name__ == "__main__":

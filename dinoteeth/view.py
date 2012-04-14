@@ -12,7 +12,6 @@ if USE_HEAPY:
     hp = hpy()
 
 from controller import *
-from thumbnail import PygletThumbnailFactory
 from thread import TaskManager
 
 class MainWindow(pyglet.window.Window):
@@ -305,7 +304,7 @@ class DetailRenderer(Renderer):
         self.artwork_loader = conf.get_artwork_loader()
         self.batch_cache = {}
         self.use_batch = True
-        self.thumbs = PygletThumbnailFactory()
+        self.thumbs = conf.get_thumbnail_loader()
         
     def draw(self, menu):
         item = menu.get_selected_item()

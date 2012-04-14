@@ -1,5 +1,7 @@
 import os, sys, glob, bisect, logging
 
+from updates import UpdateManager
+
 log = logging.getLogger("dinoteeth.model")
 
 
@@ -256,10 +258,11 @@ class MenuPopulator(object):
         nominal_x = 100
         nominal_y = 140
         for imgpath in self.iter_image_path(artwork_loader):
-            try:
-                thumb_image = thumbnail_factory.get_image(imgpath)
-            except:
-                log.warning("Failed creating thumbnail image for %s" % imgpath)
+            thumb_image = thumbnail_factory.get_image(imgpath)
+            if thumb_image is None:
+                # Thumbnail will be created in background thread and
+                # displayed the next time the screen is drawn
+                UpdateManager.create_thumbnail(imgpath)
                 continue
             if x + nominal_x > max_x:
                 x = min_x

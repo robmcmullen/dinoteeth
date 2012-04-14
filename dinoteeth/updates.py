@@ -18,11 +18,25 @@ class PosterLoadTask(object):
         posters.fetch_poster(self.imdb_id, self.media_category)
         return "Loaded artwork for %s" % self.title
 
+class ThumbnailLoadTask(object):
+    def __init__(self, imgpath):
+        self.imgpath = imgpath
+    
+    def __str__(self):
+        return "%s: thumbnail=%s" % (self.__class__.__name__, self.imgpath)
+    
+    def __call__(self, thumbnails=None, *args, **kwargs):
+        try:
+            thumbnails.get_thumbnail_file(self.imgpath, True)
+            return "Created thumbnail image for %s" % os.path.basename(self.imgpath)
+        except:
+            return "Failed creating thumbnail image for %s" % os.path.basename(self.imgpath)
+
 
 class UpdateManager(object):
     poster_thread = None
     
-    def __init__(self, window, event_name, db, mmdb, poster_fetcher):
+    def __init__(self, window, event_name, db, mmdb, poster_fetcher, thumbnail_loader):
         cls = self.__class__
         if cls.poster_thread is not None:
             raise RuntimeError("UpdateManager already initialized")
@@ -31,8 +45,8 @@ class UpdateManager(object):
         cls.db = db
         cls.mmdb = mmdb
         cls.posters = poster_fetcher
-        #cls.poster_thread = ThreadTaskManager(window, event_name, posters=cls.posters)
-        cls.poster_thread = ProcessTaskManager(window, event_name, num_workers=1, posters=cls.posters)
+        cls.thumbnails = thumbnail_loader
+        cls.poster_thread = ProcessTaskManager(window, event_name, num_workers=1, posters=cls.posters, thumbnails=cls.thumbnails)
     
     @classmethod
     def update_all_posters(cls):
@@ -49,3 +63,8 @@ class UpdateManager(object):
                     cls.poster_thread.add_task(task)
                 except KeyError:
                     log.error("mmdb doesn't know about %s" % imdb_id)
+    
+    @classmethod
+    def create_thumbnail(cls, imgpath):
+        task = ThumbnailLoadTask(imgpath)
+        cls.poster_thread.add_task(task)
