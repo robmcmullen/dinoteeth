@@ -72,6 +72,11 @@ class Config(object):
         parser.add_argument("--bottom-margin", action="store", type=int, default=0)
         parser.add_argument("--left-margin", action="store", type=int, default=0)
         
+        parser.add_argument("--font-name", action="store", default="Arial")
+        parser.add_argument("--font-size-menu", action="store", type=int, default=16)
+        parser.add_argument("--font-size-detail", action="store", type=int, default=12)
+        parser.add_argument("--font-size-selected", action="store", type=int, default=24)
+        
         parser.add_argument("--imdb-country-code", action="store", default="USA")
         parser.add_argument("--country-code", action="store", default="US")
         return parser
@@ -245,16 +250,16 @@ class Config(object):
         return MenuDetail2ColumnLayout(window, margins, self)
     
     def get_font_name(self):
-        return "Arial"
+        return self.options.font_name
     
     def get_font_size(self):
-        return 16
+        return self.options.font_size_menu
     
     def get_detail_font_size(self):
-        return 12
+        return self.options.font_size_detail
     
     def get_selected_font_size(self):
-        return 22
+        return self.options.font_size_selected
 
     def get_title_renderer(self, window, box, fonts):
         return TitleRenderer(window, box, fonts, self)
