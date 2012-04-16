@@ -39,29 +39,24 @@ class MainWindow(pyglet.window.Window):
         glDisable(GL_DEPTH_TEST)
     
     def on_draw(self):
-        print "draw"
         self.clear()
         self.layout.draw()
     
     def refresh(self):
-#        print "refresh"
         self.layout.refresh()
         self.flip()
     
     def on_text_motion(self, motion):
         self.controller.process_motion(motion)
         self.flip()
-        print "on_text_motion"
         if USE_OBJGRAPH:
             objgraph.show_growth()
         if USE_HEAPY:
             print hp.heap()
 
     def on_key_press(self, symbol, modifiers):
-#        print symbol
         self.controller.process_key_press(symbol, modifiers)
         self.flip()
-        print "on_key_press"
         if USE_OBJGRAPH:
             objgraph.show_growth()
         if USE_HEAPY:
@@ -75,7 +70,6 @@ class MainWindow(pyglet.window.Window):
         if self.using_external_app:
             print "ignoring status; external app in use"
         else:
-            print "status update from thread!!! %s" % text
             self.status_text.put(text)
     
     def set_using_external_app(self, state):
@@ -410,7 +404,6 @@ class SimpleStatusRenderer(StatusRenderer):
             pyglet.clock.schedule_once(self.window.on_status_change, self.display_interval)
         else:
             # No items found means that the countdown timer is left as-is
-            print "no status available"
             if self.last_item is None:
                 return
             
@@ -418,7 +411,7 @@ class SimpleStatusRenderer(StatusRenderer):
             # If the countdown timer has expired, no drawing takes place
             pyglet.clock.unschedule(self.window.on_status_change)
             return
-        print "status drawing! (%d,%d) %s" % (self.x, self.y, self.last_item)
+        #print "status drawing! (%d,%d) %s" % (self.x, self.y, self.last_item)
         verts = (
             self.x + self.w, self.y + self.h,
             self.x, self.y + self.h,

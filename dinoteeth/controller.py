@@ -45,9 +45,8 @@ class VerticalMenuController(object):
             self.layout.window.refresh()
     
     def process_select(self):
-        if self.layout.select_child_menu():
-            print "child menu found"
-        else:
+        submenu_found = self.layout.select_child_menu()
+        if not submenu_found:
             menu = self.layout.get_menu()
             selected = menu.get_selected_item()
             selected.do_action(config=self.config)
@@ -73,10 +72,7 @@ class VerticalMenuController(object):
         selected.do_subtitle(config=self.config)
     
     def process_back(self):
-        if self.layout.select_parent_menu():
-            print "menu found"
-        else:
-            print "already at root"
+        self.layout.select_parent_menu()
 
     def process_quit(self):
         self.config.do_shutdown_tasks()

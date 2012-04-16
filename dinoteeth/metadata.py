@@ -642,12 +642,10 @@ class SeriesMetadata(BaseMetadata):
         
         if media_scan:
             try:
-                print "season: %d" % media_scan.season
                 s = self.seasons[media_scan.season]
-                print s
-                print "episode: %d" % media_scan.episode
+                #print s
                 e = s[media_scan.episode]
-                print e
+                #print e
                 text += """{}
 {bold True}Episode:{bold False} %s{}
 {bold True}Aired:{bold False} %s{}
