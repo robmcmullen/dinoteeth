@@ -498,16 +498,21 @@ class HandBrakeScanner(HandBrake):
         args.extend(['--scan', '-t', '0'])
         HandBrake.setCommandLine(self, source, *args, **kwargs)
     
+    @classmethod
+    def get_scanfile(cls, source):
+        if os.path.isdir(source):
+            scanfile = os.path.join(source, cls.default_scanfile)
+        else:
+            dirname, basename = os.path.split(source)
+            scanfile = os.path.join(dirname, basename + "." + cls.default_scanfile)
+        return scanfile
+    
     def parseOptions(self, options):
         self.preferred_lang = options.lang
         self.min_time = options.min_time
         self.scanfile = options.scanfile
         if self.scanfile:
-            if os.path.isdir(self.source):
-                self.scanfile = os.path.join(self.source, self.default_scanfile)
-            else:
-                dirname, basename = os.path.split(self.source)
-                self.scanfile = os.path.join(dirname, basename + self.default_scanfile)
+            self.scanfile = self.get_scanfile(self.source)
     
     def run(self):
         vprint(0, "-Running HandBrake --scan %s" % self.source)
@@ -1251,7 +1256,8 @@ if __name__ == "__main__":
         global_parser.exit()
     
     if global_options.log:
-        vprint.logfile = open(os.path.join(source, "handbrake.log"), "w")
+        logfile = HandBrakeScanner.get_scanfile(source).replace(".scan", ".log")
+        vprint.logfile = open(logfile, "w")
     
     if global_options.tmp:
         os.environ["TEMP"] = global_options.tmp
