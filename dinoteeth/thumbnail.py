@@ -24,7 +24,10 @@ def get_home_subdir(relpath):
 def get_default_thumbnail_dir():
     return get_home_subdir(".thumbnails/normal")
 
-class ThumbnailFactory(object):
+class ImageTooSmallException(RuntimeError):
+    pass
+
+class AbstractThumbnailFactory(object):
     def __init__(self, basedir=None, size=128):
         if not basedir:
             basedir = get_default_thumbnail_dir()
@@ -45,7 +48,7 @@ class ThumbnailFactory(object):
         thumbpath = self._path_to_thumbpath(imgpath)
         if not os.path.exists(thumbpath):
             if create:
-                return self._create_thumbnail(imgpath)
+                return self.create_thumbnail(imgpath)
             return None
         try:
             info = Image.open(thumbpath).info
@@ -54,7 +57,7 @@ class ThumbnailFactory(object):
             except Exception:
                 mtime = -1
             if int(os.stat(imgpath).st_mtime) != mtime:
-                return self._create_thumbnail(imgpath)
+                return self.create_thumbnail(imgpath)
             return thumbpath
         except Exception:
             #return None
@@ -73,21 +76,16 @@ class ThumbnailFactory(object):
             except Exception:
                 pass
 
-    def _create_thumbnail(self, imgpath):
+    def create_thumbnail(self, imgpath):
         """Create a thumbnail from the file at <path> and store it if it is
         larger than the defined thumbnail size.
         """
         try:
-            img = Image.open(imgpath)
+            img = self._get_thumbnail_image_from_source(imgpath)
+        except ImageTooSmallException:
+            return imgpath
         except:
             return None
-        if img.size[0] <= self.size[0] and img.size[1] <= self.size[1]:
-            return imgpath
-        try:
-            img = self._get_rotated_thumbnail(img)
-        except IOError:
-            print "error thumbnailing %s" % imgpath
-            raise
         
         uri = self._path_to_uri(imgpath)
         thumbpath = self._uri_to_thumbpath(uri)
@@ -116,6 +114,40 @@ class ThumbnailFactory(object):
             return None
         return thumbpath
 
+    def _get_thumbnail_image_from_source(self, imgpath):
+        raise RuntimeError("abstract method")
+    
+    def _path_to_uri(self, path):
+        uri = 'file://' + pathname2url(os.path.abspath(path))
+        return uri
+
+    def _path_to_thumbpath(self, path):
+        uri = self._path_to_uri(path)
+        return self._uri_to_thumbpath(uri)
+
+    def _uri_to_thumbpath(self, uri):
+        """Return the full path to the thumbnail for <uri>.
+        """
+        md5hash = md5(uri).hexdigest()
+        thumbpath = os.path.join(self.basedir, md5hash + '.png')
+        return thumbpath
+
+
+class ThumbnailFactory(AbstractThumbnailFactory):
+    def _get_thumbnail_image_from_source(self, imgpath):
+        """Create a thumbnail from the file at <path> and store it if it is
+        larger than the defined thumbnail size.
+        """
+        img = Image.open(imgpath)
+        if img.size[0] <= self.size[0] and img.size[1] <= self.size[1]:
+            raise ImageTooSmallException
+        try:
+            img = self._get_rotated_thumbnail(img)
+        except IOError:
+            print "error thumbnailing %s" % imgpath
+            raise
+        return img
+
     def _get_rotated_thumbnail(self, img):
         """If image is rotated according to EXIF data, rotate the thumbnail
         before returning.
@@ -141,21 +173,6 @@ class ThumbnailFactory(object):
         
         return img
 
-    def _path_to_uri(self, path):
-        uri = 'file://' + pathname2url(os.path.abspath(path))
-        return uri
-
-    def _path_to_thumbpath(self, path):
-        uri = self._path_to_uri(path)
-        return self._uri_to_thumbpath(uri)
-
-    def _uri_to_thumbpath(self, uri):
-        """Return the full path to the thumbnail for <uri>.
-        """
-        md5hash = md5(uri).hexdigest()
-        thumbpath = os.path.join(self.basedir, md5hash + '.png')
-        return thumbpath
-
 class PygletThumbnailFactory(ThumbnailFactory):
     def get_image(self, imgpath):
         import pyglet
@@ -168,14 +185,55 @@ class PygletThumbnailFactory(ThumbnailFactory):
 
 
 if __name__ == "__main__":
-    f = ThumbnailFactory("../test/thumbnails/normal")
-    print f.basedir
-    t = f.get_thumbnail_file("../graphics/artwork-not-available.png")
-    print t
-    info = Image.open(t).info
-    print info
-    t = f.get_thumbnail_file("../graphics/background-merged.jpg")
-    print t
-    info = Image.open(t).info
-    print info
+    from optparse import OptionParser
+    usage="usage: %prog CMD [options] file [files...]"
+    parser=OptionParser(usage=usage)
+    parser.add_option("-v", action="store_true", dest="verbose", default=False)
+    parser.add_option("-b", action="store", dest="base_dir", default=None)
+    parser.add_option("-s", action="store", dest="size", type=int, default=128)
+    parser.add_option("-i", action="store_true", dest="info", default=False)
+    parser.add_option("-d", action="store_true", dest="delete", default=False)
+    parser.add_option("-f", action="store", dest="from_file", default=None)
+    (options, args) = parser.parse_args()
+
+    factory = ThumbnailFactory(options.base_dir, options.size)
+    thumbmap = {}
     
+    if options.from_file:
+        fh = open(options.from_file)
+        for line in fh.readlines():
+            path = line.strip()
+            if path:
+                rotate(path, options.rot, factory)
+    
+    def do(name):
+        if options.delete:
+            thumbpath = factory._path_to_thumbpath(name)
+            print "%s -> %s" % (name, thumbpath)
+            factory.delete_thumbnail(name)
+        elif options.info:
+            thumbpath = factory.get_thumbnail_file(name)
+            print "%s -> %s" % (name, thumbpath)
+            if thumbpath is not None:
+                info = Image.open(thumbpath).info
+                print info
+        else:
+            factory.create_thumbnail(name)
+    
+    def iter_dir(path):
+        import glob
+        
+        names = glob.glob(os.path.join(path, "*"))
+        for name in names:
+            if os.path.isdir(name):
+                print "dir %s" % name
+                iter_dir(name)
+            else:
+                do(name)
+    
+    for name in args:
+        if os.path.isdir(name):
+            print "dir %s" % name
+            iter_dir(name)
+        else:
+            do(name)
