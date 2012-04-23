@@ -7,8 +7,7 @@ import pyglet
 
 from config import setup
 
-
-if __name__ == "__main__":
+def run():
     cfg = setup(sys.argv)
     window = cfg.get_main_window()
     pyglet.app.run()
