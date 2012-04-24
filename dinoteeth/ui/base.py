@@ -54,6 +54,14 @@ class MainWindow(object):
         # Simply calling this function seems to generate an on_draw event, so
         # no need to call self.flip
     
+    ########## Event functions
+    
+    def post_event(self, event, *args):
+        """Thread-safe call to post an event to the event queue
+        
+        """
+        raise RuntimeError("Abstract method")
+    
     ########## Timer functions
     
     def schedule_once(self, callback, seconds):

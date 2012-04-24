@@ -65,6 +65,11 @@ class PygletMainWindow(pyglet.window.Window, MainWindow):
         self.stop()
         pyglet.window.Window.on_close(self)
     
+    ########## Event functions
+    
+    def post_event(self, event, *args):
+        pyglet.app.platform_event_loop.post_event(self, event, *args)
+    
     ########## Timer functions
     
     def schedule_once(self, callback, seconds):

@@ -1,5 +1,4 @@
 import os, time, logging, threading, multiprocessing, Queue
-import pyglet
 
 log = logging.getLogger("dinoteeth.thread")
 
@@ -21,7 +20,7 @@ class TaskManager(object):
     def _notify(self, result):
         """Called from within the thread"""
         log.debug("Got result: %s" % result)
-        pyglet.app.platform_event_loop.post_event(self._notify_window, self._notify_event, result)
+        self._notify_window.post_event(self._notify_event, result)
 
     def abort(self):
         # Method for use by main thread to signal an abort
