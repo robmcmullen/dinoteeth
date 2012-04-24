@@ -60,6 +60,15 @@ class MainWindow(object):
         raise RuntimeError("Abstract method")
     
     def draw_markup(self, markup, font, x=0, y=0, color=None, anchor_x='left', anchor_y='bottom', width=0):
+        """Display an html-like markup format based on the pango markup
+        language.
+        
+        See: http://developer.gnome.org/pango/unstable/PangoMarkupFormat.html
+        
+        Note that this markup language respects carriage returns; one return
+        character will force a new line, and multiple consecutive characters
+        will be honored.
+        """
         raise RuntimeError("Abstract method")
     
     def draw_box(self, x, y, w, h, background_color=None, border_color=None):

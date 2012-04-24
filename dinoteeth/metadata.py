@@ -271,65 +271,42 @@ class BaseMetadata(object):
 
         pass
     
-    def get_audio_html(self, media_scan):
+    def get_audio_markup(self, media_scan):
         audio = ""
         for id, selected, name in media_scan.get_audio_options():
             if selected:
-                audio += "<br><b>%s</b>" % name
+                audio += "<b>%s</b>\n" % name
             else:
-                audio += "<br>%s" % name
+                audio += "%s\n" % name
         subtitle = ""
         for id, selected, name in media_scan.get_subtitle_options():
             if selected:
-                subtitle += "<br><b>%s</b>" % name
+                subtitle += "<b>%s</b>\n" % name
             else:
-                subtitle += "<br>%s" % name
+                subtitle += "%s\n" % name
 
-        text = u"""<br>
-<br>
-<br><u>Available Audio Tracks:</u>
+        text = u"""
+
+<u>Available Audio Tracks:</u>
 %s
-<br>
-<br><u>Available Subtitle Tracks:</u>
+
+<u>Available Subtitle Tracks:</u>
 %s""" % (audio, subtitle)
         return text
 
-    def get_audio_pyglet_text(self, media_scan):
-        audio = ""
-        for id, selected, name in media_scan.get_audio_options():
-            if selected:
-                audio += "{bold True}%s{bold False}{}\n" % name
-            else:
-                audio += "%s{}\n" % name
-        subtitle = ""
-        for id, selected, name in media_scan.get_subtitle_options():
-            if selected:
-                subtitle += "{bold True}%s{bold False}{}\n" % name
-            else:
-                subtitle += "%s{}\n" % name
-
-        text = u"""{}\n
-{}\n
-{underline (255,255,255,255)}Available Audio Tracks:{underline None}{}\n
-%s
-{}\n
-{underline (255,255,255,255)}Available Subtitle Tracks:{underline None}{}\n
-%s""" % (audio, subtitle)
-        return text
-
-    def get_last_played_pyglet_text(self, media_scan):
+    def get_last_played_markup(self, media_scan):
         date, position = media_scan.get_last_played_stats()
         text = u""
         if date is not None:
             if position is not None:
-                text += """{}\n
-{}
-{bold True}Paused:{bold False} %s{}
-{bold True}Paused At:{bold False} %s{}\n""" % (date, position)
+                text += """
+
+<b>Paused:</b> %s
+<b>Paused At:</b> %s\n""" % (date, position)
             else:
-                text += """{}\n
-{}
-{bold True}Last Played:{bold False} %s{}\n""" % date
+                text += """\n
+
+<b>Last Played:</b> %s\n""" % date
         return text
 
 
@@ -415,7 +392,7 @@ class MovieMetadata(BaseMetadata):
         lines.append(u"  Cast: %s" % ", ".join([unicode(d) for d in self.cast]))
         return "\n".join(lines)
 
-    def get_html(self, media_scan=None):
+    def get_markup(self, media_scan=None):
         genres = u", ".join([unicode(i) for i in self.genres])
         directors = u", ".join([unicode(i) for i in self.directors])
         producers = u", ".join([unicode(i) for i in self.producers[0:3]])
@@ -426,57 +403,26 @@ class MovieMetadata(BaseMetadata):
         if self.year:
             title += u" (%s)" % self.year
         text = u"""<b>%s</b>
-<br>
-<br>%s
-<br>
-<br><b>Rated:</b> %s
-<br><b>Released:</b> %s
-<br><b>Genre:</b> %s
-<br><b>Directed by:</b> %s""" % (title, self.plot, self.certificate,
-                          "release date goes here", genres, directors)
-        if media_scan:
-            text += self.get_audio_html(media_scan)
-        else:
-            text += u"""<br><br><b>Produced by:</b> %s
-<br><b>Written by:</b> %s
-<br><b>Music by:</b> %s
-<br><b>Actors:</b> %s
-<br><b>Runtime:</b> %s
-<br><b>Rating:</b> %s/10""" % (producers, writers, music, actors, self.runtime,
-                          self.rating)
-        return text
-    
-    def get_pyglet_text(self, media_scan=None):
-        genres = u", ".join([unicode(i) for i in self.genres])
-        directors = u", ".join([unicode(i) for i in self.directors])
-        producers = u", ".join([unicode(i) for i in self.producers[0:3]])
-        writers = u", ".join([unicode(i) for i in self.writers])
-        actors = u", ".join([unicode(i) for i in self.cast])
-        music = u", ".join([unicode(i) for i in self.music])
-        title = self.title
-        if self.year:
-            title += u" (%s)" % self.year
-        text = u"""{bold True}%s{bold False}{}
-{}
-%s{}
-{}
-{bold True}Rated:{bold False} %s{}
-{bold True}Released:{bold False} %s{}
-{bold True}Genre:{bold False} %s{}
+
+%s
+
+<b>Rated:</b> %s
+<b>Released:</b> %s
+<b>Genre:</b> %s
 """ % (title, self.plot, self.certificate,
                           "release date goes here", genres)
         if media_scan:
-            text += self.get_audio_pyglet_text(media_scan)
-            text += self.get_last_played_pyglet_text(media_scan)
+            text += self.get_audio_markup(media_scan)
+            text += self.get_last_played_markup(media_scan)
         else:
-            text += u"""{}
-{bold True}Directed by:{bold False} %s{}
-{bold True}Produced by:{bold False} %s{}
-{bold True}Written by:{bold False} %s{}
-{bold True}Music by:{bold False} %s{}
-{bold True}Actors:{bold False} %s{}
-{bold True}Runtime:{bold False} %s{}
-{bold True}Rating:{bold False} %s/10""" % (directors, producers, writers, music, actors, self.runtime,
+            text += u"""
+<b>Directed by:</b> %s
+<b>Produced by:</b> %s
+<b>Written by:</b> %s
+<b>Music by:</b> %s
+<b>Actors:</b> %s
+<b>Runtime:</b> %s
+<b>Rating:</b> %s/10""" % (directors, producers, writers, music, actors, self.runtime,
                           self.rating)
         return text
 
@@ -595,7 +541,7 @@ class SeriesMetadata(BaseMetadata):
                 s[epnum] = ep
             self.seasons[season] = s
 
-    def get_html(self, media_scan=None):
+    def get_markup(self, media_scan=None):
         genres = u", ".join([unicode(i) for i in self.genres])
         directors = u", ".join([unicode(i) for i in self.directors])
         producers = u", ".join([unicode(i) for i in self.executive_producers])
@@ -606,38 +552,6 @@ class SeriesMetadata(BaseMetadata):
         if self.year:
             title += u" (%s)" % self.year
         text = u"""<b>%s</b>
-<br>
-<br>%s
-<br>
-<br><b>Network:</b> %s %s
-<br><b>Number of Seasons:</b> %s
-<br><b>Rated:</b> %s
-<br><b>Genre:</b> %s
-<br><b>Produced by:</b> %s""" % (title, self.plot, self.network,
-                                 self.series_years, self.num_seasons,
-                                 self.certificate, genres, producers)
-        if media_scan:
-            text += self.get_audio_html(media_scan)
-        else:
-            text += u"""<br><br><b>Directed by:</b> %s
-    <br><b>Written by:</b> %s
-    <br><b>Music by:</b> %s
-    <br><b>Actors:</b> %s
-    <br><b>Rating:</b> %s/10""" % (directors, writers, music, actors, self.rating)
-            
-        return text
-    
-    def get_pyglet_text(self, media_scan=None):
-        genres = u", ".join([unicode(i) for i in self.genres])
-        directors = u", ".join([unicode(i) for i in self.directors])
-        producers = u", ".join([unicode(i) for i in self.executive_producers])
-        writers = u", ".join([unicode(i) for i in self.writers])
-        actors = u", ".join([unicode(i) for i in self.cast])
-        music = u", ".join([unicode(i) for i in self.music])
-        title = self.title
-        if self.year:
-            title += u" (%s)" % self.year
-        text = u"""{bold True}%s{bold False}{}
 """ % title
         
         if media_scan:
@@ -646,38 +560,38 @@ class SeriesMetadata(BaseMetadata):
                 #print s
                 e = s[media_scan.episode]
                 #print e
-                text += """{}
-{bold True}Episode:{bold False} %s{}
-{bold True}Aired:{bold False} %s{}
-{}
-{align center}{bold True}{italic True}%s{italic False}{bold False}{align left}{}
-{}
-%s{}
-{}
-{bold True}Guest Stars:{bold False} %s{}
-{}""" % (media_scan.episode, e['aired'], e['title'], e['plot'], ", ".join(e['guest']))
+                text += """
+<b>Episode:</b> %s
+<b>Aired:</b> %s
+
+<center><b><i>%s</i></b></center>
+
+%s
+
+<b>Guest Stars:</b> %s
+""" % (media_scan.episode, e['aired'], e['title'], e['plot'], ", ".join(e['guest']))
             except KeyError:
                 pass
-            text += self.get_audio_pyglet_text(media_scan)
-            text += self.get_last_played_pyglet_text(media_scan)
+            text += self.get_audio_markup(media_scan)
+            text += self.get_last_played_markup(media_scan)
         else:
-            text += """{}
-%s{}
-{}
-{bold True}Network:{bold False} %s %s{}""" % (self.plot, self.network, self.series_years)
+            text += """
+%s
+
+<b>Network:</b> %s %s""" % (self.plot, self.network, self.series_years)
             if not self.is_mini_series():
                 text += """
-{bold True}Number of Seasons:{bold False} %s{}""" % self.num_seasons
+<b>Number of Seasons:</b> %s""" % self.num_seasons
             text += """
-{bold True}Rated:{bold False} %s{}
-{bold True}Genre:{bold False} %s{}
+<b>Rated:</b> %s
+<b>Genre:</b> %s
 """ % (self.certificate, genres)
-            text += u"""{}
-{bold True}Produced by:{bold False} %s{}
-{bold True}Directed by:{bold False} %s{}
-{bold True}Written by:{bold False} %s{}
-{bold True}Music by:{bold False} %s{}
-{bold True}Actors:{bold False} %s{}
-{bold True}Rating:{bold False} %s/10""" % (producers, directors, writers, music, actors, self.rating)
+            text += u"""
+<b>Produced by:</b> %s
+<b>Directed by:</b> %s
+<b>Written by:</b> %s
+<b>Music by:</b> %s
+<b>Actors:</b> %s
+<b>Rating:</b> %s/10""" % (producers, directors, writers, music, actors, self.rating)
             
         return text

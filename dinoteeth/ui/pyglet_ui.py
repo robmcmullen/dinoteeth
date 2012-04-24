@@ -80,7 +80,22 @@ class PygletMainWindow(pyglet.window.Window, MainWindow):
         label.draw()
     
     def draw_markup(self, markup, font, x=0, y=0, color=None, anchor_x='left', anchor_y='bottom', width=0):
-        text = "{font_name '%s'}{font_size %s}{color (255,255,255,255)}" % (font.name, font.size) + markup
+        if color is None:
+            color = (255, 255, 255, 255)
+        replacements = (
+            ("<b>", "{bold True}"),
+            ("</b>", "{bold False}"),
+            ("<i>", "{italic True}"),
+            ("</i>", "{italic False}"),
+            ("<u>", "{underline %s}" % str(color)),
+            ("</u>", "{underline (0,0,0,0)}"),
+            ("<center>", "{align center}"),
+            ("</center>", "{align left}"),
+            ("\n", "{}\n"),
+            )
+        for s, r in replacements:
+            markup = markup.replace(s, r)
+        text = "{font_name '%s'}{font_size %s}{color %s}" % (font.name, font.size, str(color)) + markup
         document = pyglet.text.decode_attributed(text)
         label = pyglet.text.DocumentLabel(document, multiline=True,
                                           x=x, y=y, width=width,

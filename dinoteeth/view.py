@@ -223,7 +223,7 @@ class DetailRenderer(Renderer):
         image = self.artwork_loader.get_poster(imdb_id, season)
         image.blit(self.x, self.h - image.height, 0)
         
-        self.window.draw_markup(m['mmdb'].get_pyglet_text(m.get('media_scan', None)),
+        self.window.draw_markup(m['mmdb'].get_markup(m.get('media_scan', None)),
                                 self.window.detail_font,
                                 x=self.x + image.width + 10, y=self.h,
                                 anchor_x='left', anchor_y='top',
@@ -236,13 +236,13 @@ class DetailRenderer(Renderer):
         image = self.artwork_loader.get_poster(imdb_id, None)
         image.blit(self.x, self.h - image.height, 0)
         
-        akas = "{}\n".join([a.replace('::', ' -- ') for a in result.get('akas',[])])
-        text = u"""{bold True}Title:{bold False} %s{}
-{bold True}Year:{bold False} %s{}
-{bold True}Type:{bold False} %s{}
-{}
-{bold True}Also known as:{bold False}{}
-%s{}
+        akas = "\n".join([a.replace('::', ' -- ') for a in result.get('akas',[])])
+        text = u"""<b>Title:</b> %s
+<b>Year:</b> %s
+<b>Type:</b> %s
+
+<b>Also known as:</b>
+%s
 """ % (result['title'], result['year'], result['kind'], akas)
 
         self.window.draw_markup(text, self.window.detail_font,
