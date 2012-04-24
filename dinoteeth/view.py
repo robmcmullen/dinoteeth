@@ -1,6 +1,5 @@
 import os, sys, glob, time, random, Queue
 import pyglet
-from pyglet.gl import *
 
 from controller import *
 
@@ -309,26 +308,8 @@ class SimpleStatusRenderer(StatusRenderer):
             pyglet.clock.unschedule(self.window.on_status_change)
             return
         #print "status drawing! (%d,%d) %s" % (self.x, self.y, self.last_item)
-        verts = (
-            self.x + self.w, self.y + self.h,
-            self.x, self.y + self.h,
-            self.x, self.y,
-            self.x + self.w, self.y
-        )
-        colors = (
-            255, 255, 255, 64,
-            255, 255, 255, 64,
-            255, 255, 255, 64,
-            255, 255, 255, 64,
-        )
-        pyglet.graphics.draw(4, GL_QUADS, ('v2i', verts), ('c4B', colors))
-        colors = (
-            255, 255, 255, 100,
-            255, 255, 255, 100,
-            255, 255, 255, 100,
-            255, 255, 255, 100,
-        )
-        pyglet.graphics.draw(4, GL_LINE_LOOP, ('v2i', verts), ('c4B', colors))
+        self.window.draw_box(self.x, self.y, self.w, self.h,
+                             (255, 255, 255, 64), (255, 255, 255, 100))
         self.window.draw_text(self.last_item, font=self.window.font,
                                   bold=False, italic=True, color=(0,0,255,128),
                                   x=self.x + 10, y=self.y + (self.h / 2),

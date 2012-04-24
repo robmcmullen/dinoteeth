@@ -78,6 +78,21 @@ class PygletMainWindow(pyglet.window.Window, MainWindow):
                                   x=x, y=y,
                                   anchor_x=anchor_x, anchor_y=anchor_y)
         label.draw()
+    
+    def draw_box(self, x, y, w, h, background_color=None, border_color=None):
+        if background_color is None:
+            background_color = (255, 255, 255, 255)
+        if border_color is None:
+            border_color = (255, 255, 255, 255)
+        verts = (
+            x + w, y + h,
+            x, y + h,
+            x, y,
+            x + w, y
+        )
+        pyglet.graphics.draw(4, GL_QUADS, ('v2i', verts), ('c4B', background_color*4))
+        pyglet.graphics.draw(4, GL_LINE_LOOP, ('v2i', verts), ('c4B', border_color*4))
+
 
 PygletMainWindow.register_event_type('on_status_update')
 
