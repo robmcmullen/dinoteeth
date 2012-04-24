@@ -59,6 +59,9 @@ class MainWindow(object):
     def draw_text(self, text, font, x=0, y=0, bold=False, italic=False, color=None, anchor_x='left', anchor_y='bottom'):
         raise RuntimeError("Abstract method")
     
+    def draw_markup(self, markup, font, x=0, y=0, color=None, anchor_x='left', anchor_y='bottom', width=0):
+        raise RuntimeError("Abstract method")
+    
     def draw_box(self, x, y, w, h, background_color=None, border_color=None):
         raise RuntimeError("Abstract method")
 

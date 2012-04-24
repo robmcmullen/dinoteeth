@@ -192,8 +192,6 @@ class TitleRenderer(Renderer):
 class DetailRenderer(Renderer):
     def compute_params(self, conf):
         self.artwork_loader = conf.get_artwork_loader()
-        self.batch_cache = {}
-        self.use_batch = True
         self.thumbs = conf.get_thumbnail_loader()
         
     def draw(self, menu):
@@ -225,20 +223,11 @@ class DetailRenderer(Renderer):
         image = self.artwork_loader.get_poster(imdb_id, season)
         image.blit(self.x, self.h - image.height, 0)
         
-        if not self.batch_cache:
-            batch = pyglet.graphics.Batch()
-            document = pyglet.text.decode_attributed("")
-            self.label = pyglet.text.DocumentLabel(document,
-                                          x=self.x + image.width + 10, y=self.h,
-                                          anchor_x='left', anchor_y='top',
-                                          width=self.w - image.width - 10, multiline=True,
-                                          batch=batch)
-            self.batch_cache[True] = batch
-        
-        text = "{font_name '%s'}{font_size %s}{color (255,255,255,255)}" % (self.window.font.name, self.window.detail_font.size) + m['mmdb'].get_pyglet_text(m.get('media_scan', None))
-        document = pyglet.text.decode_attributed(text)
-        self.label.document = document
-        self.batch_cache[True].draw()
+        self.window.draw_markup(m['mmdb'].get_pyglet_text(m.get('media_scan', None)),
+                                self.window.detail_font,
+                                x=self.x + image.width + 10, y=self.h,
+                                anchor_x='left', anchor_y='top',
+                                width=self.w - image.width - 10)
 
     def draw_imdb_search_result(self, item, m):
         result = m['imdb_search_result']
@@ -247,19 +236,8 @@ class DetailRenderer(Renderer):
         image = self.artwork_loader.get_poster(imdb_id, None)
         image.blit(self.x, self.h - image.height, 0)
         
-        if not self.batch_cache:
-            batch = pyglet.graphics.Batch()
-            document = pyglet.text.decode_attributed("")
-            self.label = pyglet.text.DocumentLabel(document,
-                                          x=self.x + image.width + 10, y=self.h,
-                                          anchor_x='left', anchor_y='top',
-                                          width=self.w - image.width - 10, multiline=True,
-                                          batch=batch)
-            self.batch_cache[True] = batch
-        
         akas = "{}\n".join([a.replace('::', ' -- ') for a in result.get('akas',[])])
-        text = "{font_name '%s'}{font_size %s}{color (255,255,255,255)}" % (self.window.font.name, self.window.detail_font.size)
-        text += u"""{bold True}Title:{bold False} %s{}
+        text = u"""{bold True}Title:{bold False} %s{}
 {bold True}Year:{bold False} %s{}
 {bold True}Type:{bold False} %s{}
 {}
@@ -267,9 +245,10 @@ class DetailRenderer(Renderer):
 %s{}
 """ % (result['title'], result['year'], result['kind'], akas)
 
-        document = pyglet.text.decode_attributed(text)
-        self.label.document = document
-        self.batch_cache[True].draw()
+        self.window.draw_markup(text, self.window.detail_font,
+                                x=self.x + image.width + 10, y=self.h,
+                                anchor_x='left', anchor_y='top',
+                                width=self.w - image.width - 10)
 
 class StatusRenderer(Renderer):
     def draw(self):

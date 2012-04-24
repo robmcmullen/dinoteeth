@@ -79,6 +79,14 @@ class PygletMainWindow(pyglet.window.Window, MainWindow):
                                   anchor_x=anchor_x, anchor_y=anchor_y)
         label.draw()
     
+    def draw_markup(self, markup, font, x=0, y=0, color=None, anchor_x='left', anchor_y='bottom', width=0):
+        text = "{font_name '%s'}{font_size %s}{color (255,255,255,255)}" % (font.name, font.size) + markup
+        document = pyglet.text.decode_attributed(text)
+        label = pyglet.text.DocumentLabel(document, multiline=True,
+                                          x=x, y=y, width=width,
+                                          anchor_x=anchor_x, anchor_y=anchor_y)
+        label.draw()
+    
     def draw_box(self, x, y, w, h, background_color=None, border_color=None):
         if background_color is None:
             background_color = (255, 255, 255, 255)
