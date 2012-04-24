@@ -134,32 +134,26 @@ class VerticalMenuRenderer(MenuRenderer):
     def draw_item(self, item, y, selected=False):
         text = item.title
         if selected:
-            size = self.window.selected_font.size
+            font = self.window.selected_font
             italic = False
         else:
-            size = self.window.font.size
+            font = self.window.font
             italic = True
         x = self.x + self.window.font.height
         color = self.get_color(item)
         if item.is_toggle():
             if item.state:
-                label = pyglet.text.Label("*",
-                                          font_name=self.window.font.name,
-                                          font_size=size,
+                self.window.draw_text("*", font=font,
                                           bold=False, italic=italic,
                                           color=color,
                                           x=x, y=y,
                                           anchor_x='left', anchor_y='center')
-                label.draw()
             x += self.window.font.height
-        label = pyglet.text.Label(text,
-                                  font_name=self.window.font.name,
-                                  font_size=size,
+        self.window.draw_text(text, font=font,
                                   bold=False, italic=italic,
                                   color=color,
                                   x=x, y=y,
                                   anchor_x='left', anchor_y='center')
-        label.draw()
     
     def draw(self, menu):
         item = menu.get_selected_item()
@@ -190,13 +184,10 @@ class TitleRenderer(Renderer):
         for menu in hierarchy:
             title.append(menu.title)
         text = " > ".join(title)
-        label = pyglet.text.Label(text,
-                                  font_name=self.window.font.name,
-                                  font_size=self.window.font.size,
+        self.window.draw_text(text, font=self.window.font,
                                   bold=True, italic=False,
                                   x=self.x + self.w/2, y=self.y,
                                   anchor_x='center', anchor_y='bottom')
-        label.draw()
 
 
 class DetailRenderer(Renderer):
@@ -338,10 +329,7 @@ class SimpleStatusRenderer(StatusRenderer):
             255, 255, 255, 100,
         )
         pyglet.graphics.draw(4, GL_LINE_LOOP, ('v2i', verts), ('c4B', colors))
-        label = pyglet.text.Label(self.last_item,
-                                  font_name=self.window.font.name,
-                                  font_size=self.window.font.size,
+        self.window.draw_text(self.last_item, font=self.window.font,
                                   bold=False, italic=True, color=(0,0,255,128),
                                   x=self.x + 10, y=self.y + (self.h / 2),
                                   anchor_x='left', anchor_y='center')
-        label.draw()

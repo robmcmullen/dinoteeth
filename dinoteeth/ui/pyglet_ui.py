@@ -64,6 +64,20 @@ class PygletMainWindow(pyglet.window.Window, MainWindow):
     def on_close(self):
         self.stop()
         pyglet.window.Window.on_close(self)
+    
+    ########## Drawing functions
+    
+    def draw_text(self, text, font, x=0, y=0, bold=False, italic=False, color=None, anchor_x='left', anchor_y='bottom'):
+        if color is None:
+            color = (255, 255, 255, 255)
+        label = pyglet.text.Label(text,
+                                  font_name=font.name,
+                                  font_size=font.size,
+                                  bold=bold, italic=italic,
+                                  color=color,
+                                  x=x, y=y,
+                                  anchor_x=anchor_x, anchor_y=anchor_y)
+        label.draw()
 
 PygletMainWindow.register_event_type('on_status_update')
 

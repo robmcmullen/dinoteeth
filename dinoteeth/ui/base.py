@@ -53,6 +53,12 @@ class MainWindow(object):
             print "clearing status bar"
         # Simply calling this function seems to generate an on_draw event, so
         # no need to call self.flip
+    
+    ########## Drawing functions
+    
+    def draw_text(self, text, font, x=0, y=0, bold=False, italic=False, color=None, anchor_x='left', anchor_y='bottom'):
+        raise RuntimeError("Abstract method")
+
 
 class FontInfo(object):
     def __init__(self, name, size):
