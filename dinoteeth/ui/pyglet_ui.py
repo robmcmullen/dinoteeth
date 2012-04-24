@@ -65,6 +65,14 @@ class PygletMainWindow(pyglet.window.Window, MainWindow):
         self.stop()
         pyglet.window.Window.on_close(self)
     
+    ########## Timer functions
+    
+    def schedule_once(self, callback, seconds):
+        pyglet.clock.schedule_once(callback, seconds)
+    
+    def unschedule(self, callback):
+        pyglet.clock.unschedule(callback)
+    
     ########## Drawing functions
     
     def draw_text(self, text, font, x=0, y=0, bold=False, italic=False, color=None, anchor_x='left', anchor_y='bottom'):

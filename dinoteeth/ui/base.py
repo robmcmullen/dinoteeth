@@ -54,6 +54,20 @@ class MainWindow(object):
         # Simply calling this function seems to generate an on_draw event, so
         # no need to call self.flip
     
+    ########## Timer functions
+    
+    def schedule_once(self, callback, seconds):
+        """Schedule a callback for some number of seconds in the future
+        
+        """
+        raise RuntimeError("Abstract method")
+    
+    def unschedule(self, callback):
+        """Remove a scheduled callback
+        
+        """
+        raise RuntimeError("Abstract method")
+    
     ########## Drawing functions
     
     def draw_text(self, text, font, x=0, y=0, bold=False, italic=False, color=None, anchor_x='left', anchor_y='bottom'):

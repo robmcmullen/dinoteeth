@@ -1,5 +1,4 @@
 import os, sys, glob, time, random, Queue
-import pyglet
 
 from controller import *
 
@@ -275,8 +274,8 @@ class SimpleStatusRenderer(StatusRenderer):
             # New item found means resetting the countdown timer back to the
             # maximum
             self.expire_time = time.time() + self.display_interval
-            pyglet.clock.unschedule(self.window.on_status_change)
-            pyglet.clock.schedule_once(self.window.on_status_change, self.display_interval)
+            self.window.unschedule(self.window.on_status_change)
+            self.window.schedule_once(self.window.on_status_change, self.display_interval)
         else:
             # No items found means that the countdown timer is left as-is
             if self.last_item is None:
@@ -284,7 +283,7 @@ class SimpleStatusRenderer(StatusRenderer):
             
         if time.time() > self.expire_time:
             # If the countdown timer has expired, no drawing takes place
-            pyglet.clock.unschedule(self.window.on_status_change)
+            self.window.unschedule(self.window.on_status_change)
             return
         #print "status drawing! (%d,%d) %s" % (self.x, self.y, self.last_item)
         self.window.draw_box(self.x, self.y, self.w, self.h,
