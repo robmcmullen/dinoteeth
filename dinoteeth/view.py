@@ -72,32 +72,21 @@ class AbstractLayout(object):
         pass
 
 
-class FontSet(object):
-    def __init__(self, config):
-        self.name = config.get_font_name()
-        self.size = config.get_font_size()
-        font = pyglet.font.load(self.name, self.size)
-        self.height = font.ascent - font.descent
-        self.detail_size = config.get_detail_font_size()
-        self.selected_size = config.get_selected_font_size()
-
-
 class MenuDetail2ColumnLayout(AbstractLayout):
     def __init__(self, window, margins, config):
         AbstractLayout.__init__(self, window, margins, config)
         self.controller = VerticalMenuController(self, config)
-        self.fonts = FontSet(config)
         self.compute_layout()
-        self.title_renderer = config.get_title_renderer(window, self.title_box, self.fonts)
-        self.menu_renderer = config.get_menu_renderer(window, self.menu_box, self.fonts)
-        self.detail_renderer = config.get_detail_renderer(window, self.detail_box, self.fonts)
-        self.status_renderer = SimpleStatusRenderer(window, self.status_box, self.fonts, config)
+        self.title_renderer = config.get_title_renderer(window, self.title_box)
+        self.menu_renderer = config.get_menu_renderer(window, self.menu_box)
+        self.detail_renderer = config.get_detail_renderer(window, self.detail_box)
+        self.status_renderer = SimpleStatusRenderer(window, self.status_box, config)
     
     def compute_layout(self):
-        self.title_height = self.fonts.size + 10
+        self.title_height = self.window.font.size + 10
         self.menu_width = self.box[2]/3
         self.center = (self.box[3] - self.title_height)/2
-        self.items_in_half = (self.center - self.fonts.selected_size) / self.fonts.size
+        self.items_in_half = (self.center - self.window.selected_font.size) / self.window.font.size
         self.title_box = (self.box[0], self.box[3] - self.title_height + 1, self.box[2], self.title_height)
         self.menu_box = (self.box[0], self.box[1], self.menu_width, self.box[3] - self.title_height)
         self.detail_box = (self.menu_width, self.box[1], self.box[2] - self.menu_width, self.box[3] - self.title_height)
@@ -112,13 +101,12 @@ class MenuDetail2ColumnLayout(AbstractLayout):
 
 
 class Renderer(object):
-    def __init__(self, window, box, fonts, conf):
+    def __init__(self, window, box, conf):
         self.window = window
         self.x = box[0]
         self.y = box[1]
         self.w = box[2]
         self.h = box[3]
-        self.fonts = fonts
         self.compute_params(conf)
         
     def compute_params(self, conf):
@@ -138,7 +126,7 @@ class MenuRenderer(Renderer):
 class VerticalMenuRenderer(MenuRenderer):
     def compute_params(self, conf):
         self.center = self.y + self.h/2
-        self.items_in_half = (self.center - self.fonts.selected_size) / self.fonts.size
+        self.items_in_half = (self.center - self.window.selected_font.size) / self.window.font.size
     
     def get_page_scroll_unit(self):
         return self.items_in_half
@@ -146,26 +134,26 @@ class VerticalMenuRenderer(MenuRenderer):
     def draw_item(self, item, y, selected=False):
         text = item.title
         if selected:
-            size = self.fonts.selected_size
+            size = self.window.selected_font.size
             italic = False
         else:
-            size = self.fonts.size
+            size = self.window.font.size
             italic = True
-        x = self.x + self.fonts.height
+        x = self.x + self.window.font.height
         color = self.get_color(item)
         if item.is_toggle():
             if item.state:
                 label = pyglet.text.Label("*",
-                                          font_name=self.fonts.name,
+                                          font_name=self.window.font.name,
                                           font_size=size,
                                           bold=False, italic=italic,
                                           color=color,
                                           x=x, y=y,
                                           anchor_x='left', anchor_y='center')
                 label.draw()
-            x += self.fonts.height
+            x += self.window.font.height
         label = pyglet.text.Label(text,
-                                  font_name=self.fonts.name,
+                                  font_name=self.window.font.name,
                                   font_size=size,
                                   bold=False, italic=italic,
                                   color=color,
@@ -177,22 +165,22 @@ class VerticalMenuRenderer(MenuRenderer):
         item = menu.get_selected_item()
         self.draw_item(item, self.center, True)
         
-        y = self.center + self.fonts.selected_size
+        y = self.center + self.window.selected_font.size
         i = menu.cursor - 1
         limit = max(0, menu.cursor - self.items_in_half)
         while i >= limit:
             item = menu.get_item(i)
             self.draw_item(item, y, False)
-            y += self.fonts.size
+            y += self.window.font.size
             i -= 1
             
-        y = self.center - self.fonts.selected_size
+        y = self.center - self.window.selected_font.size
         i = menu.cursor + 1
         limit = min(menu.num_items() - 1, menu.cursor + self.items_in_half)
         while i <= limit:
             item = menu.get_item(i)
             self.draw_item(item, y, False)
-            y -= self.fonts.size
+            y -= self.window.font.size
             i += 1
 
 
@@ -203,8 +191,8 @@ class TitleRenderer(Renderer):
             title.append(menu.title)
         text = " > ".join(title)
         label = pyglet.text.Label(text,
-                                  font_name=self.fonts.name,
-                                  font_size=self.fonts.size,
+                                  font_name=self.window.font.name,
+                                  font_size=self.window.font.size,
                                   bold=True, italic=False,
                                   x=self.x + self.w/2, y=self.y,
                                   anchor_x='center', anchor_y='bottom')
@@ -257,7 +245,7 @@ class DetailRenderer(Renderer):
                                           batch=batch)
             self.batch_cache[True] = batch
         
-        text = "{font_name '%s'}{font_size %s}{color (255,255,255,255)}" % (self.fonts.name, self.fonts.detail_size) + m['mmdb'].get_pyglet_text(m.get('media_scan', None))
+        text = "{font_name '%s'}{font_size %s}{color (255,255,255,255)}" % (self.window.font.name, self.window.detail_font.size) + m['mmdb'].get_pyglet_text(m.get('media_scan', None))
         document = pyglet.text.decode_attributed(text)
         self.label.document = document
         self.batch_cache[True].draw()
@@ -280,7 +268,7 @@ class DetailRenderer(Renderer):
             self.batch_cache[True] = batch
         
         akas = "{}\n".join([a.replace('::', ' -- ') for a in result.get('akas',[])])
-        text = "{font_name '%s'}{font_size %s}{color (255,255,255,255)}" % (self.fonts.name, self.fonts.detail_size)
+        text = "{font_name '%s'}{font_size %s}{color (255,255,255,255)}" % (self.window.font.name, self.window.detail_font.size)
         text += u"""{bold True}Title:{bold False} %s{}
 {bold True}Year:{bold False} %s{}
 {bold True}Type:{bold False} %s{}
@@ -351,8 +339,8 @@ class SimpleStatusRenderer(StatusRenderer):
         )
         pyglet.graphics.draw(4, GL_LINE_LOOP, ('v2i', verts), ('c4B', colors))
         label = pyglet.text.Label(self.last_item,
-                                  font_name=self.fonts.name,
-                                  font_size=self.fonts.size,
+                                  font_name=self.window.font.name,
+                                  font_size=self.window.font.size,
                                   bold=False, italic=True, color=(0,0,255,128),
                                   x=self.x + 10, y=self.y + (self.h / 2),
                                   anchor_x='left', anchor_y='center')

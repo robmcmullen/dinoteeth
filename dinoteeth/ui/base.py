@@ -6,12 +6,24 @@ class MainWindow(object):
     def __init__(self, config, fullscreen=True, width=800, height=600, margins=None):
         if margins is None:
             margins = (0, 0, 0, 0)
+        self.get_fonts(config)
         self.layout = config.get_layout(self, margins)
         root = config.get_root(self)
         self.layout.set_root(root)
         self.controller = self.layout.get_controller()
         self.status_text = Queue.Queue()
         self.using_external_app = False
+    
+    def get_fonts(self, config):
+        self.font = self.get_font_detail(config.get_font_name(),
+                                         config.get_font_size())
+        self.detail_font = self.get_font_detail(config.get_font_name(),
+                                                config.get_detail_font_size())
+        self.selected_font = self.get_font_detail(config.get_font_name(),
+                                                  config.get_selected_font_size())
+
+    def get_font_detail(self, name, size):
+        raise RuntimeError("Abstract method")
     
     def run(self):
         """Start the event processing loop for the particular windowing system.
@@ -41,3 +53,13 @@ class MainWindow(object):
             print "clearing status bar"
         # Simply calling this function seems to generate an on_draw event, so
         # no need to call self.flip
+
+class FontInfo(object):
+    def __init__(self, name, size):
+        self.name = name
+        self.size = size
+        self.height = None
+        self.calc_height()
+    
+    def calc_height(self):
+        raise RuntimeError("Abstract method")

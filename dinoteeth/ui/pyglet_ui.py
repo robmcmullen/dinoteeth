@@ -10,7 +10,7 @@ if USE_HEAPY:
     from guppy import hpy
     hp = hpy()
 
-from .base import MainWindow
+from .base import MainWindow, FontInfo
 from ..thread import TaskManager
 
 class PygletMainWindow(pyglet.window.Window, MainWindow):
@@ -30,6 +30,9 @@ class PygletMainWindow(pyglet.window.Window, MainWindow):
         glShadeModel(GL_SMOOTH)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE)
         glDisable(GL_DEPTH_TEST)
+
+    def get_font_detail(self, name, size):
+        return PygletFontInfo(name, size)
     
     def run(self):
         pyglet.app.run()
@@ -63,3 +66,8 @@ class PygletMainWindow(pyglet.window.Window, MainWindow):
         pyglet.window.Window.on_close(self)
 
 PygletMainWindow.register_event_type('on_status_update')
+
+class PygletFontInfo(FontInfo):
+    def calc_height(self):
+        font = pyglet.font.load(self.name, self.size)
+        self.height = font.ascent - font.descent

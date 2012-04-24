@@ -264,14 +264,14 @@ class Config(object):
     def get_selected_font_size(self):
         return self.options.font_size_selected
 
-    def get_title_renderer(self, window, box, fonts):
-        return TitleRenderer(window, box, fonts, self)
+    def get_title_renderer(self, window, box):
+        return TitleRenderer(window, box, self)
 
-    def get_menu_renderer(self, window, box, fonts):
-        return VerticalMenuRenderer(window, box, fonts, self)
+    def get_menu_renderer(self, window, box):
+        return VerticalMenuRenderer(window, box, self)
 
-    def get_detail_renderer(self, window, box, fonts):
-        return DetailRenderer(window, box, fonts, self)
+    def get_detail_renderer(self, window, box):
+        return DetailRenderer(window, box, self)
     
     def get_artwork_loader(self):
         if not hasattr(self, "artwork_loader"):
