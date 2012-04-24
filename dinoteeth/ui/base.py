@@ -1,0 +1,43 @@
+import os, Queue
+
+from ..thread import TaskManager
+
+class MainWindow(object):
+    def __init__(self, config, fullscreen=True, width=800, height=600, margins=None):
+        if margins is None:
+            margins = (0, 0, 0, 0)
+        self.layout = config.get_layout(self, margins)
+        root = config.get_root(self)
+        self.layout.set_root(root)
+        self.controller = self.layout.get_controller()
+        self.status_text = Queue.Queue()
+        self.using_external_app = False
+    
+    def run(self):
+        """Start the event processing loop for the particular windowing system.
+        
+        """
+        raise RuntimeError("Abstract method")
+    
+    def stop(self):
+        """Cleanup after the event processing loop is exited.
+        
+        """
+        TaskManager.stop_all()
+    
+    def on_status_update(self, text):
+        if self.using_external_app:
+            print "ignoring status; external app in use"
+        else:
+            self.status_text.put(text)
+    
+    def set_using_external_app(self, state):
+        self.using_external_app = state
+    
+    def on_status_change(self, *args):
+        if self.using_external_app:
+            print "ignoring status; external app in use"
+        else:
+            print "clearing status bar"
+        # Simply calling this function seems to generate an on_draw event, so
+        # no need to call self.flip

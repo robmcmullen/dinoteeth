@@ -163,7 +163,8 @@ class Config(object):
         if self.main_window is None:
             margins = (self.options.top_margin, self.options.right_margin,
                        self.options.bottom_margin, self.options.left_margin)
-            self.main_window = MainWindow(self, fullscreen=self.options.fullscreen,
+            from ui.pyglet_ui import PygletMainWindow
+            self.main_window = PygletMainWindow(self, fullscreen=self.options.fullscreen,
                                           width=self.options.window_width,
                                           height=self.options.window_height,
                                           margins=margins)
