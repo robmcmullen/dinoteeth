@@ -12,7 +12,6 @@ from updates import UpdateManager
 from mplayer import MPlayerClient
 from utils import decode_title_text
 from image import ArtworkLoader, ScaledArtworkLoader
-from thumbnail import PygletThumbnailFactory
 from posters import PosterFetcher
 from hierarchy import RootMenu
 from photo import PhotoDB
@@ -158,15 +157,19 @@ class Config(object):
         BaseMetadata.imdb_country = self.options.imdb_country_code
         BaseMetadata.iso_3166_1 = self.options.country_code
     
+    def get_main_window_class(self):
+        from ui.pyglet_ui import PygletMainWindow
+        return PygletMainWindow
+    
     def get_main_window(self):
         if self.main_window is None:
             margins = (self.options.top_margin, self.options.right_margin,
                        self.options.bottom_margin, self.options.left_margin)
-            from ui.pyglet_ui import PygletMainWindow
-            self.main_window = PygletMainWindow(self, fullscreen=self.options.fullscreen,
-                                          width=self.options.window_width,
-                                          height=self.options.window_height,
-                                          margins=margins)
+            wincls = self.get_main_window_class()
+            self.main_window = wincls(self, fullscreen=self.options.fullscreen,
+                                      width=self.options.window_width,
+                                      height=self.options.window_height,
+                                      margins=margins)
             
             UpdateManager(self.main_window, 'on_status_update', self.db, self.mmdb, self.get_poster_fetcher(), self.get_thumbnail_loader())
             UpdateManager.update_all_posters()
@@ -281,7 +284,8 @@ class Config(object):
         return self.artwork_loader
     
     def get_thumbnail_loader(self):
-        thumbnail_factory = PygletThumbnailFactory(self.options.thumbnail_dir)
+        wincls = self.get_main_window_class()
+        thumbnail_factory = wincls.get_thumbnail_loader(self.options.thumbnail_dir)
         return thumbnail_factory
     
     def get_media_client(self):

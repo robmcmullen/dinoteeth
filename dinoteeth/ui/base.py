@@ -94,6 +94,12 @@ class MainWindow(object):
     
     def draw_box(self, x, y, w, h, background_color=None, border_color=None):
         raise RuntimeError("Abstract method")
+    
+    ########## Image functions
+    
+    @classmethod
+    def get_thumbnail_loader(cls, basedir):
+        raise RuntimeError("Abstract method")
 
 
 class FontInfo(object):

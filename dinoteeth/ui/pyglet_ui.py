@@ -11,6 +11,7 @@ if USE_HEAPY:
     hp = hpy()
 
 from .base import MainWindow, FontInfo
+from ..thumbnail import PygletThumbnailFactory
 import keycodes as k
 
 class PygletMainWindow(pyglet.window.Window, MainWindow):
@@ -194,6 +195,13 @@ class PygletMainWindow(pyglet.window.Window, MainWindow):
         )
         pyglet.graphics.draw(4, GL_QUADS, ('v2i', verts), ('c4B', background_color*4))
         pyglet.graphics.draw(4, GL_LINE_LOOP, ('v2i', verts), ('c4B', border_color*4))
+    
+    ########## Image functions
+    
+    @classmethod
+    def get_thumbnail_loader(cls, basedir):
+        thumbnail_factory = PygletThumbnailFactory(basedir)
+        return thumbnail_factory
 
 
 PygletMainWindow.register_event_type('on_status_update')
