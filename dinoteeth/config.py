@@ -51,6 +51,7 @@ class Config(object):
         parser.add_argument("-c", "--conf_file",
                     help="Specify config file", metavar="FILE")
         parser.add_argument("-v", "--verbose", action="count", default=0)
+        parser.add_argument("--ui", action="store", default="sdl")
         parser.add_argument("--metadata-root", action="store", default="",
                           help="Default metadata/database root directory for those databases and the image directories that don't specify a full path")
         parser.add_argument("--db", action="store", dest="database", default="dinoteeth.db")
@@ -159,8 +160,13 @@ class Config(object):
         BaseMetadata.iso_3166_1 = self.options.country_code
     
     def get_main_window_class(self):
-        from ui.pyglet_ui import PygletMainWindow
-        return PygletMainWindow
+        if self.options.ui == "sdl":
+            from ui.sdl_ui import SdlMainWindow
+            return SdlMainWindow
+        elif self.options.ui == "pyglet":
+            from ui.pyglet_ui import PygletMainWindow
+            return PygletMainWindow
+        raise RuntimeError("Unknown user interface: %s" % self.options.ui)
     
     def get_main_window(self):
         if self.main_window is None:
