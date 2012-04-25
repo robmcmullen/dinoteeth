@@ -11,16 +11,21 @@ if USE_HEAPY:
     hp = hpy()
 
 from .base import MainWindow, FontInfo
-from ..thread import TaskManager
+import keycodes as k
 
 class PygletMainWindow(pyglet.window.Window, MainWindow):
+    to_keycode = {}
+    to_modifier = {}
+    
     def __init__(self, config, fullscreen=True, width=800, height=600, margins=None):
         if fullscreen:
             pyglet.window.Window.__init__(self, fullscreen=fullscreen)
         else:
             pyglet.window.Window.__init__(self, width, height)
         MainWindow.__init__(self, config, fullscreen, width, height, margins)
-            
+        
+        self.create_keycode_maps()
+        
         if USE_OBJGRAPH:
             objgraph.show_growth()
         if USE_HEAPY:
@@ -45,16 +50,11 @@ class PygletMainWindow(pyglet.window.Window, MainWindow):
         self.layout.refresh()
         self.flip()
     
-    def on_text_motion(self, motion):
-        self.controller.process_motion(motion)
-        self.flip()
-        if USE_OBJGRAPH:
-            objgraph.show_growth()
-        if USE_HEAPY:
-            print hp.heap()
-
     def on_key_press(self, symbol, modifiers):
-        self.controller.process_key_press(symbol, modifiers)
+        keycode = self.convert_keycode(symbol)
+        modifiers = self.convert_keycode(modifiers)
+        print "key press: %s" % keycode
+        self.controller.process_key_press(keycode, modifiers)
         self.flip()
         if USE_OBJGRAPH:
             objgraph.show_growth()
@@ -65,6 +65,69 @@ class PygletMainWindow(pyglet.window.Window, MainWindow):
         self.stop()
         pyglet.window.Window.on_close(self)
     
+    ########## Keyboard functions
+    
+    @classmethod
+    def create_keycode_maps(cls):
+        pk = pyglet.window.key
+        cls.to_modifier = {
+            pk.MOD_SHIFT: k.MOD_SHIFT,
+            pk.MOD_CTRL: k.MOD_CTRL,
+            pk.MOD_ALT: k.MOD_ALT,
+            pk.MOD_CAPSLOCK: k.MOD_CAPS,
+            pk.MOD_NUMLOCK: k.MOD_NUM,
+            pk.MOD_WINDOWS: k.MOD_META,
+            pk.MOD_COMMAND: k.MOD_CTRL,
+            pk.MOD_OPTION: k.MOD_META,
+            }
+        cls.to_keycode = {
+            pk.APOSTROPHE: k.QUOTE,
+            pk.BRACKETLEFT: k.LEFTBRACKET,
+            pk.BRACKETRIGHT: k.RIGHTBRACKET,
+            pk.DOUBLEQUOTE: k.QUOTEDBL,
+            pk.ENTER: k.KP_ENTER,
+            pk.EQUAL: k.EQUALS,
+            pk.EXCLAMATION: k.EXCLAIM,
+            pk.MOD_CAPSLOCK: k.CAPSLOCK,
+            pk.MOD_NUMLOCK: k.NUMLOCK,
+            pk.MOD_SCROLLLOCK: k.SCROLLOCK,
+            pk.MOTION_UP: k.UP,
+            pk.MOTION_RIGHT: k.RIGHT,
+            pk.MOTION_DOWN: k.DOWN,
+            pk.MOTION_LEFT: k.LEFT,
+            pk.MOTION_NEXT_WORD: None,
+            pk.MOTION_PREVIOUS_WORD: None,
+            pk.MOTION_BEGINNING_OF_LINE: k.HOME,
+            pk.MOTION_END_OF_LINE: k.END,
+            pk.MOTION_NEXT_PAGE: k.PAGEDOWN,
+            pk.MOTION_PREVIOUS_PAGE: k.PAGEUP,
+            pk.MOTION_BEGINNING_OF_FILE: k.HOME,
+            pk.MOTION_END_OF_FILE: k.END,
+            pk.MOTION_BACKSPACE: k.BACKSPACE,
+            pk.MOTION_DELETE: k.DELETE,
+            pk.NUM_ADD: k.KP_PLUS,
+            pk.NUM_DECIMAL: k.KP_PERIOD,
+            pk.PARENLEFT: k.LEFTPAREN,
+            pk.PARENRIGHT: k.RIGHTPAREN,
+            }
+        pkdir = set([name for name in dir(pk) if name == name.upper()])
+        kdir = set([name for name in dir(k) if name == name.upper()])
+        both = pkdir.intersection(kdir)
+        for key in both:
+            cls.to_keycode[getattr(pk, key)] = getattr(k, key)
+        remaining = pkdir - both
+        for key in set(remaining):
+            for pk_prefix, k_prefix in [("NUM_", "KP_"), ("NUM_", "KP"), ("_","K")]:
+                if key.startswith(pk_prefix):
+                    target = k_prefix + key[len(pk_prefix):]
+                    if target in kdir:
+                        cls.to_keycode[getattr(pk, key)] = getattr(k, target)
+                        remaining.remove(key)
+                        break
+    
+    def convert_keycode(self, pyglet_keycode):
+        return self.to_keycode.get(pyglet_keycode, None)
+        
     ########## Event functions
     
     def post_event(self, event, *args):
