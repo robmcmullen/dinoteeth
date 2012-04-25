@@ -68,3 +68,7 @@ class UpdateManager(object):
     def create_thumbnail(cls, imgpath):
         task = ThumbnailLoadTask(imgpath)
         cls.poster_thread.add_task(task)
+    
+    @classmethod
+    def stop_all(cls):
+        ProcessTaskManager.stop_all()

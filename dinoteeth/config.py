@@ -18,7 +18,6 @@ from hierarchy import RootMenu
 from photo import PhotoDB
 from media import enzyme_extensions
 from metadata import BaseMetadata
-from thread import TaskManager
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -302,7 +301,7 @@ class Config(object):
         win.on_status_update(text)
     
     def do_shutdown_tasks(self):
-        TaskManager.stop_all()
+        UpdateManager.stop_all()
 
 
 def setup(args):

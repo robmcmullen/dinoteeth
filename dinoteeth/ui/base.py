@@ -1,7 +1,5 @@
 import os, Queue
 
-from ..thread import TaskManager
-
 class MainWindow(object):
     def __init__(self, config, fullscreen=True, width=800, height=600, margins=None):
         if margins is None:
@@ -13,6 +11,7 @@ class MainWindow(object):
         self.controller = self.layout.get_controller()
         self.status_text = Queue.Queue()
         self.using_external_app = False
+        self.app_config = config
     
     def get_fonts(self, config):
         self.font = self.get_font_detail(config.get_font_name(),
@@ -31,11 +30,11 @@ class MainWindow(object):
         """
         raise RuntimeError("Abstract method")
     
-    def stop(self):
+    def quit(self):
         """Cleanup after the event processing loop is exited.
         
         """
-        TaskManager.stop_all()
+        self.app_config.do_shutdown_tasks()
     
     def on_status_update(self, text):
         if self.using_external_app:

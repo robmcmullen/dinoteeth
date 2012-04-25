@@ -42,6 +42,10 @@ class PygletMainWindow(pyglet.window.Window, MainWindow):
     def run(self):
         pyglet.app.run()
     
+    def quit(self):
+        MainWindow.quit(self)
+        pyglet.app.exit()
+    
     def on_draw(self):
         self.clear()
         self.layout.draw()
@@ -62,8 +66,7 @@ class PygletMainWindow(pyglet.window.Window, MainWindow):
             print hp.heap()
     
     def on_close(self):
-        self.stop()
-        pyglet.window.Window.on_close(self)
+        self.quit()
     
     ########## Keyboard functions
     

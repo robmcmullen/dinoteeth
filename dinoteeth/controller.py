@@ -1,5 +1,4 @@
 import os, sys, glob
-import pyglet
 import ui.keycodes as k
 
 
@@ -74,5 +73,4 @@ class VerticalMenuController(object):
         self.layout.select_parent_menu()
 
     def process_quit(self):
-        self.config.do_shutdown_tasks()
-        pyglet.app.exit()
+        self.layout.window.quit()
