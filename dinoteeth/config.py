@@ -13,6 +13,7 @@ from mplayer import MPlayerClient
 from utils import decode_title_text
 from image import ArtworkLoader, ScaledArtworkLoader
 from posters import PosterFetcher
+from thumbnail import ThumbnailFactory
 from hierarchy import RootMenu
 from photo import PhotoDB
 from media import enzyme_extensions
@@ -169,7 +170,8 @@ class Config(object):
             self.main_window = wincls(self, fullscreen=self.options.fullscreen,
                                       width=self.options.window_width,
                                       height=self.options.window_height,
-                                      margins=margins)
+                                      margins=margins,
+                                      thumbnails=self.get_thumbnail_loader())
             
             UpdateManager(self.main_window, 'on_status_update', self.db, self.mmdb, self.get_poster_fetcher(), self.get_thumbnail_loader())
             UpdateManager.update_all_posters()
@@ -284,8 +286,7 @@ class Config(object):
         return self.artwork_loader
     
     def get_thumbnail_loader(self):
-        wincls = self.get_main_window_class()
-        thumbnail_factory = wincls.get_thumbnail_loader(self.options.thumbnail_dir)
+        thumbnail_factory = ThumbnailFactory(self.options.thumbnail_dir)
         return thumbnail_factory
     
     def get_media_client(self):

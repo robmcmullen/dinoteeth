@@ -1,7 +1,8 @@
 import os, Queue
 
 class MainWindow(object):
-    def __init__(self, config, fullscreen=True, width=800, height=600, margins=None):
+    def __init__(self, config, fullscreen=True, width=800, height=600, margins=None,
+                 thumbnails=None):
         if margins is None:
             margins = (0, 0, 0, 0)
         self.get_fonts(config)
@@ -12,6 +13,7 @@ class MainWindow(object):
         self.status_text = Queue.Queue()
         self.using_external_app = False
         self.app_config = config
+        self.thumbnail_loader = thumbnails
     
     def get_fonts(self, config):
         self.font = self.get_font_detail(config.get_font_name(),
@@ -97,8 +99,22 @@ class MainWindow(object):
     
     ########## Image functions
     
-    @classmethod
-    def get_thumbnail_loader(cls, basedir):
+    def get_image(self, filename):
+        raise RuntimeError("Abstract method")
+    
+    def get_thumbnail_file(self, filename):
+        thumbpath = self.thumbnail_loader.get_thumbnail_file(filename)
+        return thumbpath
+    
+    def get_thumbnail_image(self, filename):
+        thumbpath = self.get_thumbnail_file(filename)
+        return self.get_image(thumbpath)
+    
+    def blit(self, image, x, y, depth=0):
+        """Blit the entire image to the window with upper left corner at
+        the position specified.
+        
+        """
         raise RuntimeError("Abstract method")
 
 
@@ -110,4 +126,27 @@ class FontInfo(object):
         self.calc_height()
     
     def calc_height(self):
+        raise RuntimeError("Abstract method")
+
+class BaseImage(object):
+    def __init__(self, filename):
+        self.width = 0
+        self.height = 0
+        self.image = None
+        self.load(filename)
+    
+    def is_valid(self):
+        return self.image is not None
+    
+    def free(self):
+        """Free any system resources used by the image and prohibit further use
+        of the image.
+        
+        """
+        pass
+    
+    def load(self, filename):
+        """Load the image and set the dimensions.
+        
+        """
         raise RuntimeError("Abstract method")

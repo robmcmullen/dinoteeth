@@ -250,13 +250,13 @@ class MenuPopulator(object):
     def iter_image_path(self, artwork_loader):
         return []
     
-    def get_thumbnail(self, imgpath, thumbnail_factory):
+    def get_thumbnail(self, window, imgpath):
         try:
-            thumb_image = thumbnail_factory.get_image(imgpath)
+            thumb_image = window.get_thumbnail_image(imgpath)
         except Exception, e:
             log.debug("Skipping failed thumbnail %s: %s" % (imgpath, e))
             return None
-        if thumb_image is None:
+        if not thumb_image.is_valid():
             # Thumbnail will be created in background thread and
             # displayed the next time the screen is drawn
             UpdateManager.create_thumbnail(imgpath)
@@ -265,14 +265,14 @@ class MenuPopulator(object):
     def get_mosaic_size(self):
         return 100, 140
 
-    def thumbnail_mosaic(self, artwork_loader, thumbnail_factory, x, y, w, h):
+    def thumbnail_mosaic(self, window, artwork_loader, x, y, w, h):
         min_x = x
         max_x = x + w
         min_y = y
         y = y + h
         nominal_x, nominal_y = self.get_mosaic_size()
         for imgpath in self.iter_image_path(artwork_loader):
-            thumb_image = self.get_thumbnail(imgpath, thumbnail_factory)
+            thumb_image = self.get_thumbnail(window, imgpath)
             if thumb_image is None:
                 continue
             if x + nominal_x > max_x:
@@ -280,5 +280,5 @@ class MenuPopulator(object):
                 y -= nominal_y
             if y < min_y:
                 break
-            thumb_image.blit(x + (nominal_x - thumb_image.width) / 2, y - nominal_y + (nominal_y - thumb_image.height) / 2, 0)
+            window.blit(thumb_image, x + (nominal_x - thumb_image.width) / 2, y - nominal_y + (nominal_y - thumb_image.height) / 2)
             x += nominal_x

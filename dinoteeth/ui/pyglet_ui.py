@@ -10,20 +10,22 @@ if USE_HEAPY:
     from guppy import hpy
     hp = hpy()
 
-from .base import MainWindow, FontInfo
-from ..thumbnail import PygletThumbnailFactory
+from .base import MainWindow, FontInfo, BaseImage
+from ..thumbnail import ThumbnailFactory
 import keycodes as k
 
 class PygletMainWindow(pyglet.window.Window, MainWindow):
     to_keycode = {}
     to_modifier = {}
     
-    def __init__(self, config, fullscreen=True, width=800, height=600, margins=None):
+    def __init__(self, config, fullscreen=True, width=800, height=600, margins=None,
+                 thumbnails=None):
         if fullscreen:
             pyglet.window.Window.__init__(self, fullscreen=fullscreen)
         else:
             pyglet.window.Window.__init__(self, width, height)
-        MainWindow.__init__(self, config, fullscreen, width, height, margins)
+        MainWindow.__init__(self, config, fullscreen, width, height, margins,
+                            thumbnails)
         
         self.create_keycode_maps()
         
@@ -198,11 +200,16 @@ class PygletMainWindow(pyglet.window.Window, MainWindow):
     
     ########## Image functions
     
-    @classmethod
-    def get_thumbnail_loader(cls, basedir):
-        thumbnail_factory = PygletThumbnailFactory(basedir)
-        return thumbnail_factory
-
+    def get_image(self, filename):
+        return PygletImage(filename)
+    
+    def blit(self, image, x, y, depth=0):
+        """Blit the entire image to the window with upper left corner at
+        the position specified.
+        
+        """
+        if image.is_valid():
+            image.image.blit(x, y, depth)
 
 PygletMainWindow.register_event_type('on_status_update')
 
@@ -210,3 +217,21 @@ class PygletFontInfo(FontInfo):
     def calc_height(self):
         font = pyglet.font.load(self.name, self.size)
         self.height = font.ascent - font.descent
+
+class PygletImage(BaseImage):
+    def free(self):
+        """Free any system resources used by the image and prohibit further use
+        of the image.
+        
+        """
+        pass
+    
+    def load(self, filename):
+        """Load the image and set the dimensions.
+        
+        """
+        if not filename:
+            return
+        self.image = pyglet.image.load(filename)
+        self.width = self.image.width
+        self.height = self.image.height

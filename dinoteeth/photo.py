@@ -112,16 +112,16 @@ class HomeVideos(MenuPopulator):
         for video in self.videos:
             yield video
     
-    def get_thumbnail(self, imgpath, thumbnail_factory):
+    def get_thumbnail(self, window, imgpath):
         # Need to get a thumbnail of the video thumbnail, not the thumbnail of
         # the video!  Very 'Inception', I know.
-        video_thumb = thumbnail_factory.get_thumbnail_file(imgpath)
+        video_thumb = window.get_thumbnail_file(imgpath)
         if video_thumb is None:
             # Large video thumbnail must be created first
             UpdateManager.create_thumbnail(imgpath)
             return None
         try:
-            thumb_image = thumbnail_factory.get_image(video_thumb)
+            thumb_image = window.get_thumbnail_image(video_thumb)
         except Exception, e:
             log.debug("Skipping failed thumbnail %s: %s" % (video_thumb, e))
             return None
@@ -159,9 +159,9 @@ class HomeVideoPlay(MenuPopulator):
             'imagegen': self.video_detail,
             }
 
-    def video_detail(self, artwork_loader, thumbnail_factory, x, y, w, h):
-        image = thumbnail_factory.get_image(self.video)
-        image.blit(x, h - image.height, 0)
+    def video_detail(self, window, artwork_loader, x, y, w, h):
+        image = window.get_thumbnail_image(self.video)
+        window.blit(image, x, h - image.height, 0)
 
 
 class SlideshowLookup(MenuPopulator):

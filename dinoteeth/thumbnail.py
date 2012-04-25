@@ -255,17 +255,6 @@ class ThumbnailFactory(object):
         return which._path_to_thumbpath(imgpath)
 
 
-class PygletThumbnailFactory(ThumbnailFactory):
-    def get_image(self, imgpath):
-        import pyglet
-        
-        thumbpath = self.get_thumbnail_file(imgpath)
-        if thumbpath is not None:
-            image = pyglet.image.load(thumbpath)
-            return image
-        return None
-
-
 if __name__ == "__main__":
     from optparse import OptionParser
     usage="usage: %prog CMD [options] file [files...]"
