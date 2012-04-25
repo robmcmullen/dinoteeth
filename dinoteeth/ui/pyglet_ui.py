@@ -11,7 +11,6 @@ if USE_HEAPY:
     hp = hpy()
 
 from .base import MainWindow, FontInfo, BaseImage
-from ..thumbnail import ThumbnailFactory
 import keycodes as k
 
 class PygletMainWindow(pyglet.window.Window, MainWindow):
