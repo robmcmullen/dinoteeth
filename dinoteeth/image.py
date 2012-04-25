@@ -3,83 +3,16 @@
 import os, sys, time, urllib, logging, threading, Queue
 from cStringIO import StringIO
 
-import pyglet
-import pyglet.image
-from PIL import Image, PngImagePlugin
+from PIL import Image
 
 log = logging.getLogger("dinoteeth.image")
 log.setLevel(logging.DEBUG)
-
-class ImageAccess(object):
-    lock = threading.Lock()
-    log = logging.getLogger("slideshow.image")
-
-    @classmethod
-    def load(cls, filename, size=None, rotate=False):
-        """Force the use of PIL rather than gdk_pixbuf due to a hard-to-
-        reproduce segfault in gdkpixbuf.gdk_pixbuf_loader_new()
-        """
-        image = None
-#        with cls.lock:
-        if True:
-            try:
-                img = Image.open(filename)
-                if rotate:
-                    orientation = 1
-                    if hasattr(img, '_getexif'):
-                        try:
-                            exif = img._getexif()
-                            if exif != None and 0x0112 in exif:
-                                orientation = exif[0x0112]
-                        except:
-                            pass
-                    if orientation == 6:
-                        img = img.transpose(Image.ROTATE_270)
-                    elif orientation == 3:
-                        img = img.transpose(Image.ROTATE_180)
-                    elif orientation == 8:
-                        img = img.transpose(Image.ROTATE_90)
-                    #img.thumbnail(size, Image.ANTIALIAS)
-                    #img.thumbnail(size, Image.BICUBIC)
-                    img.thumbnail(size, Image.BILINEAR)
-                    #img.thumbnail(size, Image.NEAREST)
-                
-                img = img.transpose(Image.FLIP_TOP_BOTTOM)
-
-                # Convert bitmap and palette images to component
-                if img.mode in ('1', 'P'):
-                    img = img.convert()
-
-                if img.mode not in ('L', 'LA', 'RGB', 'RGBA'):
-                    raise ImageDecodeException('Unsupported mode "%s"' % img.mode)
-                width, height = img.size
-
-                image = (width, height, img.mode, img.tostring())
-                image = pyglet.image.ImageData(*image)
-            except Exception, e:
-                cls.log.error("Error loading %s: %s" % (filename, e))
-        return image
-    
-    @classmethod
-    def pyglet_from_image(cls, filename, image):
-        if image is None:
-            raise RuntimeError("Bad image: %s" % filename)
-        image = pyglet.image.ImageData(*image)
-        return image
-    
-    @classmethod
-    def blit(cls, image, x, y):
-        with cls.lock:
-            image.blit(x, y)
 
 class ArtworkLoader(object):
     def __init__(self, base_dir, default_poster, poster_dir="posters", cache_size=100):
         self.base_dir = base_dir
         self.poster_dir = os.path.join(self.base_dir, poster_dir)
-        self.use_cache = False
-        self.cache = {}
         self.default_poster_path = default_poster
-        self.default_poster = None
         self.check_dirs()
     
     def clone(self):
@@ -95,10 +28,7 @@ class ArtworkLoader(object):
             os.mkdir(self.poster_dir)
     
     def get_default_poster(self):
-        import pyglet
-        if self.default_poster is None:
-            self.default_poster = pyglet.image.load(self.default_poster_path)
-        return self.default_poster
+        return self.default_poster_path
     
     def get_poster_basename(self, imdb_id, season=None, ext=".jpg"):
         if season is not None:
@@ -113,9 +43,7 @@ class ArtworkLoader(object):
         return filename
     
     def get_poster_filename(self, imdb_id, season=None):
-        if imdb_id in self.cache:
-            return self.cache[imdb_id][0]
-        elif imdb_id is not None:
+        if imdb_id is not None:
             filename = self.construct_filename(imdb_id, season)
             if os.path.exists(filename):
                 return filename
@@ -146,27 +74,9 @@ class ArtworkLoader(object):
         return downloaded
     
     def get_poster(self, imdb_id, season=None):
-        key = (imdb_id, season)
-        if key in self.cache:
-            return self.cache[key][1]
-        elif imdb_id is not None:
-            filename = self.get_poster_filename(imdb_id, season)
-            if filename is not None:
-                poster = ImageAccess.load(filename)
-                if self.use_cache:
-                    self.cache[key] = (filename, poster)
-                return poster
-        return self.get_default_poster()
-    
-    def get_image(self, imagepath):
-        if imagepath in self.cache:
-            return self.cache[imagepath][1]
-        filename = os.path.join(self.base_dir, imagepath)
-        if os.path.exists(filename):
-            image = ImageAccess.load(filename)
-            if self.use_cache:
-                self.cache[imagepath] = (filename, image)
-            return image
+        filename = self.get_poster_filename(imdb_id, season)
+        if filename is not None:
+            return filename
         return self.get_default_poster()
 
 class ScaledArtworkLoader(ArtworkLoader):

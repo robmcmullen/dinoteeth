@@ -207,8 +207,8 @@ class DetailRenderer(Renderer):
             self.draw_imdb_search_result(item, m)
     
     def draw_image(self, item, m):
-        image = self.artwork_loader.full_size_loader.get_image(m['image'])
-        image.blit(self.x, self.h - image.height, 0)
+        image = self.window.get_image(m['image'])
+        self.window.blit(image, self.x, self.h - image.height, 0)
     
     def draw_imagegen(self, item, m):
         image_generator = m['imagegen']
@@ -218,8 +218,9 @@ class DetailRenderer(Renderer):
         imdb_id = m['mmdb'].id
         season = m.get('season', None)
         key = (imdb_id, season)
-        image = self.artwork_loader.get_poster(imdb_id, season)
-        image.blit(self.x, self.h - image.height, 0)
+        imgpath = self.artwork_loader.get_poster(imdb_id, season)
+        image = self.window.get_image(imgpath)
+        self.window.blit(image, self.x, self.h - image.height, 0)
         
         self.window.draw_markup(m['mmdb'].get_markup(m.get('media_scan', None)),
                                 self.window.detail_font,
@@ -231,8 +232,9 @@ class DetailRenderer(Renderer):
         result = m['imdb_search_result']
         print result
         imdb_id = result.imdb_id
-        image = self.artwork_loader.get_poster(imdb_id, None)
-        image.blit(self.x, self.h - image.height, 0)
+        imgpath = self.artwork_loader.get_poster(imdb_id, None)
+        image = self.window.get_image(imgpath)
+        self.window.blit(image, self.x, self.h - image.height, 0)
         
         akas = "\n".join([a.replace('::', ' -- ') for a in result.get('akas',[])])
         text = u"""<b>Title:</b> %s
