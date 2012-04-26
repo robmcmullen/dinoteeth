@@ -186,17 +186,11 @@ class Config(object):
     
     def prepare_for_external_app(self):
         win = self.get_main_window()
-        win.set_using_external_app(True)
-        if self.options.fullscreen:
-            win.set_fullscreen(False)
+        win.set_using_external_app(True, self.options.fullscreen)
     
     def restore_after_external_app(self):
         win = self.get_main_window()
-        win.set_fullscreen(not self.options.fullscreen)
-        win.layout.refresh() # refresh menu without redraw as it will be redrawn when fullscreened
-        win.set_fullscreen(self.options.fullscreen)
-        win.activate()
-        win.set_using_external_app(False)
+        win.set_using_external_app(False, self.options.fullscreen)
     
     def create_root(self):
         self.root = RootMenu(self)

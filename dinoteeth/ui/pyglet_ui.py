@@ -48,6 +48,18 @@ class PygletMainWindow(pyglet.window.Window, MainWindow):
         MainWindow.quit(self)
         pyglet.app.exit()
     
+    def set_using_external_app(self, state, fullscreen):
+        MainWindow.set_using_external_app(self, state, fullscreen)
+        if self.using_external_app:
+            if fullscreen:
+                self.set_fullscreen(False)
+        else:
+            if fullscreen:
+                self.set_fullscreen(not fullscreen)
+            self.layout.refresh() # refresh menu without redraw as it will be redrawn when fullscreened
+            self.set_fullscreen(fullscreen)
+            self.activate() # restore keyboard focus
+    
     def on_draw(self):
         self.clear()
         self.layout.draw()

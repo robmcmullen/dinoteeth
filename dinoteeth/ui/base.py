@@ -44,7 +44,7 @@ class MainWindow(object):
         else:
             self.status_text.put(text)
     
-    def set_using_external_app(self, state):
+    def set_using_external_app(self, state, fullscreen):
         self.using_external_app = state
     
     def on_status_change(self, *args):
