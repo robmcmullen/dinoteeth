@@ -1,4 +1,4 @@
-import os, __builtin__
+import os, ctypes, __builtin__
 
 import SDL, SDL_Image, SDL_Pango
 
@@ -91,9 +91,16 @@ class SdlMainWindow(MainWindow):
                                                       ev.key.keysym.mod)
                     break
                 elif ev.type == SDL.SDL_MOUSEMOTION:
-                    print "mouse motion"
+                    pass
                 elif ev.type == SDL.SDL_QUIT:
                     self.quit()
+                elif ev.type == SDL.SDL_USEREVENT:
+                    argid = int(ev.user.data1)
+                    user_data = self.event_data.pop(argid)
+                    print "User event! code=%d data1=%s user_data=%s" % (ev.user.code, ev.user.data1, str(user_data))
+                    func_name = self.event_code_to_callback[ev.user.code]
+                    callback = getattr(self, func_name)
+                    callback(*user_data)
                     break
             
     
@@ -107,8 +114,31 @@ class SdlMainWindow(MainWindow):
     
     ########## Event functions
     
+    # Event names are used as the callback name to perform an action and are
+    # stored in a mapping so that the event code can be passed through the
+    # SDL_UserEvent structure.  (Also need to create the reverse mapping so
+    # that the code can produce the callback name.)
+    known_events = {
+        'on_status_update': 1,
+        }
+    event_code_to_callback = {}
+    for callback, code in known_events.iteritems():
+        event_code_to_callback[code] = callback
+    
+    # Rather that trying to marshal python arguments into the SDL event, store
+    # the python event data a dict and reference it by number.
+    event_data = {}
+    
     def post_event(self, event, *args):
-        print "FIXME! Post event"
+        ev = SDL.SDL_Event()
+        ev.type = SDL.SDL_USEREVENT
+        ev.user.code = self.known_events[event]
+        argcopy = tuple(args)
+        argid = id(argcopy)
+        data1 = ctypes.cast(argid, ctypes.c_void_p)
+        self.event_data[argid] = argcopy
+        ev.user.data1 = data1
+        SDL.SDL_PushEvent(SDL.pointer(ev))
     
     ########## Timer functions
     
