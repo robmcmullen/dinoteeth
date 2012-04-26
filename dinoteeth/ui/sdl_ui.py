@@ -164,7 +164,12 @@ class SdlMainWindow(MainWindow):
         
         """
         if image.is_valid():
-            self.blit_surface(image.image, x, y)
+            surface = image.get_surface()
+            self.blit_surface(surface, x, y)
+            
+            # Free the memory used by the image and mark it as needing a reload
+            # if it's used again
+            image.free()
 
 class SdlFontInfo(FontInfo):
     def calc_height(self):
@@ -190,10 +195,15 @@ class SdlFontInfo(FontInfo):
 class SdlImage(BaseImage):
     def free(self):
         """Free any system resources used by the image and prohibit further use
-        of the image.
+        of the image unless reloaded.
         
         """
         SDL.SDL_FreeSurface(self.image)
+        self.image = None
+        self.needs_reload = True
+    
+    def is_valid(self):
+        return self.needs_reload or self.image is not None
     
     def load(self, filename):
         """Load the image and set the dimensions.
@@ -201,6 +211,13 @@ class SdlImage(BaseImage):
         """
         if not filename:
             return
+        self.filename = filename
         self.image = SDL_Image.IMG_Load(filename)
         self.width = self.image.contents.w
         self.height = self.image.contents.h
+        self.needs_reload = False
+
+    def get_surface(self):
+        if self.needs_reload:
+            self.load(self.filename)
+        return self.image
