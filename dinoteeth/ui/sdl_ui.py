@@ -48,6 +48,18 @@ class SdlMainWindow(MainWindow):
         self.width = self.screen.contents.w
         self.height = self.screen.contents.h
     
+    def set_using_external_app(self, state, fullscreen):
+        MainWindow.set_using_external_app(self, state, fullscreen)
+        if self.using_external_app:
+            if fullscreen:
+                self.create_screen(False)
+        else:
+            if fullscreen:
+                self.create_screen(not fullscreen)
+            self.layout.refresh() # refresh menu without redraw as it will be redrawn when fullscreened
+            if fullscreen:
+                self.create_screen(fullscreen)
+    
     def get_size(self):
         return (self.width, self.height)
     
