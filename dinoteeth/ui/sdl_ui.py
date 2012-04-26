@@ -112,7 +112,7 @@ class SdlMainWindow(MainWindow):
         context = SDL_Pango.SDLPango_CreateContext()
         SDL_Pango.SDLPango_SetDefaultColor(context, SDL_Pango.MATRIX_TRANSPARENT_BACK_WHITE_LETTER)
         SDL_Pango.SDLPango_SetMinimumSize(context, width, 0)
-        markup = markup.encode('utf-8')
+        markup = font.wrap_span(markup, color).encode('utf-8')
         SDL_Pango.SDLPango_SetMarkup(context, markup, -1)
         surface = SDL_Pango.SDLPango_CreateSurfaceDraw(context)
         self.blit_surface(surface, x, y, anchor_x, anchor_y)
@@ -169,6 +169,15 @@ class SdlMainWindow(MainWindow):
 class SdlFontInfo(FontInfo):
     def calc_height(self):
         self.height = 30
+    
+    def get_spec(self):
+        return "%s %s" % (self.name, self.size)
+    
+    def wrap_span(self, markup, color):
+        spec = self.get_spec()
+        color = "#%02x%02x%02x" % (color[0], color[1], color[2])
+        markup = u"<span font='%s' foreground='%s'>%s</span>" % (spec, color, markup)
+        return markup
 
 class SdlImage(BaseImage):
     def free(self):
