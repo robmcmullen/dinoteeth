@@ -63,7 +63,8 @@ class SdlMainWindow(MainWindow):
             self.flip()
             while SDL.SDL_WaitEvent(SDL.pointer(ev)) == 1:
                 if ev.type == SDL.SDL_KEYDOWN:
-                    self.on_key_press(ev.key.keysym.sym, ev.key.keysym.mod)
+                    self.controller.process_key_press(ev.key.keysym.sym,
+                                                      ev.key.keysym.mod)
                     break
                 elif ev.type == SDL.SDL_MOUSEMOTION:
                     print "mouse motion"
@@ -79,10 +80,6 @@ class SdlMainWindow(MainWindow):
     def refresh(self):
         self.layout.refresh()
         self.flip()
-    
-    def on_key_press(self, keycode, modifiers):
-        print "key press: %s" % keycode
-        self.controller.process_key_press(keycode, modifiers)
     
     ########## Event functions
     
