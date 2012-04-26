@@ -1,4 +1,4 @@
-import __builtin__
+import os, __builtin__
 
 import SDL, SDL_Image, SDL_Pango
 
@@ -18,6 +18,7 @@ class SdlMainWindow(MainWindow):
     """
     def __init__(self, config, fullscreen=True, width=800, height=600, margins=None,
                  thumbnails=None):
+        os.environ["SDL_VIDEO_CENTERED"] = "1" # No other way to center windows in SDL 1.2!
         SDL.SDL_Init(SDL.SDL_INIT_EVERYTHING)
         SDL_Pango.SDLPango_Init();
         SDL_Image.IMG_Init(0)
@@ -36,12 +37,12 @@ class SdlMainWindow(MainWindow):
     ########## low level graphics routines
     
     def create_screen(self, fullscreen):
+        flags = 0
         if fullscreen:
-            flags = SDL.SDL_FULLSCREEN
+            flags ^= SDL.SDL_FULLSCREEN
             w = self.monitor_size[0]
             h = self.monitor_size[1]
         else:
-            flags = 0
             w = self.window_size[0]
             h = self.window_size[1]
         self.screen = SDL.SDL_SetVideoMode(w, h, 0, flags)
