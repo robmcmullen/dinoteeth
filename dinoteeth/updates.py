@@ -1,6 +1,6 @@
 import os, logging
 
-from thread import ThreadTaskManager, ProcessTaskManager
+from thread import ThreadTaskManager, ProcessTaskManager, TestSleepTask
 
 log = logging.getLogger("dinoteeth.updates")
 
@@ -68,6 +68,12 @@ class UpdateManager(object):
     def create_thumbnail(cls, imgpath):
         task = ThumbnailLoadTask(imgpath)
         cls.poster_thread.add_task(task)
+    
+    @classmethod
+    def test(cls, num=20, delay=1):
+        for i in range(num):
+            task = TestSleepTask(i + 1, delay)
+            cls.poster_thread.add_task(task)
     
     @classmethod
     def stop_all(cls):

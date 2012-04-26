@@ -82,6 +82,7 @@ class Config(object):
         
         parser.add_argument("--imdb-country-code", action="store", default="USA")
         parser.add_argument("--country-code", action="store", default="US")
+        parser.add_argument("--test-threads", action="store_true", default=False)
         return parser
     
     def parse_args(self, args, parser):
@@ -182,6 +183,8 @@ class Config(object):
             
             UpdateManager(self.main_window, 'on_status_update', self.db, self.mmdb, self.get_poster_fetcher(), self.get_thumbnail_loader())
             UpdateManager.update_all_posters()
+            if self.options.test_threads:
+                UpdateManager.test()
         return self.main_window
     
     def prepare_for_external_app(self):
