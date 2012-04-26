@@ -81,10 +81,10 @@ class MenuDetail2ColumnLayout(AbstractLayout):
         self.status_renderer = SimpleStatusRenderer(window, self.status_box, config)
     
     def compute_layout(self):
-        self.title_height = self.window.font.size + 10
+        self.title_height = self.window.font.height + 10
         self.menu_width = self.box[2]/3
         self.center = (self.box[3] - self.title_height)/2
-        self.items_in_half = (self.center - self.window.selected_font.size) / self.window.font.size
+        self.items_in_half = (self.center - self.window.selected_font.height) / self.window.font.height
         self.title_box = (self.box[0], self.box[3] - self.title_height + 1, self.box[2], self.title_height)
         self.menu_box = (self.box[0], self.box[1], self.menu_width, self.box[3] - self.title_height)
         self.detail_box = (self.menu_width, self.box[1], self.box[2] - self.menu_width, self.box[3] - self.title_height)
@@ -124,7 +124,7 @@ class MenuRenderer(Renderer):
 class VerticalMenuRenderer(MenuRenderer):
     def compute_params(self, conf):
         self.center = self.y + self.h/2
-        self.items_in_half = (self.center - self.window.selected_font.size) / self.window.font.size
+        self.items_in_half = (self.center - self.window.selected_font.height) / self.window.font.height
     
     def get_page_scroll_unit(self):
         return self.items_in_half
@@ -157,22 +157,22 @@ class VerticalMenuRenderer(MenuRenderer):
         item = menu.get_selected_item()
         self.draw_item(item, self.center, True)
         
-        y = self.center + self.window.selected_font.size
+        y = self.center + self.window.selected_font.height
         i = menu.cursor - 1
         limit = max(0, menu.cursor - self.items_in_half)
         while i >= limit:
             item = menu.get_item(i)
             self.draw_item(item, y, False)
-            y += self.window.font.size
+            y += self.window.font.height
             i -= 1
             
-        y = self.center - self.window.selected_font.size
+        y = self.center - self.window.selected_font.height
         i = menu.cursor + 1
         limit = min(menu.num_items() - 1, menu.cursor + self.items_in_half)
         while i <= limit:
             item = menu.get_item(i)
             self.draw_item(item, y, False)
-            y -= self.window.font.size
+            y -= self.window.font.height
             i += 1
 
 
