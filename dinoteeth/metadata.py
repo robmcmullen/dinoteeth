@@ -291,7 +291,7 @@ class BaseMetadata(object):
 %s
 
 <u>Available Subtitle Tracks:</u>
-%s""" % (audio, subtitle)
+%s""" % (_(audio), _(subtitle))
         return text
 
     def get_last_played_markup(self, media_scan):
@@ -302,11 +302,11 @@ class BaseMetadata(object):
                 text += """
 
 <b>Paused:</b> %s
-<b>Paused At:</b> %s\n""" % (date, position)
+<b>Paused At:</b> %s\n""" % (_(date), _(position))
             else:
                 text += """\n
 
-<b>Last Played:</b> %s\n""" % date
+<b>Last Played:</b> %s\n""" % _(date)
         return text
 
 
@@ -409,8 +409,8 @@ class MovieMetadata(BaseMetadata):
 <b>Rated:</b> %s
 <b>Released:</b> %s
 <b>Genre:</b> %s
-""" % (title, self.plot, self.certificate,
-                          "release date goes here", genres)
+""" % (_(title), _(self.plot), _(self.certificate),
+                          "release date goes here", _(genres))
         if media_scan:
             text += self.get_audio_markup(media_scan)
             text += self.get_last_played_markup(media_scan)
@@ -422,8 +422,8 @@ class MovieMetadata(BaseMetadata):
 <b>Music by:</b> %s
 <b>Actors:</b> %s
 <b>Runtime:</b> %s
-<b>Rating:</b> %s/10""" % (directors, producers, writers, music, actors, self.runtime,
-                          self.rating)
+<b>Rating:</b> %s/10""" % (_(directors), _(producers), _(writers), _(music),
+                           _(actors), _(self.runtime), _(self.rating))
         return text
 
 
@@ -564,12 +564,12 @@ class SeriesMetadata(BaseMetadata):
 <b>Episode:</b> %s
 <b>Aired:</b> %s
 
-<center><b><i>%s</i></b></center>
+<b><i>%s</i></b>
 
 %s
 
 <b>Guest Stars:</b> %s
-""" % (media_scan.episode, e['aired'], e['title'], e['plot'], ", ".join(e['guest']))
+""" % (_(media_scan.episode), _(e['aired']), _(e['title']), _(e['plot']), _(", ".join(e['guest'])))
             except KeyError:
                 pass
             text += self.get_audio_markup(media_scan)
@@ -578,7 +578,7 @@ class SeriesMetadata(BaseMetadata):
             text += """
 %s
 
-<b>Network:</b> %s %s""" % (self.plot, self.network, self.series_years)
+<b>Network:</b> %s %s""" % (_(self.plot), _(self.network), _(self.series_years))
             if not self.is_mini_series():
                 text += """
 <b>Number of Seasons:</b> %s""" % self.num_seasons
@@ -592,6 +592,6 @@ class SeriesMetadata(BaseMetadata):
 <b>Written by:</b> %s
 <b>Music by:</b> %s
 <b>Actors:</b> %s
-<b>Rating:</b> %s/10""" % (producers, directors, writers, music, actors, self.rating)
+<b>Rating:</b> %s/10""" % (_(producers), _(directors), _(writers), _(music), _(actors), _(self.rating))
             
         return text

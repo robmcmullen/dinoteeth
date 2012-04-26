@@ -130,7 +130,7 @@ class VerticalMenuRenderer(MenuRenderer):
         return self.items_in_half
     
     def draw_item(self, item, y, selected=False):
-        text = item.title
+        text = _(item.title)
         if selected:
             font = self.window.selected_font
             italic = False
@@ -181,7 +181,7 @@ class TitleRenderer(Renderer):
         title = []
         for menu in hierarchy:
             title.append(menu.title)
-        text = " > ".join(title)
+        text = _(" > ".join(title))
         self.window.draw_text(text, font=self.window.font,
                                   bold=True, italic=False,
                                   x=self.x + self.w/2, y=self.y,
@@ -268,7 +268,7 @@ class SimpleStatusRenderer(StatusRenderer):
                 # display the most recent update
                 item = self.window.status_text.get(False)
                 found = True
-                self.last_item = item
+                self.last_item = _(item)
             except Queue.Empty:
                 break
         if found:

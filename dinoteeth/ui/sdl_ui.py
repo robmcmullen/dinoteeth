@@ -1,6 +1,12 @@
+import __builtin__
+
 import SDL, SDL_Image, SDL_Pango
 
 from .base import MainWindow, FontInfo, BaseImage
+
+def escape_markup(text):
+    print text
+    return unicode(text).replace(u"&", u"&amp;")
 
 class SdlMainWindow(MainWindow):
     """Main window using the ctypesgen SDL toolkit
@@ -19,6 +25,7 @@ class SdlMainWindow(MainWindow):
         self.create_screen(width, height)
         MainWindow.__init__(self, config, fullscreen, width, height, margins,
                             thumbnails)
+        __builtin__._ = escape_markup
 
     def get_font_detail(self, name, size):
         return SdlFontInfo(name, size)

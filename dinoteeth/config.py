@@ -18,6 +18,7 @@ from hierarchy import RootMenu
 from photo import PhotoDB
 from media import enzyme_extensions
 from metadata import BaseMetadata
+import i18n
 
 logging.basicConfig(level=logging.WARNING)
 
