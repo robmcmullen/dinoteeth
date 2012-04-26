@@ -67,6 +67,9 @@ class SdlMainWindow(MainWindow):
                     break
                 elif ev.type == SDL.SDL_MOUSEMOTION:
                     print "mouse motion"
+                elif ev.type == SDL.SDL_QUIT:
+                    self.quit()
+                    break
             
     
     def on_draw(self):
@@ -81,9 +84,6 @@ class SdlMainWindow(MainWindow):
         print "key press: %s" % keycode
         self.controller.process_key_press(keycode, modifiers)
     
-    def on_close(self):
-        self.quit()
-        
     ########## Event functions
     
     def post_event(self, event, *args):
