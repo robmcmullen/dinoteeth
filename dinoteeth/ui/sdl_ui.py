@@ -103,7 +103,7 @@ class SdlMainWindow(MainWindow):
         if bold:
             text = "<b>%s</b>" % text
         if italic:
-            text = "<i>%s</i>" % text
+            text = "<i>%s </i>" % text
         self.draw_markup(text, font, x, y, color, anchor_x, anchor_y)
     
     def draw_markup(self, markup, font, x=0, y=0, color=None, anchor_x='left', anchor_y='bottom', width=0):
