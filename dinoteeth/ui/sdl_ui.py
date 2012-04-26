@@ -112,7 +112,7 @@ class SdlMainWindow(MainWindow):
         context = SDL_Pango.SDLPango_CreateContext()
         SDL_Pango.SDLPango_SetDefaultColor(context, SDL_Pango.MATRIX_TRANSPARENT_BACK_WHITE_LETTER)
         SDL_Pango.SDLPango_SetMinimumSize(context, width, 0)
-        markup = font.wrap_span(markup, color).encode('utf-8')
+        markup = font.wrap_span(markup, color)
         SDL_Pango.SDLPango_SetMarkup(context, markup, -1)
         surface = SDL_Pango.SDLPango_CreateSurfaceDraw(context)
         self.blit_surface(surface, x, y, anchor_x, anchor_y)
@@ -168,7 +168,15 @@ class SdlMainWindow(MainWindow):
 
 class SdlFontInfo(FontInfo):
     def calc_height(self):
-        self.height = 30
+        # I can't find a way to get font metrics out of SDL Pango, so create a
+        # test string and see how tall it is.
+        context = SDL_Pango.SDLPango_CreateContext()
+        SDL_Pango.SDLPango_SetDefaultColor(context, SDL_Pango.MATRIX_TRANSPARENT_BACK_WHITE_LETTER)
+        SDL_Pango.SDLPango_SetMinimumSize(context, -1, 0)
+        markup = self.wrap_span(u"MQIbhgjy[|!()/?#", (255,255,255,255))
+        SDL_Pango.SDLPango_SetMarkup(context, markup, -1)
+        self.height = SDL_Pango.SDLPango_GetLayoutHeight(context)
+        SDL_Pango.SDLPango_FreeContext(context)
     
     def get_spec(self):
         return "%s %s" % (self.name, self.size)
@@ -177,7 +185,7 @@ class SdlFontInfo(FontInfo):
         spec = self.get_spec()
         color = "#%02x%02x%02x" % (color[0], color[1], color[2])
         markup = u"<span font='%s' foreground='%s'>%s</span>" % (spec, color, markup)
-        return markup
+        return markup.encode('utf-8')
 
 class SdlImage(BaseImage):
     def free(self):
