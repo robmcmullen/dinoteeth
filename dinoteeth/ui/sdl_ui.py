@@ -22,7 +22,10 @@ class SdlMainWindow(MainWindow):
         SDL_Pango.SDLPango_Init();
         SDL_Image.IMG_Init(0)
         SDL.SDL_EnableKeyRepeat(300, 100)
-        self.create_screen(width, height)
+        info = SDL.SDL_GetVideoInfo()
+        self.monitor_size = (info.contents.current_w, info.contents.current_h)
+        self.window_size = (width, height)
+        self.create_screen(fullscreen)
         MainWindow.__init__(self, config, fullscreen, width, height, margins,
                             thumbnails)
         __builtin__._ = escape_markup
@@ -32,8 +35,16 @@ class SdlMainWindow(MainWindow):
     
     ########## low level graphics routines
     
-    def create_screen(self, width, height):
-        self.screen = SDL.SDL_SetVideoMode(width, height, 0, 0)
+    def create_screen(self, fullscreen):
+        if fullscreen:
+            flags = SDL.SDL_FULLSCREEN
+            w = self.monitor_size[0]
+            h = self.monitor_size[1]
+        else:
+            flags = 0
+            w = self.window_size[0]
+            h = self.window_size[1]
+        self.screen = SDL.SDL_SetVideoMode(w, h, 0, flags)
         self.width = self.screen.contents.w
         self.height = self.screen.contents.h
     
