@@ -272,6 +272,10 @@ class SdlFontInfo(FontInfo):
         return markup.encode('utf-8')
 
 class SdlImage(BaseImage):
+    def __init__(self, filename):
+        BaseImage.__init__(self, filename)
+        self.needs_reload = False
+        
     def free(self):
         """Free any system resources used by the image and prohibit further use
         of the image unless reloaded.
