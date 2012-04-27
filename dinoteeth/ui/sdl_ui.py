@@ -1,8 +1,9 @@
-import os, ctypes, __builtin__
+import os, time, ctypes, __builtin__
 
 import SDL, SDL_Image, SDL_Pango
 
 from .base import MainWindow, FontInfo, BaseImage
+from ..updates import UpdateManager
 
 def escape_markup(text):
     print text
@@ -100,8 +101,9 @@ class SdlMainWindow(MainWindow):
                     print "User event! code=%d data1=%s user_data=%s" % (ev.user.code, ev.user.data1, str(user_data))
                     func_name = self.event_code_to_callback[ev.user.code]
                     callback = getattr(self, func_name)
-                    callback(*user_data)
-                    break
+                    retval = callback(*user_data)
+                    if retval != "skip redraw":
+                        break
             
     
     def on_draw(self):
@@ -120,6 +122,7 @@ class SdlMainWindow(MainWindow):
     # that the code can produce the callback name.)
     known_events = {
         'on_status_update': 1,
+        'on_timer': 2,
         }
     event_code_to_callback = {}
     for callback, code in known_events.iteritems():
@@ -142,11 +145,36 @@ class SdlMainWindow(MainWindow):
     
     ########## Timer functions
     
+    scheduled = {}
+    timer_resolution = .1
+    
     def schedule_once(self, callback, seconds):
-        print "FIXME! Schedule once"
+        scheduled_time = time.time() + seconds
+        self.scheduled[callback] = scheduled_time
+        UpdateManager.start_ticks(self.timer_resolution, scheduled_time)
     
     def unschedule(self, callback):
-        print "FIXME! Unschedule"
+        if callback in self.scheduled:
+            del self.scheduled[callback]
+    
+    def on_timer(self, *args):
+        if not self.scheduled:
+            # Short circuit so that stop_ticks isn't endlessly called
+            return
+        now = time.time()
+        still_pending = {}
+        called = False
+        for callback, execute_time in self.scheduled.iteritems():
+            if now >= execute_time:
+                callback()
+                called = True
+            else:
+                still_pending[callback] = execute_time
+        self.scheduled = still_pending
+        if not self.scheduled:
+            UpdateManager.stop_ticks()
+        if not called:
+            return "skip redraw"
     
     ########## Drawing functions
     

@@ -68,9 +68,17 @@ class ThreadTaskManager(threading.Thread, TaskManager):
             task = self._tasks.get(True) # blocking
             if task is None or self._want_abort:
                 break
-            result = task(*self.args, **self.kwargs)
-            self._notify(result)
-            if self._want_abort:
+            while True:
+                result = task(*self.args, **self.kwargs)
+                self._notify(result)
+                if self._want_abort:
+                    break
+                if hasattr(task, 'repeat') and task.repeat:
+                    # if it's a repeating task, run the task again unless
+                    # there's another task pending
+                    if self._tasks.empty():
+                        log.debug("repeating")
+                        continue
                 break
 
 

@@ -1,4 +1,4 @@
-import os, logging
+import os, time, logging
 
 from thread import ThreadTaskManager, ProcessTaskManager, TestSleepTask
 
@@ -32,6 +32,17 @@ class ThumbnailLoadTask(object):
         except:
             return "Failed creating thumbnail image for %s" % os.path.basename(self.imgpath)
 
+class TimerTask(object):
+    def __init__(self, delay, expire_time, repeat=True):
+        self.delay = delay
+        self.expire_time = expire_time
+        self.repeat = repeat
+    
+    def __call__(self, *args, **kwargs):
+        time.sleep(self.delay)
+        if time.time() >= self.expire_time:
+            self.repeat = False
+
 
 class UpdateManager(object):
     poster_thread = None
@@ -47,6 +58,7 @@ class UpdateManager(object):
         cls.posters = poster_fetcher
         cls.thumbnails = thumbnail_loader
         cls.poster_thread = ProcessTaskManager(window, event_name, num_workers=1, posters=cls.posters, thumbnails=cls.thumbnails)
+        cls.timer_thread = ThreadTaskManager(window, 'on_timer')
     
     @classmethod
     def update_all_posters(cls):
@@ -70,10 +82,20 @@ class UpdateManager(object):
         cls.poster_thread.add_task(task)
     
     @classmethod
-    def test(cls, num=20, delay=1):
+    def test(cls, num=4, delay=.5):
         for i in range(num):
             task = TestSleepTask(i + 1, delay)
             cls.poster_thread.add_task(task)
+    
+    @classmethod
+    def start_ticks(cls, delay, expire_time):
+        task = TimerTask(delay, expire_time)
+        cls.timer_thread.add_task(task)
+    
+    @classmethod
+    def stop_ticks(cls):
+        task = TimerTask(0, 0, repeat=False)
+        cls.timer_thread.add_task(task)
     
     @classmethod
     def stop_all(cls):
