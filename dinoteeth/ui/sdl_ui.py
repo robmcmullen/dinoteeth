@@ -1,6 +1,6 @@
 import os, time, ctypes, __builtin__
 
-import SDL, SDL_Image, SDL_Pango
+import SDL, SDL_Image, SDL_Pango, SDL_gfx
 
 from .base import MainWindow, FontInfo, BaseImage
 from ..updates import UpdateManager
@@ -209,9 +209,13 @@ class SdlMainWindow(MainWindow):
             x, y,
             x + w, y
         )
-#        pyglet.graphics.draw(4, GL_QUADS, ('v2i', verts), ('c4B', background_color*4))
-#        pyglet.graphics.draw(4, GL_LINE_LOOP, ('v2i', verts), ('c4B', border_color*4))
-        print "FIXME: draw box"
+        y = self.height - y - h
+        SDL_gfx.boxRGBA(self.screen, x, y, x + w, y + h, background_color[0],
+                                background_color[1], background_color[2],
+                                background_color[3])
+        SDL_gfx.rectangleRGBA(self.screen, x, y, x + w, y + h, border_color[0],
+                                border_color[1], border_color[2],
+                                border_color[3])
     
     ########## Image functions
     
