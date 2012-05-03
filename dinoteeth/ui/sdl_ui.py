@@ -6,7 +6,6 @@ from .base import MainWindow, FontInfo, BaseImage
 from ..updates import UpdateManager
 
 def escape_markup(text):
-    print text
     return unicode(text).replace(u"&", u"&amp;")
 
 class SdlMainWindow(MainWindow):
