@@ -1,4 +1,7 @@
-from ..utils import ExeRunner
+from ..utils import ExeRunner, vprint
+
+def wprint(text):
+    print "WARNING: %s" % text
 
 class Stream(object):
     def __init__(self, order):

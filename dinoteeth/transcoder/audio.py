@@ -1,4 +1,6 @@
-from ..utils import ExeRunner
+import os
+
+from ..utils import ExeRunner, vprint
 
 class MkvAudioExtractor(ExeRunner):
     exe_name = "mkvextract"
@@ -28,11 +30,11 @@ class VOBAudioExtractor(object):
         self.output = output
         
     def run(self):
-        self.vprint(0, "-Using mplayer to rip audio tracks from %s" % self.url)
+        vprint(0, "-Using mplayer to rip audio tracks from %s" % self.url)
         handbrake_id = 0
         for order in self.track_order:
             handbrake_id += 1
-            self.vprint(0, "--Ripping audio track %d" % order)
+            vprint(0, "--Ripping audio track %d" % order)
             stream = self.title.audio[order - 1]
             #print stream
             output = "tmp.%s.%d.wav" % (self.output, handbrake_id)
@@ -49,7 +51,7 @@ class AudioGain(ExeRunner):
     
     def setCommandLine(self, source, extractor=None, options=None, *args, **kwargs):
         self.extractor = extractor
-        self.vprint(0, "-Using normalize to compute audio gain for %s" % source)
+        vprint(0, "-Using normalize to compute audio gain for %s" % source)
         self.args = ["-n", "--no-progress"]
         self.normalize_order = []
         for handbrake_id, output in extractor.handbrake_to_mp3.iteritems():
@@ -66,5 +68,5 @@ class AudioGain(ExeRunner):
                 gain = details[2][:-2]
                 self.gains[self.normalize_order[index] - 1] = gain
                 index += 1
-        self.vprint(0, "--Computed gains: %s" % str(self.gains))
+        vprint(0, "--Computed gains: %s" % str(self.gains))
         self.extractor.cleanup()

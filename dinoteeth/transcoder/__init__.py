@@ -1,11 +1,12 @@
 from mkv import MkvScanner, MkvPropEdit
-from audio import MkvAudioExtractor, AudioGain
+from audio import MkvAudioExtractor, VOBAudioExtractor, AudioGain
 from scanner import HandBrakeScanner
 from encoder import HandBrakeEncoder
-from common import HandBrakeScanError
+from common import wprint, HandBrakeScanError
 
 __all__ = ['MkvScanner', 'MkvPropEdit',
-           'MkvAudioExtractor', 'AudioGain',
+           'MkvAudioExtractor', 'VOBAudioExtractor', 'AudioGain',
            'HandBrakeScanner', 'HandBrakeEncoder',
            'HandBrakeScanError',
+           'wprint',
            ]

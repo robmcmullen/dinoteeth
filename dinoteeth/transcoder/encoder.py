@@ -1,6 +1,11 @@
 import os, re, time
+from threading import Thread
+from Queue import Queue, Empty
 
 from common import *
+from audio import MkvAudioExtractor, VOBAudioExtractor, AudioGain
+from mkv import MkvScanner, MkvPropEdit
+from ..utils import vprint
 
 class HandBrakeEncoder(HandBrake):
     def __init__(self, source, scan, output, dvd_title, audio_spec, subtitle_spec, options, audio_only=False):
@@ -195,7 +200,7 @@ class HandBrakeEncoder(HandBrake):
         t_stderr.join()
         t_stdout.join()
         if error is None:
-            self.vprint(0, "-HandBrake finished encoding %s" % self.output)
+            vprint(0, "-HandBrake finished encoding %s" % self.output)
             if not self.audio_only:
                 self.rename_tracks()
     
@@ -211,7 +216,7 @@ class HandBrakeEncoder(HandBrake):
         return normalizer.gains
     
     def compute_gains_mplayer(self):
-        self.vprint(0, "-Preparing to compute audio gain factors")
+        vprint(0, "-Preparing to compute audio gain factors")
         extractor = VOBAudioExtractor(self.source, self.title, self.audio_track_order, self.output)
         extractor.run()
         normalizer = AudioGain(self.output, extractor=extractor)
@@ -222,15 +227,15 @@ class HandBrakeEncoder(HandBrake):
         if self.audio_only:
             return
         gains = []
-        if options.gain:
-            self.args.extend(("--gain", str(options.gain)))
+        if self.options.gain:
+            self.args.extend(("--gain", str(self.options.gain)))
         elif self.options.normalize:
             gains = self.compute_gains_mplayer()
             self.args.append("--gain")
             self.args.extend([",".join(gains)])
 
     def rename_tracks(self):
-        self.vprint(0, "-Preparing to rename tracks in %s" % self.output)
+        vprint(0, "-Preparing to rename tracks in %s" % self.output)
         mkv = MkvScanner(self.output)
         mkv.run()
         prop = MkvPropEdit(self.output, options=self.options, dvd_title=self.title_num, scan=self.scan, mkv=mkv, encoder=self)
@@ -262,9 +267,9 @@ class HandBrakeOutput(object):
             return
         if line.startswith("x264 [error]"):
             _, error = line.split(": ", 1)
-            self.vprint(0, "** x264 encoding error: %s" % error)
+            vprint(0, "** x264 encoding error: %s" % error)
             if "stats file could not be written to" in error:
-                self.vprint(0, "*** Likely out of space in temporary directory.  Try --tmp option.")
+                vprint(0, "*** Likely out of space in temporary directory.  Try --tmp option.")
             return error
         if self.job > 0:
             if self.state == None:
@@ -279,29 +284,29 @@ class HandBrakeOutput(object):
                     hits = int(details[0])
                     forced = int(details[2][1:])
                     if forced > 0:
-                        self.vprint(0, "--burning in %d forced subtitles (of %d) for subtitle stream %s" % (forced, hits, stream_id))
+                        vprint(0, "--burning in %d forced subtitles (of %d) for subtitle stream %s" % (forced, hits, stream_id))
                     else:
-                        self.vprint(0, "--no forced subtitles to burn in for subtitle stream %s" % stream_id)
+                        vprint(0, "--no forced subtitles to burn in for subtitle stream %s" % stream_id)
                 if line.startswith("libhb: work result"):
                     _, ret = line.split(" = ", 1)
                     if ret == "0":
-                        self.vprint(0, "-HandBrake finished successfully")
+                        vprint(0, "-HandBrake finished successfully")
                     else:
-                        self.vprint(0, "-Handbrake failed with return code %s" % ret)
+                        vprint(0, "-Handbrake failed with return code %s" % ret)
                     return
             if self.state == "job configuration:":
                 if time is not None:
                     self.configuration += line + "\n"
                 else:
                     if self.job == self.expected_jobs:
-                        self.vprint(0, "--starting final encode pass %s/%s" % (self.job, self.expected_jobs))
+                        vprint(0, "--starting final encode pass %s/%s" % (self.job, self.expected_jobs))
                         print self.configuration
                     else:
-                        self.vprint(0, "--starting encode pass %s/%s" % (self.job, self.expected_jobs))
+                        vprint(0, "--starting encode pass %s/%s" % (self.job, self.expected_jobs))
                         self.configuration = ""
                     self.state = None
                 return
             if line.startswith("reader: done"):
-                self.vprint(0, "--finished encode pass %s/%s" % (self.job, self.expected_jobs))
+                vprint(0, "--finished encode pass %s/%s" % (self.job, self.expected_jobs))
                 self.state = None
                 return

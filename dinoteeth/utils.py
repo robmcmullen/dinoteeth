@@ -312,6 +312,9 @@ class ExeRunner(object):
             if cls.logfile is not None and cls.loglevel >= verbosity_level:
                 cls.logfile.write("%s\n" % txt)
 
+def vprint(verbosity_level, txt=""):
+    ExeRunner.vprint(verbosity_level, txt)
+
 
 if __name__ == "__main__":
     now = datetime(2012,4,3,12,34,56)

@@ -13,21 +13,13 @@ normalize (only if audio gain normalization is used)
 """
 
 import os, sys, re, tempfile, time, copy
-from threading import Thread
-from Queue import Queue, Empty
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..")) # to find third_party
 try:
     import argparse
 except:
     import dinoteeth.third_party.argparse as argparse
-from dinoteeth.utils import encode_title_text, canonical_filename, parse_int_string, csv_split, ExeRunner
+from dinoteeth.utils import encode_title_text, canonical_filename, parse_int_string, csv_split, ExeRunner, vprint
 from dinoteeth.transcoder import *
-
-def wprint(text):
-    print "WARNING: %s" % text
-
-def vprint(verbosity_level, txt=""):
-    ExeRunner.vprint(verbosity_level, txt)
 
 class TrackInfo(object):
     def __init__(self):

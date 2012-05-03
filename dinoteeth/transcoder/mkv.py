@@ -1,4 +1,4 @@
-from ..utils import ExeRunner
+from ..utils import ExeRunner, vprint
 
 class MkvScanner(ExeRunner):
     exe_name = "mkvmerge"
@@ -33,7 +33,7 @@ class MkvPropEdit(ExeRunner):
     exe_name = "mkvpropedit"
     
     def setCommandLine(self, source, dvd_title=1, scan=None, mkv=None, encoder=None, options=None, *args, **kwargs):
-        self.vprint(0, "-Using mkvpropedit to add names to tracks")
+        vprint(0, "-Using mkvpropedit to add names to tracks")
         self.args = [source]
         self.args.extend(["-e", "track:1", "-s", "name=%s" % options.name])
         title = scan.get_title(dvd_title)
