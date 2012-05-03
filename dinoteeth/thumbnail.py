@@ -153,8 +153,6 @@ class ImageThumbnailFactory(AbstractThumbnailFactory):
         larger than the defined thumbnail size.
         """
         img = Image.open(imgpath)
-        if img.size[0] <= self.size[0] and img.size[1] <= self.size[1]:
-            raise ImageTooSmallException
         try:
             img = self._get_rotated_thumbnail(img)
         except IOError:
@@ -176,7 +174,8 @@ class ImageThumbnailFactory(AbstractThumbnailFactory):
                     orientation = exif[0x0112]
             except:
                 pass
-        img.thumbnail(self.size)
+        if img.size[0] > self.size[0] or img.size[1] > self.size[1]:
+            img.thumbnail(self.size)
         
         if orientation == 6:
             img = img.transpose(Image.ROTATE_270)
