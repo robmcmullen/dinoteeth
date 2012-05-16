@@ -162,8 +162,8 @@ class HandBrakeEncoder(HandBrake):
         if not self.options.overwrite and os.path.exists(self.output):
             self.vprint(0, "-skipping already encoded file %s; use --overwrite to replace existing files" % self.output)
             return 
-        self.compute_gains()
         self.vprint(0, "-Using HandBrake to encode video %s" % self.output)
+        self.compute_gains()
         p = self.popen()
         q_stderr = Queue()
         t_stderr = Thread(target=self.enqueue_output, args=(p.stderr, q_stderr))
