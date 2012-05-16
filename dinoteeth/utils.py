@@ -76,7 +76,9 @@ def time_since(d, now=None):
         return "one year ago"
     return "%d years ago" % years
 
-def canonical_filename(title, film_series, season=-1, episode_char='e', episode=-1, episode_name='', ext="mkv"):
+def canonical_filename(title, film_series, season=-1, episode_char='e', episode=-1, episode_name='', ext="mkv", filename=""):
+    if not title:
+        title = decode_title_text(os.path.basename(filename)).title()
     name = []
     if season == -1:
         if film_series:

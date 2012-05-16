@@ -290,7 +290,7 @@ if __name__ == "__main__":
                 
                 # add each episode to queue
                 for dvd_title, episode, name in zip(dvd_titles, numbers, names):
-                    filename = canonical_filename(options.name, options.film_series, options.season, "e", episode, name, options.ext)
+                    filename = canonical_filename(options.name, options.film_series, options.season, "e", episode, name, options.ext, filename=source)
                     try:
                         encoder = HandBrakeEncoder(source, scan, filename, dvd_title, audio, subtitles, options)
                         queue.append(encoder)
@@ -305,7 +305,7 @@ if __name__ == "__main__":
                 
                 # add each bonus feature to queue
                 for dvd_title, episode, name in zip(dvd_titles, numbers, names):
-                    filename = canonical_filename(options.name, options.film_series, options.season, "x", episode, name, options.ext)
+                    filename = canonical_filename(options.name, options.film_series, options.season, "x", episode, name, options.ext, filename=source)
                     try:
                         encoder = HandBrakeEncoder(source, scan, filename, dvd_title, audio, subtitles, options)
                         queue.append(encoder)
@@ -319,7 +319,7 @@ if __name__ == "__main__":
                 if seen_film_series:
                     options.film_series[1] = int(options.film_series[1]) + 1
                 dvd_title = dvd_titles[0]
-                filename = canonical_filename(options.name, options.film_series, options.season, None, None, None, options.ext)
+                filename = canonical_filename(options.name, options.film_series, options.season, None, None, None, options.ext, filename=source)
                 try:
                     encoder = HandBrakeEncoder(source, scan, filename, dvd_title, audio, subtitles, options)
                     queue.append(encoder)
