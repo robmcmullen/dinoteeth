@@ -662,7 +662,7 @@ class MovieMetadataDatabase(MetadataDatabase):
     def remove(self, imdb_id):
         del self.media[imdb_id]
 
-    def get_media_by(self, media_categories, credit, criteria=None):
+    def get_media_by(self, media_categories, credit, criteria=None, convert=None):
         """Get a lists of movies given the category and search parameters
 
         Criteria can be a string, an iterable, or a function.
@@ -672,7 +672,7 @@ class MovieMetadataDatabase(MetadataDatabase):
         criteria = self.lambdaify(criteria)
         for m in self.media.values():
             if media_categories is None or m.media_category in media_categories:
-                if m.match(credit, criteria):
+                if m.match(credit, criteria, convert):
                     results.add(m)
         order = []
         for m in results:
@@ -682,19 +682,24 @@ class MovieMetadataDatabase(MetadataDatabase):
         log.debug("sort key: %s; sorted: %s" % (credit, str([(item[0], item[1].title) for item in order])))
         return [item[1] for item in order]
 
-    def get_credit_entries(self, media_categories, credit, criteria=None):
+    def get_credit_entries(self, media_categories, credit, criteria=None, convert=None):
         """Get a lists of movies given the category and search parameters
 
         Criteria can be a string, an iterable, or a function.
         """
-        results = set()
+        results = {}
         log.debug("get_credit_entries: cat=%s credit=%s criteria=%s" % (media_categories, credit, str(criteria)))
         criteria = self.lambdaify(criteria)
+        if convert is None:
+            convert = lambda d: d
         for m in self.media.values():
 #            print type(m), media_categories, m.media_category
             if media_categories is None or m.media_category in media_categories:
                 log.debug("matched media category %s!" % m.media_category)
                 if m.match(credit, criteria):
                     log.debug("matched %s" % m.title)
-                    results.update(m.iter_items_of(credit))
-        return list(results)
+                    for credit_value in m.iter_items_of(credit):
+                        results[convert(credit_value)] = credit_value
+        presorted = zip(results.values(), results.keys())
+        presorted.sort()
+        return [i[1] for i in presorted]

@@ -3,7 +3,7 @@
 Get TMDB/IMDB metadata for movies in the database
 """
 
-import os, collections, logging
+import os, time, collections, logging
 from third_party.sentence import first_sentence
 
 log = logging.getLogger("dinoteeth.metadata")
@@ -90,22 +90,23 @@ class BaseMetadata(object):
     ignore_leading_articles = ["a", "an", "the"]
     media_category = None
     credit_map = [
-        # Title, attribute, limit_category ('series', 'movies', None)
-        ("By Genre", "genres", None),
-        ("By Film Series", "film_series", "movies"),
-        ("By Director", "directors", None),
-        ("By Actor", "cast", None),
-        ("By Executive Producer", "executive_producers", "series"),
-        ("By Producer", "producers", "movies"),
-        ("By Production Company", "companies", None),
-        ("By Composer", "music", None),
-        ("By Screenwriter", "screenplay_writers", "movies"),
-        ("Based on a Novel By", "novel_writers", "movies"),
-        ("By Year", "year", None),
-        ("By Years Broadcast", "series_years", "series"),
-        ("By Broadcast Network", "network", "series"),
-        ("By Number of Seasons", "num_seasons", "series"),
-        ("By Rating", "certificate", None),
+        # Title, attribute, limit_category (one of: 'series', 'movies' or None), converter (to change the data; e.g. change a raw timestamp into a month/year for bucketing), reverse sort flag (True or False/None)
+        ("By Date Added", "date_added", None, lambda d: time.strftime("%B %Y", time.localtime(d)), True),
+        ("By Genre", "genres", None, None, False),
+        ("By Film Series", "film_series", "movies", None, False),
+        ("By Director", "directors", None, None, False),
+        ("By Actor", "cast", None, None, False),
+        ("By Executive Producer", "executive_producers", "series", None, False),
+        ("By Producer", "producers", "movies", None, False),
+        ("By Production Company", "companies", None, None, False),
+        ("By Composer", "music", None, None, False),
+        ("By Screenwriter", "screenplay_writers", "movies", None, False),
+        ("Based on a Novel By", "novel_writers", "movies", None, False),
+        ("By Year", "year", None, None, False),
+        ("By Years Broadcast", "series_years", "series", None, False),
+        ("By Broadcast Network", "network", "series", None, False),
+        ("By Number of Seasons", "num_seasons", "series", None, False),
+        ("By Rating", "certificate", None, None, False),
         ]
     
     def __cmp__(self, other):
@@ -215,22 +216,24 @@ class BaseMetadata(object):
                                 best = title
         return best
     
-    def match(self, credit, criteria):
+    def match(self, credit, criteria, convert=None):
         if credit is None:
             return True
+        if convert is None:
+            convert = lambda d: d
         if hasattr(self, credit):
             item = getattr(self, credit)
             if item is None:
                 return False
             log.debug("match: %s credit=%s, item=%s %s" % (self.title, credit, item, type(item)))
             if isinstance(item, basestring):
-                return criteria(item)
+                return criteria(convert(item))
             elif isinstance(item, collections.Iterable):
                 for i in item:
-                    if criteria(i):
+                    if criteria(convert(i)):
                         return True
             else:
-                return criteria(item)
+                return criteria(convert(item))
         return False
     
     def iter_items_of(self, credit):

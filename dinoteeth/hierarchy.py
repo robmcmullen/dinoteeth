@@ -36,9 +36,9 @@ class TopLevelLookup(MMDBPopulator):
         # Note that all credit maps are the same because it is defined as a
         # class attribute in the base class
         credit_map = self.metadata_classes[0].credit_map
-        for title, credit, limit in credit_map:
+        for title, credit, limit, converter, reverse_sort in credit_map:
             if limit is None or limit in self.media_categories:
-                yield title, CreditLookup(self.config, self.media_categories, credit)
+                yield title, CreditLookup(self.config, self.media_categories, credit, converter, reverse_sort)
 
     def get_metadata(self):
         return {
@@ -71,14 +71,17 @@ class RecentLookup(MMDBPopulator):
             }
 
 class CreditLookup(MMDBPopulator):
-    def __init__(self, config, media_categories=None, credit=None):
+    def __init__(self, config, media_categories=None, credit=None, converter=None, reverse_sort=False):
         MMDBPopulator.__init__(self, config)
         self.media_categories = media_categories
         self.credit = credit
+        self.converter = converter
+        self.reverse_sort = reverse_sort
     
     def iter_create(self):
-        items = self.config.mmdb.get_credit_entries(self.media_categories, self.credit)
-        items.sort()
+        items = self.config.mmdb.get_credit_entries(self.media_categories, self.credit, convert=self.converter)
+        if self.reverse_sort:
+            items.reverse()
 #        print "credit=%s, media_category=%s: %s" % (self.credit, self.media_categories, str(items))
         for item in items:
             if hasattr(item, 'imdb_prefix'):
@@ -86,18 +89,19 @@ class CreditLookup(MMDBPopulator):
             else:
                 name = item
             name = unicode(item)
-            yield name, MediaLookup(self.config, self.media_categories, self.credit, item)
+            yield name, MediaLookup(self.config, self.media_categories, self.credit, item, self.converter)
 
 
 class MediaLookup(MMDBPopulator):
-    def __init__(self, config, media_categories=None, credit=None, value=""):
+    def __init__(self, config, media_categories=None, credit=None, value="", converter=None):
         MMDBPopulator.__init__(self, config)
         self.media_categories = media_categories
         self.credit = credit
         self.value = value
+        self.converter = converter
     
     def get_media(self):
-        media = self.config.mmdb.get_media_by(self.media_categories, self.credit, self.value)
+        media = self.config.mmdb.get_media_by(self.media_categories, self.credit, self.value, convert=self.converter)
         return media
     
     media = property(get_media)
