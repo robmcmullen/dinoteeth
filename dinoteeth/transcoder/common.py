@@ -112,10 +112,15 @@ class Title(object):
             
     def cleanup_streams(self):
         cleaned = []
+        
+        # Renumber stream order based on the remaining active audio streams
+        cleaned_count = 1
         for audio in self.audio:
             if audio.mplayer_id == -1:
-                vprint(1, "Found inactive audio %d" % audio.order)
+                vprint(1, "Title %d: inactive audio %d" % (self.title_num, audio.order))
             else:
+                audio.order = cleaned_count
+                cleaned_count += 1
                 cleaned.append(audio)
         self.audio = cleaned
         cleaned = []

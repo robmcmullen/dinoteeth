@@ -35,7 +35,7 @@ class VOBAudioExtractor(object):
         for order in self.track_order:
             handbrake_id += 1
             vprint(0, "--Ripping audio track %d" % order)
-            stream = self.title.audio[order - 1]
+            stream = self.title.find_audio_by_handbrake_id(order)
             #print stream
             output = "tmp.%s.%d.wav" % (self.output, handbrake_id)
             self.handbrake_to_mp3[handbrake_id] = output
