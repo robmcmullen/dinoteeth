@@ -90,25 +90,25 @@ class Title(object):
             if audio.order == id:
                 return audio
     
-    def find_stream_by_language(self, stream, lang=None):
+    def find_stream_by_language(self, stream, lang=None, include_und=True):
         if lang is None:
             lang = self.handbrake.preferred_lang
         selected = []
         for s in stream:
-            if s.threecc == lang:
+            if s.threecc == lang or (include_und and s.threecc == 'und'):
                 selected.append(s)
         return selected
     
-    def find_audio_by_language(self, lang=None):
-        return self.find_stream_by_language(self.audio, lang)
+    def find_audio_by_language(self, lang=None, include_und=True):
+        return self.find_stream_by_language(self.audio, lang, include_und)
     
     def find_subtitle_by_handbrake_id(self, id):
         for sub in self.subtitle:
             if sub.order == id:
                 return sub
     
-    def find_subtitle_by_language(self, lang=None):
-        return self.find_stream_by_language(self.subtitle, lang)
+    def find_subtitle_by_language(self, lang=None, include_und=True):
+        return self.find_stream_by_language(self.subtitle, lang, include_und)
             
     def cleanup_streams(self):
         cleaned = []
