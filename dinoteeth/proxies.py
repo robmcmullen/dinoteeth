@@ -41,10 +41,13 @@ class IMDbFileProxy(FileProxy):
             results = self.search_cache[title]
         else:
             log.debug("*** NOT FOUND in search cache: %s" % title )
-            results = self.imdb_api.search_movie(title)
-            if self.use_cache:
-                log.debug("*** STORING %s in search cache: " % title)
-                self.search_cache[title] = results
+            try:
+                results = self.imdb_api.search_movie(title)
+                if self.use_cache:
+                    log.debug("*** STORING %s in search cache: " % title)
+                    self.search_cache[title] = results
+            except imdb.IMDbDataAccessError:
+                results = []
         for result in results:
             result.imdb_id = "tt" + result.movieID
         return results
@@ -57,10 +60,13 @@ class IMDbFileProxy(FileProxy):
             movie_obj = self.movie_obj_cache[imdb_id]
         else:
             log.debug("*** NOT FOUND in movie cache: %s" % imdb_id)
-            movie_obj = self.imdb_api.get_movie(imdb_id[2:])
-            if self.use_cache and movie_obj:
-                log.debug("*** STORING %s in movie cache: " % imdb_id)
-                self.movie_obj_cache[imdb_id] = movie_obj
+            try:
+                movie_obj = self.imdb_api.get_movie(imdb_id[2:])
+                if self.use_cache and movie_obj:
+                    log.debug("*** STORING %s in movie cache: " % imdb_id)
+                    self.movie_obj_cache[imdb_id] = movie_obj
+            except imdb.IMDbDataAccessError:
+                movie_obj = None
         if movie_obj:
             movie_obj.imdb_id = "tt" + movie_obj.movieID
         return movie_obj
