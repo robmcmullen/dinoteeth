@@ -271,6 +271,10 @@ class HandBrakeOutput(object):
             if "stats file could not be written to" in error:
                 vprint(0, "*** Likely out of space in temporary directory.  Try --tmp option.")
             return error
+        elif line.startswith("ERROR:"):
+            _, error = line.split(": ", 1)
+            vprint(0, "** HandbrakeCLI error: %s" % error)
+            return error
         if self.job > 0:
             if self.state == None:
                 if line == "job configuration:":
