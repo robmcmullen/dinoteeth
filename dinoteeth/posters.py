@@ -120,7 +120,8 @@ class PosterFetcher(object):
                     return self.fetch_poster_tvdb(imdb_id)
                 elif loader == 'tmdb':
                     return self.fetch_poster_tmdb(imdb_id)
-            except KeyError:
+            except Exception, e:
+                log.error("Error loading poster for %s: %s" % (imdb_id, e))
                 pass
         return None
     
