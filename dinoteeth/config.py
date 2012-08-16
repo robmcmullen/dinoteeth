@@ -7,7 +7,7 @@ from dinoteeth.third_party.configobj import ConfigObj
 
 from view import *
 from proxies import Proxies
-from database import MovieMetadataDatabase, MediaScanDatabase
+from database import DBFacade, MovieMetadataDatabase, MediaScanDatabase
 from updates import UpdateManager
 from mplayer import MPlayerClient
 from utils import decode_title_text
@@ -122,7 +122,6 @@ class Config(object):
         self.proxies = self.get_proxies()
         self.db = self.get_media_database()
         self.mmdb = self.get_metadata_database()
-        self.init_orm_databases()
         if self.args:
             for path in self.args:
                 if path not in self.ini["media_paths"]:
@@ -206,9 +205,13 @@ class Config(object):
         log.debug("database: %s" % option)
         return option
     
+    def get_object_database(self):
+        if not hasattr(self, 'zodb'):
+            self.zodb = DBFacade(self.get_metadata_pathname(self.options.database))
+        return self.zodb
+    
     def get_media_database(self):
-        db = MediaScanDatabase()
-        db.loadStateFromFile(self.get_metadata_pathname(self.options.database))
+        db = MediaScanDatabase(self.get_object_database())
         return db
     
     def get_photo_database(self):
@@ -230,10 +233,7 @@ class Config(object):
         return PosterFetcher(self.get_proxies(), self.get_artwork_loader().clone())
     
     def get_metadata_database(self):
-        mmdb = MovieMetadataDatabase(self.proxies)
-        statefile = self.get_metadata_pathname(self.options.mmdb)
-        print "Loading from %s" % statefile
-        mmdb.loadStateFromFile(statefile)
+        mmdb = MovieMetadataDatabase(self.proxies, self.get_object_database())
         return mmdb
     
     def update_metadata(self):
@@ -244,11 +244,6 @@ class Config(object):
                 path = os.path.join(self.options.media_root, path)
             media_path_dict[path] = flags
         self.db.update_metadata(media_path_dict, self.mmdb, valid)
-
-    def init_orm_databases(self):
-        db = self.get_metadata_pathname(self.options.stats_db)
-        from dinoteeth.standalone.conf import init_orm
-        init_orm(db)
     
     def get_video_extensions(self):
         """Get list of known video extensions from enzyme"""

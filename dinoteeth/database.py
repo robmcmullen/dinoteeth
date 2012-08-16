@@ -1,11 +1,52 @@
 import os, collections, logging
 
 from utils import iter_dir
-from serializer import PickleSerializerMixin
 from media import MediaScan
 from metadata import Company, Person, FilmSeries, MovieMetadata, SeriesMetadata
 
 log = logging.getLogger("dinoteeth.database")
+
+from ZODB import DB, FileStorage
+import transaction
+from persistent.mapping import PersistentMapping
+
+
+class DBFacade(object):
+    def __init__(self, path):
+        self.storage = FileStorage.FileStorage(path)
+        self.db = DB(self.storage)
+        self.connection = self.db.open()
+        self.dbroot = self.connection.root()
+    
+    def add(self, name, obj):
+        self.dbroot[name] = obj
+    
+    def get_mapping(self, name):
+        if name not in self.dbroot:
+            self.dbroot[name] = PersistentMapping()
+        return self.dbroot[name]
+    
+    def get_value(self, name, initial):
+        if name not in self.dbroot:
+            self.dbroot[name] = initial
+        return self.dbroot[name]
+    
+    def add(self, name, obj):
+        self.dbroot[name] = obj
+    
+    def commit(self):
+        transaction.commit()
+    
+    def rollback(self):
+        transaction.rollback()
+    
+    def abort(self):
+        transaction.abort()
+
+    def close(self):
+        self.connection.close()
+        self.db.close()
+        self.storage.close()
 
 
 class MediaScanList(list):
@@ -70,25 +111,12 @@ class MediaScanList(list):
         except:
             return None
 
-class MediaScanDatabase(PickleSerializerMixin):
-    def __init__(self, **kwargs):
-        PickleSerializerMixin.__init__(self, **kwargs)
-        self.create()
-        
-    def create(self):
-        self.createVersion1()
-    
-    def createVersion1(self):
-        self.db = {}
-        self.title_key_map = {}
-        self.imdb_to_title_key = {}
-        self.title_key_to_imdb = {}
-    
-    def packVersion1(self):
-        return self.db, self.title_key_map, self.imdb_to_title_key, self.title_key_to_imdb
-    
-    def unpackVersion1(self, data):
-        self.db, self.title_key_map, self.imdb_to_title_key, self.title_key_to_imdb = data
+class MediaScanDatabase(object):
+    def __init__(self, zodb):
+        self.db = zodb.get_mapping("scans")
+        self.title_key_map = zodb.get_mapping("title_key_map")
+        self.imdb_to_title_key = zodb.get_mapping("imdb_to_title_key")
+        self.title_key_to_imdb = zodb.get_mapping("title_key_to_imdb")
     
     def is_current(self, pathname, known_keys=None):
         if pathname in self.db:
@@ -233,7 +261,7 @@ class MediaScanDatabase(PickleSerializerMixin):
             print "Parsing path %s" % path
             dir_iterator = iter_dir(path, valid_extensions)
             self.scan_files(dir_iterator, flags, current_keys)
-        self.saveStateToFile()
+        transaction.commit()
         removed_keys = stored_keys - current_keys
         new_keys = current_keys - stored_keys
         return removed_keys, new_keys
@@ -248,8 +276,7 @@ class MediaScanDatabase(PickleSerializerMixin):
             self.add_metadata(new_keys, mmdb)
         missing_title_keys = self.fix_missing_imdb_id(mmdb)
         self.update_new_title_keys_metadata(new_keys, missing_title_keys, mmdb)
-        self.saveStateToFile()
-        mmdb.saveStateToFile()
+        transaction.commit()
     
     def remove_metadata(self, removed_keys, mmdb):
         for i, key in enumerate(removed_keys):
@@ -303,32 +330,19 @@ class MediaScanDatabase(PickleSerializerMixin):
         self.set_imdb_id(title_key, new_imdb_id)
         self.add_metadata_by_title_key(title_key, mmdb)
         self.update_metadata_from_media_scans(title_key, mmdb)
-        self.saveStateToFile()
-        mmdb.saveStateToFile()
+        transaction.commit()
 
 
-class MetadataDatabase(PickleSerializerMixin):
-    def __init__(self, default_version=1):
-        PickleSerializerMixin.__init__(self, default_version)
-        self.create()
-    
-    def create(self):
-        self.createVersion1()
-    
-    def createVersion1(self):
-        self.db = {}
-    
-    def packVersion1(self):
-        return self.db
-    
-    def unpackVersion1(self, data):
-        self.db = data
-
-class MovieMetadataDatabase(MetadataDatabase):
+class MovieMetadataDatabase(object):
     imdb_allowed_kinds = ['movie', 'video movie', 'tv movie', 'series', 'tv series', 'tv mini series']
+    db_name = "movie metadata"
     
-    def __init__(self, proxies, default_version=4):
-        MetadataDatabase.__init__(self, default_version)
+    def __init__(self, proxies, zodb):
+        self.media = zodb.get_mapping("media")
+        self.people = zodb.get_mapping("people")
+        self.companies = zodb.get_mapping("companies")
+        self.film_series = zodb.get_mapping("film_series")
+        self.unique_counter = zodb.get_value("unique_counter", -1)
         self.imdb_api = proxies.imdb_api
         self.tmdb_api = proxies.tmdb_api
         self.tvdb_api = proxies.tvdb_api
@@ -360,79 +374,6 @@ class MovieMetadataDatabase(MetadataDatabase):
             lines.append(u"  %s" % unicode(c))
         return u"\n".join(lines)
     
-    def createVersion1(self):
-        self.movies = {}
-        self.series = {}
-        self.people = {}
-    
-    def packVersion1(self):
-        return (self.movies, self.series, self.people)
-    
-    def unpackVersion1(self, data):
-        self.movies = data[0]
-        self.series = data[1]
-        self.people = data[2]
-
-    def createVersion2(self):
-        self.media = {}
-        self.people = {}
-        self.companies = {}
-
-    def convertVersion1ToVersion2(self):
-        self.media = self.movies
-        self.media.update(self.series)
-        self.companies = {}
-        del self.movies
-        del self.series
-
-    def packVersion2(self):
-        return (self.media, self.people, self.companies)
-    
-    def unpackVersion2(self, data):
-        self.media = data[0]
-        self.people = data[1]
-        self.companies = data[2]
-
-    def createVersion3(self):
-        self.media = {}
-        self.people = {}
-        self.companies = {}
-        self.unique_counter = -1
-
-    def convertVersion2ToVersion3(self):
-        # Just extra data, so no need to convert existing data
-        pass
-
-    def packVersion3(self):
-        return (self.media, self.people, self.companies, self.unique_counter)
-    
-    def unpackVersion3(self, data):
-        self.media = data[0]
-        self.people = data[1]
-        self.companies = data[2]
-        self.unique_counter = data[3]
-
-    def createVersion4(self):
-        self.media = {}
-        self.people = {}
-        self.companies = {}
-        self.film_series = {}
-        self.unique_counter = -1
-
-    def convertVersion3ToVersion4(self):
-        # Just extra data, so no need to convert existing data
-        pass
-
-    def packVersion4(self):
-        return (self.media, self.people, self.companies, self.film_series, self.unique_counter)
-    
-    def unpackVersion4(self, data):
-        self.media = data[0]
-        self.people = data[1]
-        self.companies = data[2]
-        self.film_series = data[3]
-        self.unique_counter = data[4]
-
     def search_movie(self, title):
         if self.imdb_cache:
             results = self.imdb_cache.get_search_results(title)
