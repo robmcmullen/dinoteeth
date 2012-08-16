@@ -289,7 +289,7 @@ class MediaScanDatabase(PickleSerializerMixin):
             media_scan = self.db[key]
             new_title_keys.add(media_scan.title_key)
         log.debug("title keys with new files: %s" % str(new_title_keys))
-        for title_key in new_title_keys:
+        for title_key in self.iter_title_keys():
             self.update_metadata_from_media_scans(title_key, mmdb)
     
     def update_metadata_from_media_scans(self, title_key, mmdb):
