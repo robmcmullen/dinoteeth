@@ -2,12 +2,12 @@ import os, sys, glob, re, logging
 try:
     import argparse
 except:
-    import dinoteeth.third_party.argparse as argparse
-from dinoteeth.third_party.configobj import ConfigObj
+    import third_party.argparse as argparse
+from third_party.configobj import ConfigObj
 
 from view import *
 from proxies import Proxies
-from database import DBFacade, MovieMetadataDatabase, MediaScanDatabase
+from database import DBFacade, NewDatabase
 from updates import UpdateManager
 from mplayer import MPlayerClient
 from utils import decode_title_text
@@ -56,7 +56,6 @@ class Config(object):
         parser.add_argument("--metadata-root", action="store", default="",
                           help="Default metadata/database root directory for those databases and the image directories that don't specify a full path")
         parser.add_argument("--db", action="store", dest="database", default="dinoteeth.db")
-        parser.add_argument("--mmdb", action="store", dest="mmdb", default="dinoteeth.mmdb")
         parser.add_argument("--stats-db", action="store", default="dinoteeth-stats.db")
         parser.add_argument("--imdb-cache-dir", action="store", default="imdb-cache")
         parser.add_argument("--tmdb-cache-dir", action="store", default="tmdb-cache")
@@ -120,8 +119,7 @@ class Config(object):
         self.set_class_defaults()
         
         self.proxies = self.get_proxies()
-        self.db = self.get_media_database()
-        self.mmdb = self.get_metadata_database()
+        self.db = self.get_database()
         if self.args:
             for path in self.args:
                 if path not in self.ini["media_paths"]:
@@ -180,7 +178,7 @@ class Config(object):
                                       margins=margins,
                                       thumbnails=self.get_thumbnail_loader())
             
-            UpdateManager(self.main_window, 'on_status_update', self.db, self.mmdb, self.get_poster_fetcher(), self.get_thumbnail_loader())
+            UpdateManager(self.main_window, 'on_status_update', self.db, self.get_poster_fetcher(), self.get_thumbnail_loader())
             UpdateManager.update_all_posters()
             if self.options.test_threads:
                 UpdateManager.test()
@@ -210,10 +208,6 @@ class Config(object):
             self.zodb = DBFacade(self.get_metadata_pathname(self.options.database))
         return self.zodb
     
-    def get_media_database(self):
-        db = MediaScanDatabase(self.get_object_database())
-        return db
-    
     def get_photo_database(self):
         db = PhotoDB()
         if 'photo_paths' in self.ini:
@@ -232,9 +226,9 @@ class Config(object):
     def get_poster_fetcher(self):
         return PosterFetcher(self.get_proxies(), self.get_artwork_loader().clone())
     
-    def get_metadata_database(self):
-        mmdb = MovieMetadataDatabase(self.proxies, self.get_object_database())
-        return mmdb
+    def get_database(self):
+        db = NewDatabase(self.get_object_database(), self.proxies)
+        return db
     
     def update_metadata(self):
         valid = self.get_video_extensions()
@@ -243,7 +237,7 @@ class Config(object):
             if self.options.media_root and not os.path.isabs(path):
                 path = os.path.join(self.options.media_root, path)
             media_path_dict[path] = flags
-        self.db.update_metadata(media_path_dict, self.mmdb, valid)
+        self.db.update_metadata(media_path_dict, valid)
     
     def get_video_extensions(self):
         """Get list of known video extensions from enzyme"""

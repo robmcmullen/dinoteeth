@@ -1,6 +1,6 @@
 import os, time, logging
 
-from thread import ThreadTaskManager, ProcessTaskManager, TestSleepTask
+from thread2 import ThreadTaskManager, ProcessTaskManager, TestSleepTask
 
 log = logging.getLogger("dinoteeth.updates")
 
@@ -47,14 +47,13 @@ class TimerTask(object):
 class UpdateManager(object):
     poster_thread = None
     
-    def __init__(self, window, event_name, db, mmdb, poster_fetcher, thumbnail_loader):
+    def __init__(self, window, event_name, db, poster_fetcher, thumbnail_loader):
         cls = self.__class__
         if cls.poster_thread is not None:
             raise RuntimeError("UpdateManager already initialized")
         cls.window = window
         cls.event_name = event_name
         cls.db = db
-        cls.mmdb = mmdb
         cls.posters = poster_fetcher
         cls.thumbnails = thumbnail_loader
         cls.poster_thread = ProcessTaskManager(window, event_name, num_workers=1, posters=cls.posters, thumbnails=cls.thumbnails)
@@ -64,17 +63,14 @@ class UpdateManager(object):
     def update_all_posters(cls):
 #        cls.poster_thread.test()
         db = cls.db
-        for i, title_key in enumerate(db.iter_title_keys()):
-            if title_key not in db.title_key_to_imdb:
-                continue
-            imdb_id = db.title_key_to_imdb[title_key]
+        for title_key, metadata in db.title_keys_with_metadata():
+            imdb_id = metadata.id
             if not cls.posters.has_poster(imdb_id):
                 try:
-                    media = cls.mmdb.get(imdb_id)
-                    task = PosterLoadTask(imdb_id, media.media_category, media.title)
+                    task = PosterLoadTask(imdb_id, metadata.media_category, metadata.title)
                     cls.poster_thread.add_task(task)
                 except KeyError:
-                    log.error("mmdb doesn't know about %s" % imdb_id)
+                    log.error("db doesn't know about %s" % imdb_id)
     
     @classmethod
     def create_thumbnail(cls, imgpath):

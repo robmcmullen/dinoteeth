@@ -95,6 +95,7 @@ class MediaScan(Persistent):
         else:
             category = "autodetect"
         self.guess = guess_file_info(name, category)
+        self.metadata = None
     
     def is_current(self):
         if os.path.exists(self.pathname):
