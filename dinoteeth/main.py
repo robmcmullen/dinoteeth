@@ -9,4 +9,11 @@ from config import setup
 def run():
     cfg = setup(sys.argv)
     window = cfg.get_main_window()
-    window.run()
+    try:
+        window.run()
+    except Exception, e:
+        import traceback
+        traceback.print_exc()
+        
+        print "Halting threads..."
+        cfg.do_shutdown_tasks()
