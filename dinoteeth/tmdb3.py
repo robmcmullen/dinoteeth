@@ -46,9 +46,14 @@ class TMDb3_API(object):
 
     def get_imdb_id(self, imdb_id):
         url = "http://api.themoviedb.org/3/movie/%%s?api_key=%s" % (self.API_KEY)
-        movie = self.getJSON(url % imdb_id)
-        if 'id' in movie:
-            return Movie(movie)
+        try:
+            movie = self.getJSON(url % imdb_id)
+            if 'id' in movie:
+                return Movie(movie)
+        except Exception, e:
+            print "Failed loading tmdb info: %s" % str(e)
+            import traceback
+            traceback.print_exc()
         return None
 
 class Movie(TMDb3_API):
