@@ -3,7 +3,7 @@ import os, sys, glob, bisect, logging
 from updates import UpdateManager
 
 log = logging.getLogger("dinoteeth.model")
-
+log.setLevel(logging.DEBUG)
 
 class MenuItem(object):
     def __init__(self, title, enabled=True, action=None, populate_children=None, media=None, metadata=None, **kwargs):
@@ -80,7 +80,7 @@ class MenuItem(object):
         self.cursor = None
         for i, child in enumerate(self.children):
             if child.title == current_title:
-                print "Fount cursor position at %s" % current_title.encode('utf8')
+                print "Found cursor position at %s" % current_title.encode('utf8')
                 self.cursor = i
                 break
         
@@ -233,6 +233,7 @@ class MenuPopulator(object):
     def __call__(self, parent):
         items = []
         for title, populator in self.iter_create():
+            log.debug(u" ".join(unicode(s) for s in [title, populator]))
             items.append((title, populator))
         if self.autosort:
             items.sort()

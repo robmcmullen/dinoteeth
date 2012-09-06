@@ -7,6 +7,7 @@ import os, time, collections, logging
 from third_party.sentence import first_sentence
 
 log = logging.getLogger("dinoteeth.metadata")
+log.setLevel(logging.DEBUG)
 
 
 def safestr(s):
@@ -216,23 +217,37 @@ class BaseMetadata(object):
                                 best = title
         return best
     
-    def match(self, credit, criteria, convert=None):
+    def lambdaify(self, criteria):
+        if isinstance(criteria, collections.Callable):
+            return criteria
+        if isinstance(criteria, collections.Iterable) and not isinstance(criteria, basestring):
+            return lambda a: a in criteria
+        if criteria is not None:
+            return lambda a: a == criteria
+        return lambda a: True
+
+    def match(self, credit, criteria=None, convert=None):
         if credit is None:
             return True
+        log.debug("match: credit=%s criteria=%s" % (credit, criteria))
+        criteria = self.lambdaify(criteria)
         if convert is None:
             convert = lambda d: d
         if hasattr(self, credit):
             item = getattr(self, credit)
             if item is None:
                 return False
-            log.debug("match: %s credit=%s, item=%s %s" % (self.title, credit, item, type(item)))
             if isinstance(item, basestring):
+                log.debug("match: %s credit=%s, item=%s %s converted=%s result=%s" % (self.title, credit, item, type(item), convert(item), criteria(convert(item))))
                 return criteria(convert(item))
             elif isinstance(item, collections.Iterable):
+                log.debug("match: %s credit=%s, ITERABLE:" % (self.title, credit))
                 for i in item:
+                    log.debug("  match: item=%s %s converted=%s result=%s" % (i, type(i), convert(i), criteria(convert(i))))
                     if criteria(convert(i)):
                         return True
             else:
+                log.debug("match: %s credit=%s, item=%s %s converted=%s result=%s" % (self.title, credit, item, type(item), convert(item), criteria(convert(item))))
                 return criteria(convert(item))
         return False
     
@@ -309,7 +324,10 @@ class BaseMetadata(object):
             else:
                 text += """\n
 
-<b>Last Played:</b> %s\n""" % _(date)
+<b>Last Played:</b> %s
+                \n""" % _(date)
+        text += """\n
+%s\n""" % _(media_scan.pathname)
         return text
 
 
@@ -551,7 +569,7 @@ class SeriesMetadata(BaseMetadata):
         writers = u", ".join([unicode(i) for i in self.writers])
         actors = u", ".join([unicode(i) for i in self.cast])
         music = u", ".join([unicode(i) for i in self.music])
-        title = self.title
+        title = _(self.title)
         if self.year:
             title += u" (%s)" % self.year
         text = u"""<b>%s</b>

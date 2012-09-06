@@ -2,6 +2,7 @@ import os, sys, re, bisect, time
 from datetime import datetime
 
 from persistent import Persistent
+import transaction
 
 import utils
 
@@ -41,7 +42,7 @@ class MediaScan(Persistent):
     def __init__(self, pathname, flags=""):
         self.pathname = pathname
         self.flags = flags
-        self.play_date = -1
+        self.play_date = None
         self.position = 0
         self.reset()
     
@@ -262,6 +263,10 @@ class MediaScan(Persistent):
             last_pos = -1.0
         self.play_date = datetime.utcnow()
         self.position = last_pos
+        transaction.commit()
+
+    def get_last_position(self):
+        return self.position
     
     def is_paused(self):
         return self.position > 0
@@ -271,7 +276,7 @@ class MediaScan(Persistent):
         return utils.time_format(seconds)
     
     def get_last_played_stats(self):
-        if self.play_date > 0:
+        if self.play_date is not None:
             date = utils.time_since(self.play_date)
             if self.position > 0:
                 return date, "%2d%%, elapsed time %s" % (self.position * 100 / self.length, utils.time_format(self.position))

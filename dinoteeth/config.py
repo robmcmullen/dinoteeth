@@ -55,8 +55,7 @@ class Config(object):
         parser.add_argument("--ui", action="store", default="sdl")
         parser.add_argument("--metadata-root", action="store", default="",
                           help="Default metadata/database root directory for those databases and the image directories that don't specify a full path")
-        parser.add_argument("--db", action="store", dest="database", default="dinoteeth.db")
-        parser.add_argument("--stats-db", action="store", default="dinoteeth-stats.db")
+        parser.add_argument("--db", action="store", dest="database", default="dinoteeth.zodb")
         parser.add_argument("--imdb-cache-dir", action="store", default="imdb-cache")
         parser.add_argument("--tmdb-cache-dir", action="store", default="tmdb-cache")
         parser.add_argument("--tvdb-cache-dir", action="store", default="tvdb-cache")
@@ -299,6 +298,7 @@ class Config(object):
         win.on_status_update(text)
     
     def do_shutdown_tasks(self):
+        self.db.pack()
         UpdateManager.stop_all()
 
 
