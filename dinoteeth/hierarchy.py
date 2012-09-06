@@ -179,7 +179,7 @@ class MovieTopLevel(PlayableEntries):
     def get_metadata(self):
         return {
             'mmdb': self.config.db.get_metadata(self.imdb_id),
-            'edit': ChangeImdbRoot(self.config, self.imdb_id),
+            'edit': ChangeImdbRoot(self, self.config, self.imdb_id),
             }
 
 
@@ -197,7 +197,7 @@ class SeriesTopLevel(MetadataLookup):
     def get_metadata(self):
         return {
             'mmdb': self.config.db.get_metadata(self.imdb_id),
-            'edit': ChangeImdbRoot(self.config, self.imdb_id),
+            'edit': ChangeImdbRoot(self, self.config, self.imdb_id),
             }
 
 
@@ -223,7 +223,7 @@ class SeriesEpisodes(PlayableEntries):
         return {
             'mmdb': self.config.db.get_metadata(self.imdb_id),
             'season': self.season,
-            'edit': ChangeImdbRoot(self.config, self.imdb_id),
+            'edit': ChangeImdbRoot(self, self.config, self.imdb_id),
             }
 
 
@@ -283,29 +283,30 @@ class MediaPlayMultiple(MMDBPopulator):
             }
 
 
-class ChangeImdbRoot(MenuPopulator):
-    def __init__(self, config, imdb_id):
-        MenuPopulator.__init__(self, config)
+class ChangeImdbRoot(MetadataLookup):
+    def __init__(self, parent, config, imdb_id):
+        MetadataLookup.__init__(self, parent, config, filter=lambda item: item.metadata.id == imdb_id)
         self.imdb_id = imdb_id
         self.root_title = "Change Title Lookup"
         
     def iter_create(self):
-        media_scans = self.config.db.get_all_with_imdb_id(self.imdb_id)
+        media_scans = list(self.get_media())
         if len(media_scans) > 0:
             title_key = media_scans[0].title_key
-            imdb_guesses = self.config.mmdb.guess(title_key[0], year=title_key[1], find=title_key[2])
+            imdb_guesses = self.config.db.guess(title_key[0], year=title_key[1], find=title_key[2])
             for result in imdb_guesses:
-                yield result['title'], ChangeImdb(self.config, title_key, result)
+                yield result['title'], ChangeImdb(self, self.config, result)
 
-class ChangeImdb(MenuPopulator):
-    def __init__(self, config, title_key, imdb_search_result):
-        MenuPopulator.__init__(self, config)
-        self.title_key = title_key
+class ChangeImdb(MMDBPopulator):
+    def __init__(self, parent, config, imdb_search_result):
+        MMDBPopulator.__init__(self, config)
+        self.parent = parent
         self.imdb_search_result = imdb_search_result
         
     def play(self, config=None):
         status = "Selected %s" % self.imdb_search_result['smart long imdb canonical title']
-        self.config.db.change_imdb_id(self.title_key, self.imdb_search_result.imdb_id, self.config.mmdb)
+        media_scans = self.parent.get_media()
+        self.config.db.change_metadata(media_scans, self.imdb_search_result.imdb_id)
         UpdateManager.update_all_posters()
         self.config.show_status(status)
     

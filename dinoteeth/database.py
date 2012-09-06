@@ -5,6 +5,7 @@ from media import MediaScan
 from metadata import Company, Person, FilmSeries, MovieMetadata, SeriesMetadata
 
 log = logging.getLogger("dinoteeth.database")
+log.setLevel(logging.DEBUG)
 
 from ZODB import DB, FileStorage
 import transaction
@@ -226,6 +227,24 @@ class NewDatabase(object):
     def add(self, pathname, flags=""):
         media_scan = MediaScan(pathname, flags=flags)
         self.scans[media_scan.pathname] = media_scan
+    
+    def change_metadata(self, media_scans, imdb_id):
+        metadata = self.fetch_imdb_id(imdb_id)
+        
+        # Find all title keys referenced by the scans
+        title_keys = set()
+        for scan in media_scans:
+            title_keys.add(scan.title_key)
+        
+        # Reset title key lookup to use new metadata
+        for title_key in title_keys:
+            self.title_key_to_metadata[title_key] = metadata
+            scans = self.title_key_map[title_key]
+            for scan in scans:
+                log.debug("Changing metadata for %s" % scan.pathname)
+                scan.metadata = metadata
+                metadata.update_with_media_scans(scans)
+        transaction.commit()
     
     def is_current(self, pathname, found_keys=None):
         if pathname in self.scans:
