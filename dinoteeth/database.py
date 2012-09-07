@@ -343,7 +343,7 @@ class NewDatabase(object):
             if kind not in self.imdb_allowed_kinds:
                 log.warning("Unrecognized IMDb kind %s for %s; skipping" % (kind, imdb_id))
                 continue
-            elif (find == "movie" or find == "series") and kind != "tv movie":
+            elif (find == "movie" or find == "series") and kind == "tv movie":
                 # TV Movies are treated as possible matches for both movies
                 # and series
                 pass
@@ -361,6 +361,7 @@ class NewDatabase(object):
             if fetch:
                 self.fetch(result)
             
+            log.debug("Using %s (%s) because %s could match %s" % (unicode(result['title']).encode("utf8"), result['year'], unicode(result['kind']).encode("utf8"), find))
             found.append(result)
         return found
     
