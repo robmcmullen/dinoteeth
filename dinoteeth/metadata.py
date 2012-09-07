@@ -6,6 +6,8 @@ Get TMDB/IMDB metadata for movies in the database
 import os, time, collections, logging
 from third_party.sentence import first_sentence
 
+from persistent import Persistent
+
 log = logging.getLogger("dinoteeth.metadata")
 log.setLevel(logging.DEBUG)
 
@@ -16,7 +18,7 @@ def safestr(s):
     return s
 
 
-class Company(object):
+class Company(Persistent):
     imdb_prefix = "co"
     
     def __init__(self, company_obj, id=None, name=None):
@@ -36,7 +38,7 @@ class Company(object):
     def __unicode__(self):
         return u"%s" % self.name
 
-class Person(object):
+class Person(Persistent):
     imdb_prefix = "nm"
     
     def __init__(self, person_obj):
@@ -62,7 +64,7 @@ class Person(object):
             return sname[1], sname[0]
         return sname[0], ""
 
-class FilmSeries(object):
+class FilmSeries(Persistent):
     imdb_prefix = "--"
     
     def __init__(self, tmdb_obj, id=None, name=None):
@@ -85,7 +87,7 @@ class FilmSeries(object):
         return u"%s" % self.name
 
 
-class BaseMetadata(object):
+class BaseMetadata(Persistent):
     imdb_country = None
     iso_3166_1 = None
     ignore_leading_articles = ["a", "an", "the"]
