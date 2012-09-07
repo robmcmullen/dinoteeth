@@ -227,6 +227,7 @@ class NewDatabase(object):
     def add(self, pathname, flags=""):
         media_scan = MediaScan(pathname, flags=flags)
         self.scans[media_scan.pathname] = media_scan
+        return media_scan
     
     def change_metadata(self, media_scans, imdb_id):
         metadata = self.fetch_imdb_id(imdb_id)
@@ -239,7 +240,7 @@ class NewDatabase(object):
         # Reset title key lookup to use new metadata
         for title_key in title_keys:
             self.title_key_to_metadata[title_key] = metadata
-            scans = self.title_key_map[title_key]
+            scans = MediaScanList(self.title_key_map[title_key])
             for scan in scans:
                 log.debug("Changing metadata for %s" % scan.pathname)
                 scan.metadata = metadata
