@@ -339,6 +339,54 @@ class BaseMetadata(object):
         return text
 
 
+class FakeMetadata(BaseMetadata):
+    imdb_prefix = "tt"
+
+    def __init__(self, id, title_key, scans, db):
+        self.id = id
+        self.kind = title_key[2]
+        self.title = title_key[0]
+        self.year = title_key[1]
+        self.title_index = ""
+        self.date_added = -1
+    
+    def __unicode__(self):
+        lines = []
+        lines.append(u"%s %s (%s)" % (self.id, self.title, self.year))
+
+class FakeMovieMetadata(FakeMetadata):
+    media_category = "movies"
+        
+    def get_markup(self, media_scan=None):
+        title = self.title
+        if self.year:
+            title += u" (%s)" % self.year
+        text = u"<b>%s</b>\n" % _(title)
+        if media_scan:
+            text += self.get_audio_markup(media_scan)
+            text += self.get_last_played_markup(media_scan)
+        else:
+            text += u"\nMetadata not found in IMDb or TMDB"
+        return text
+
+class FakeSeriesMetadata(FakeMetadata):
+    media_category = "series"
+        
+    def get_markup(self, media_scan=None):
+        title = self.title
+        if self.year:
+            title += u" (%s)" % self.year
+        text = u"<b>%s</b>\n" % _(title)
+        
+        if media_scan:
+            text += "\n<b>Episode:</b> %s" % (_(media_scan.episode))
+            text += self.get_audio_markup(media_scan)
+            text += self.get_last_played_markup(media_scan)
+        else:
+            text += u"\nMetadata not found in IMDb or TMDB"
+        return text
+
+
 class MovieMetadata(BaseMetadata):
     media_category = "movies"
     imdb_prefix = "tt"

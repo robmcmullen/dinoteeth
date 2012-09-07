@@ -2,7 +2,7 @@ import os, collections, logging
 
 from utils import iter_dir
 from media import MediaScan
-from metadata import Company, Person, FilmSeries, MovieMetadata, SeriesMetadata
+from metadata import Company, Person, FilmSeries, MovieMetadata, SeriesMetadata, FakeMovieMetadata, FakeSeriesMetadata
 
 log = logging.getLogger("dinoteeth.database")
 log.setLevel(logging.DEBUG)
@@ -377,7 +377,6 @@ class NewDatabase(object):
         guesses = self.guess(title_key[0], year=title_key[1], find=kind)
         if not guesses:
             log.error("IMDb returned no guesses for %s???" % title_key[0])
-            return None
         total_runtime, num_episodes = scans.get_total_runtime()
         avg_runtime = total_runtime / num_episodes
         avg_scale = avg_runtime * 4 / 60 # +- 4 minutes per hour
@@ -419,9 +418,20 @@ class NewDatabase(object):
             best = self.fetch(guesses[0], store=False)
         if best:
             log.info("best guess: %s, %s" % (best.title.encode('utf8'), best.runtimes))
-            self.metadata[best.id] = best
-            transaction.commit()
+        else:
+            best = self.get_fake_metadata(title_key, scans)
+        self.metadata[best.id] = best
+        transaction.commit()
         return best
+    
+    def get_fake_metadata(self, title_key, scans):
+        kind = title_key[2]
+        id = self.zodb.get_unique_id()
+        if kind == "movie":
+            metadata = FakeMovieMetadata(id, title_key, scans, self)
+        else:
+            metadata = FakeSeriesMetadata(id, title_key, scans, self)
+        return metadata
     
     def contains_imdb_id(self, imdb_id):
         return imdb_id in self.metadata
