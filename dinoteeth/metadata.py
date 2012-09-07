@@ -129,17 +129,25 @@ class BaseMetadata(object):
                 break
         return (t, self.year, self.title_index)
     
-    def get_tmdb_country_list(self, tmdb_obj, key, country, if_empty="", coerce=None):
-        for block in tmdb_obj:
-            if block['iso_3166_1'] == country:
-                v = block[key]
-                if coerce:
-                    try:
-                        v = coerce(v)
-                    except:
-                        log.error("Can't coerce %s to %s for %s in get_tmdb_country_list" % (v, str(coerce), block))
-                        v = if_empty
-                return v
+    def get_tmdb_country_list(self, tmdb_obj, block_key, key, country, if_empty="", coerce=None):
+        found = None
+        print block_key
+        if block_key in tmdb_obj:
+            subobj = tmdb_obj[block_key]
+            for block in subobj:
+                if block['iso_3166_1'] == country:
+                    found = block[key]
+                    break
+        elif key in tmdb_obj:
+            found = tmdb_obj[key]
+        if found is not None:
+            if coerce:
+                try:
+                    found = coerce(found)
+                except:
+                    log.error("Can't coerce %s to %s for %s in get_tmdb_country_list" % (found, str(coerce), block))
+                    found = if_empty
+            return found
         return if_empty
         
     def get_imdb_country_list(self, imdb_obj, key, country, skip=None, if_empty="", coerce=None):
@@ -342,7 +350,7 @@ class MovieMetadata(BaseMetadata):
         self.year = movie_obj['year']
         self.title_index = movie_obj.get('imdbIndex', "")
         if tmdb_obj:
-            cert = self.get_tmdb_country_list(tmdb_obj['releases'], 'certification', self.iso_3166_1, if_empty="")
+            cert = self.get_tmdb_country_list(tmdb_obj, 'releases', 'certification', self.iso_3166_1, if_empty="")
         else:
             cert = None
         if not cert:
@@ -353,6 +361,13 @@ class MovieMetadata(BaseMetadata):
         self.rating = movie_obj.get('rating', "")
         self.votes = movie_obj.get('votes', "")
         self.runtimes = self.get_imdb_list(movie_obj, 'runtimes', coerce=int)
+        if tmdb_obj:
+            released = self.get_tmdb_country_list(tmdb_obj, 'releases', 'release_date', self.iso_3166_1, if_empty="")
+        else:
+            released = None
+        if not released:
+            released = unicode(self.year)
+        self.release_date = released
         
         directors = self.get_obj(movie_obj, 'director')
         self.directors = db.prune_people(directors)
@@ -431,7 +446,7 @@ class MovieMetadata(BaseMetadata):
 <b>Released:</b> %s
 <b>Genre:</b> %s
 """ % (_(title), _(self.plot), _(self.certificate),
-                          "release date goes here", _(genres))
+                          _(self.release_date), _(genres))
         if media_scan:
             text += self.get_audio_markup(media_scan)
             text += self.get_last_played_markup(media_scan)
