@@ -55,9 +55,9 @@ class AbstractLayout(object):
     def select_parent_menu(self):
         menu = self.hierarchy.pop()
         if self.hierarchy:
-            return True
+            return False
         self.hierarchy.append(menu)
-        return False
+        return True
             
     def get_controller(self):
         return self.controller
@@ -103,7 +103,8 @@ class MenuDetail2ColumnLayout(AbstractLayout):
                 self.status_renderer.draw()
                 break
             except MenuEmptyError:
-                self.select_parent_menu()
+                if self.select_parent_menu():
+                    break
 
 
 class Renderer(object):

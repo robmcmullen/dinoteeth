@@ -120,12 +120,13 @@ class MenuItem(object):
         return bool(self.children)
     
     def move_cursor(self, delta):
-        self.cursor += delta
-        if self.cursor < 0:
-            self.cursor = 0
-        elif self.cursor >= self.num_items():
-            self.cursor = self.num_items() - 1
-        self.verify_cursor(delta)
+        if self.num_items() > 0:
+            self.cursor += delta
+            if self.cursor < 0:
+                self.cursor = 0
+            elif self.cursor >= self.num_items():
+                self.cursor = self.num_items() - 1
+                self.verify_cursor(delta)
     
     def is_selectable(self):
         return self.enabled
