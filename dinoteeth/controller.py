@@ -73,4 +73,7 @@ class VerticalMenuController(object):
         self.layout.select_parent_menu()
 
     def process_quit(self):
-        self.layout.window.quit()
+        try:
+            self.layout.pop_root()
+        except IndexError:
+            self.layout.window.quit()
