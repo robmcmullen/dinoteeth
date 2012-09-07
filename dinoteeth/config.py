@@ -56,6 +56,7 @@ class Config(object):
         parser.add_argument("--metadata-root", action="store", default="",
                           help="Default metadata/database root directory for those databases and the image directories that don't specify a full path")
         parser.add_argument("--db", action="store", dest="database", default="dinoteeth.zodb")
+        parser.add_argument("--db-host", action="store", dest="db_host", default="")
         parser.add_argument("--imdb-cache-dir", action="store", default="imdb-cache")
         parser.add_argument("--tmdb-cache-dir", action="store", default="tmdb-cache")
         parser.add_argument("--tvdb-cache-dir", action="store", default="tvdb-cache")
@@ -204,7 +205,10 @@ class Config(object):
     
     def get_object_database(self):
         if not hasattr(self, 'zodb'):
-            self.zodb = DBFacade(self.get_metadata_pathname(self.options.database))
+            database = self.options.db_host
+            if not database:
+                database = self.get_metadata_pathname(self.options.database)
+            self.zodb = DBFacade(database)
         return self.zodb
     
     def get_photo_database(self):

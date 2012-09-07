@@ -7,14 +7,20 @@ from metadata import Company, Person, FilmSeries, MovieMetadata, SeriesMetadata,
 log = logging.getLogger("dinoteeth.database")
 log.setLevel(logging.DEBUG)
 
+from ZEO import ClientStorage
 from ZODB import DB, FileStorage
 import transaction
 from persistent.mapping import PersistentMapping
 
 
 class DBFacade(object):
-    def __init__(self, path):
-        self.storage = FileStorage.FileStorage(path)
+    def __init__(self, path, host=""):
+        if host:
+            addr = host.split(":")
+            addr = addr[0], int(addr[1])
+            self.storage = ClientStorage.ClientStorage(addr)
+        else:
+            self.storage = FileStorage.FileStorage(path)
         self.db = DB(self.storage)
         self.connection = self.db.open()
         self.dbroot = self.connection.root()
