@@ -7,7 +7,11 @@ import sys
 from config import setup
 
 def run():
-    cfg = setup(sys.argv)
+    try:
+        cfg = setup(sys.argv)
+    except Exception, e:
+        print "Startup failure: %s" % e
+        return
     window = cfg.get_main_window()
     try:
         window.run()

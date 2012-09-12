@@ -205,10 +205,7 @@ class Config(object):
     
     def get_object_database(self):
         if not hasattr(self, 'zodb'):
-            database = self.options.db_host
-            if not database:
-                database = self.get_metadata_pathname(self.options.database)
-            self.zodb = DBFacade(database)
+            self.zodb = DBFacade(self.get_metadata_pathname(self.options.database), self.options.db_host)
         return self.zodb
     
     def get_photo_database(self):

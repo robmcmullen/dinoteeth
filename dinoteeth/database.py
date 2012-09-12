@@ -18,12 +18,15 @@ class DBFacade(object):
         if host:
             addr = host.split(":")
             addr = addr[0], int(addr[1])
-            self.storage = ClientStorage.ClientStorage(addr)
+            self.storage = ClientStorage.ClientStorage(addr, wait=False)
         else:
             self.storage = FileStorage.FileStorage(path)
-        self.db = DB(self.storage)
-        self.connection = self.db.open()
-        self.dbroot = self.connection.root()
+        try:
+            self.db = DB(self.storage)
+            self.connection = self.db.open()
+            self.dbroot = self.connection.root()
+        except Exception, e:
+            raise RuntimeError("Error connecting to dinoteeth database at %s" % str(addr))
     
     def get_unique_id(self):
         id = self.get_value("unique_counter", 0)
