@@ -7,19 +7,6 @@ from thread2 import ThreadTaskManager, ProcessTaskManager, TestSleepTask
 log = logging.getLogger("dinoteeth.updates")
 
 
-class PosterLoadTask(object):
-    def __init__(self, imdb_id, media_category, title):
-        self.imdb_id = imdb_id
-        self.media_category = media_category
-        self.title = title
-    
-    def __str__(self):
-        return "%s: imdb_id=%s" % (self.__class__.__name__, self.imdb_id)
-        
-    def __call__(self, posters=None, *args, **kwargs):
-        posters.fetch_poster(self.imdb_id, self.media_category)
-        return "Loaded artwork for %s" % self.title
-
 class ThumbnailLoadTask(object):
     def __init__(self, imgpath):
         self.imgpath = imgpath
@@ -49,30 +36,15 @@ class TimerTask(object):
 class UpdateManager(object):
     poster_thread = None
     
-    def __init__(self, window, event_name, db, poster_fetcher, thumbnail_loader):
+    def __init__(self, window, event_name, db, thumbnail_loader):
         cls = self.__class__
         if cls.poster_thread is not None:
             raise RuntimeError("UpdateManager already initialized")
         cls.window = window
         cls.event_name = event_name
         cls.db = db
-        cls.posters = poster_fetcher
         cls.thumbnails = thumbnail_loader
-        cls.poster_thread = ProcessTaskManager(window, event_name, num_workers=1, posters=cls.posters, thumbnails=cls.thumbnails)
         cls.timer_thread = ThreadTaskManager(window, 'on_timer')
-    
-    @classmethod
-    def update_all_posters(cls):
-#        cls.poster_thread.test()
-        db = cls.db
-        for title_key, metadata in db.title_keys_with_metadata():
-            imdb_id = metadata.id
-            if not cls.posters.has_poster(imdb_id):
-                try:
-                    task = PosterLoadTask(imdb_id, metadata.media_category, metadata.title)
-                    cls.poster_thread.add_task(task)
-                except KeyError:
-                    log.error("db doesn't know about %s" % imdb_id)
     
     @classmethod
     def create_thumbnail(cls, imgpath):
@@ -101,10 +73,11 @@ class UpdateManager(object):
 
 
 class FileWatcher(pyinotify.ProcessEvent):
-    def __init__(self, db, valid_extensions, pevent=None, **kwargs):
+    def __init__(self, db, valid_extensions, poster_loader, pevent=None, **kwargs):
         pyinotify.ProcessEvent.__init__(self, pevent=pevent, **kwargs)
         self.db = db
         self.extensions = valid_extensions
+        self.poster_loader = poster_loader
         self.media_path_dict = {}
         self.wm = pyinotify.WatchManager() # Watch Manager
         self.added = set()
@@ -115,6 +88,7 @@ class FileWatcher(pyinotify.ProcessEvent):
     
     def watch(self):
         self.db.update_metadata(self.media_path_dict, self.extensions)
+        self.db.update_posters(self.poster_loader)
         mask = pyinotify.IN_DELETE | pyinotify.IN_CLOSE_WRITE | pyinotify.IN_MODIFY | pyinotify.IN_MOVED_TO | pyinotify.IN_MOVED_FROM | pyinotify.IN_CREATE
         notifier = pyinotify.Notifier(self.wm, self, timeout=1000)
         for path in self.media_path_dict.keys():
@@ -127,6 +101,7 @@ class FileWatcher(pyinotify.ProcessEvent):
             if len(self.added) + len(self.removed) > 0:
                 print "Found %d files added, %d removed" % (len(self.added), len(self.removed))
                 self.db.update_metadata(self.media_path_dict, self.extensions)
+                self.db.update_posters(self.poster_loader)
                 self.added = set()
                 self.removed = set()
             else:

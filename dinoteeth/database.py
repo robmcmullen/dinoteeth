@@ -335,6 +335,15 @@ class NewDatabase(object):
         for key in valid_keys:
             yield key, t[key]
 
+    def update_posters(self, poster_loader):
+        for title_key, metadata in self.title_keys_with_metadata():
+            imdb_id = metadata.id
+            if not poster_loader.has_poster(imdb_id):
+                log.debug("Loading poster for %s" % imdb_id)
+                poster_loader.fetch_poster(imdb_id, metadata.media_category)
+            else:
+                log.debug("Have poster for %s" % imdb_id)
+
     def guess(self, title, fetch=False, year=None, find=None):
         if year:
             title = "%s (%s)" % (title, year)

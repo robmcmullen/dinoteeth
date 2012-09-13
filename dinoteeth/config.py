@@ -177,8 +177,7 @@ class Config(object):
                                       margins=margins,
                                       thumbnails=self.get_thumbnail_loader())
             
-            UpdateManager(self.main_window, 'on_status_update', self.db, self.get_poster_fetcher(), self.get_thumbnail_loader())
-            UpdateManager.update_all_posters()
+            UpdateManager(self.main_window, 'on_status_update', self.db, self.get_thumbnail_loader())
             if self.options.test_threads:
                 UpdateManager.test()
         return self.main_window
@@ -231,7 +230,7 @@ class Config(object):
     
     def start_update_monitor(self):
         valid = self.get_video_extensions()
-        watcher = FileWatcher(self.db, self.get_video_extensions())
+        watcher = FileWatcher(self.db, self.get_video_extensions(), self.get_poster_fetcher())
         for path, flags in self.ini["media_paths"].iteritems():
             if self.options.media_root and not os.path.isabs(path):
                 path = os.path.join(self.options.media_root, path)
