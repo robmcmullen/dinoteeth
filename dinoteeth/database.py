@@ -365,7 +365,7 @@ class NewDatabase(object):
                 #
                 # movie, tv movie, tv series, video game, video movie
                 # (something like a youtube video?)
-                log.debug("Skipping %s (%s) because %s != %s" % (unicode(result['title']).encode("utf8"), result['year'], unicode(result['kind']).encode("utf8"), find))
+                log.debug("Skipping %s (%s) because %s != %s" % (unicode(result['title']).encode("utf8"), result.get('year','<????>'), unicode(result['kind']).encode("utf8"), find))
                 continue
             
             if fetch:
