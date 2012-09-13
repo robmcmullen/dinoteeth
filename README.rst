@@ -4,6 +4,7 @@ Prerequisites
 requests
 imdbpy
 zodb
+pyinotify
 
 
 Testing
@@ -23,6 +24,10 @@ Create a test config file, containing at least::
     [media_paths]
     /path/to/media/directory = autodetect, basename
 
-And, in another terminal, start the program with::
+Start the monitor process in another terminal with::
+
+    python monitor.py -c [path to config file]
+
+And, in yet another terminal, start the program with::
 
     python run.py -w -c [path to config file]

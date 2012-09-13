@@ -21,3 +21,11 @@ def run():
         
         print "Halting threads..."
         cfg.do_shutdown_tasks()
+
+def run_monitor():
+    try:
+        cfg = setup(sys.argv)
+    except Exception, e:
+        print "Startup failure: %s" % e
+        return
+    cfg.start_update_monitor()

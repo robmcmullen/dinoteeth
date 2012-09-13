@@ -343,9 +343,7 @@ class RootPopulator(MMDBPopulator):
         self.media_cache = None
     
     def get_media(self):
-        if self.media_cache is None:
-            self.media_cache = self.config.db.get_all()
-        return self.media_cache
+        return self.config.db.get_all()
     
     media = property(get_media)
         

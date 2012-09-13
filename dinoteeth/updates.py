@@ -1,5 +1,7 @@
 import os, time, logging
 
+import pyinotify
+
 from thread2 import ThreadTaskManager, ProcessTaskManager, TestSleepTask
 
 log = logging.getLogger("dinoteeth.updates")
@@ -96,3 +98,60 @@ class UpdateManager(object):
     @classmethod
     def stop_all(cls):
         ProcessTaskManager.stop_all()
+
+
+class FileWatcher(pyinotify.ProcessEvent):
+    def __init__(self, db, valid_extensions, pevent=None, **kwargs):
+        pyinotify.ProcessEvent.__init__(self, pevent=pevent, **kwargs)
+        self.db = db
+        self.extensions = valid_extensions
+        self.media_path_dict = {}
+        self.wm = pyinotify.WatchManager() # Watch Manager
+        self.added = set()
+        self.removed = set()
+    
+    def add_path(self, path, flags):
+        self.media_path_dict[path] = flags
+    
+    def watch(self):
+        self.db.update_metadata(self.media_path_dict, self.extensions)
+        mask = pyinotify.IN_DELETE | pyinotify.IN_CLOSE_WRITE | pyinotify.IN_MODIFY | pyinotify.IN_MOVED_TO | pyinotify.IN_MOVED_FROM | pyinotify.IN_CREATE
+        notifier = pyinotify.Notifier(self.wm, self, timeout=1000)
+        for path in self.media_path_dict.keys():
+            self.wm.add_watch(path, mask, rec=True)
+        while True:
+            notifier.process_events()
+            while notifier.check_events():  #loop in case more events appear while we are processing
+                notifier.read_events()
+                notifier.process_events()
+            if len(self.added) + len(self.removed) > 0:
+                print "Found %d files added, %d removed" % (len(self.added), len(self.removed))
+                self.db.update_metadata(self.media_path_dict, self.extensions)
+                self.added = set()
+                self.removed = set()
+            else:
+                print "no changes"
+
+    def process_IN_CLOSE_WRITE(self, event):
+#        print "Modified (closed):", event.pathname
+        self.added.add(event.pathname)
+
+    def process_IN_DELETE(self, event):
+#        print "Removed (deleted):", event.pathname
+        self.removed.add(event.pathname)
+
+    def process_IN_MODIFY(self, event):
+#        print "Modified:", event.pathname
+        self.added.add(event.pathname)
+
+    def process_IN_MOVED_TO(self, event):
+#        print "Modified (moved to):", event.pathname
+        self.added.add(event.pathname)
+
+    def process_IN_MOVED_FROM(self, event):
+#        print "Removed (moved from):", event.pathname
+        self.removed.add(event.pathname)
+
+    def process_IN_CREATE(self, event):
+#        print "Removed (deleted):", event.pathname
+        self.added.add(event.pathname)

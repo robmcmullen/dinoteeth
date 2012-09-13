@@ -284,12 +284,12 @@ class NewDatabase(object):
         for key in removed_keys:
             print "Removing %s" % key
             del self.scans[key]
-        self.create_title_key_map()
+        transaction.savepoint()
     
     def update_metadata(self, media_path_dict, valid_extensions=None):
         self.scan_dirs(media_path_dict, valid_extensions)
-        transaction.commit()
-        self.update_all()
+        self.create_title_key_map()
+        self.update_metadata_map()
         transaction.commit()
     
     def create_title_key_map(self):
@@ -299,6 +299,7 @@ class NewDatabase(object):
             if key not in t:
                 t[key] = list()
             t[key].append(scan)
+        transaction.savepoint()
     
     def get_title_key_map(self):
         t = self.zodb.get_mapping("title_key_map")
@@ -314,7 +315,7 @@ class NewDatabase(object):
             scans = MediaScanList(scans)
             yield t, scans
     
-    def update_all(self):
+    def update_metadata_map(self):
         t = self.zodb.get_mapping("title_key_to_metadata")
         for title_key, scans in self.iter_title_key_map():
             metadata = t.get(title_key, None)

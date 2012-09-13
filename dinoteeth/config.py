@@ -8,7 +8,7 @@ from third_party.configobj import ConfigObj
 from view import *
 from proxies import Proxies
 from database import DBFacade, NewDatabase
-from updates import UpdateManager
+from updates import UpdateManager, FileWatcher
 from mplayer import MPlayerClient
 from utils import decode_title_text
 from image import ArtworkLoader, ScaledArtworkLoader
@@ -124,7 +124,6 @@ class Config(object):
             for path in self.args:
                 if path not in self.ini["media_paths"]:
                     self.ini["media_paths"][path] = "autodetect"
-        self.update_metadata()
         
         if not options.conf_file:
             # Save the configuration in the global file as long as it's not
@@ -230,14 +229,14 @@ class Config(object):
         db = NewDatabase(self.get_object_database(), self.proxies)
         return db
     
-    def update_metadata(self):
+    def start_update_monitor(self):
         valid = self.get_video_extensions()
-        media_path_dict = {}
+        watcher = FileWatcher(self.db, self.get_video_extensions())
         for path, flags in self.ini["media_paths"].iteritems():
             if self.options.media_root and not os.path.isabs(path):
                 path = os.path.join(self.options.media_root, path)
-            media_path_dict[path] = flags
-        self.db.update_metadata(media_path_dict, valid)
+            watcher.add_path(path, flags)
+        watcher.watch()
     
     def get_video_extensions(self):
         """Get list of known video extensions from enzyme"""
