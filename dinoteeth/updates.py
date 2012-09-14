@@ -44,6 +44,7 @@ class UpdateManager(object):
         cls.event_name = event_name
         cls.db = db
         cls.thumbnails = thumbnail_loader
+        cls.poster_thread = ProcessTaskManager(window, event_name, num_workers=1, thumbnails=cls.thumbnails)
         cls.timer_thread = ThreadTaskManager(window, 'on_timer')
     
     @classmethod
