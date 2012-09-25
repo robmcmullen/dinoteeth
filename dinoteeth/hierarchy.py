@@ -307,7 +307,6 @@ class ChangeImdb(MMDBPopulator):
         status = "Selected %s" % self.imdb_search_result['smart long imdb canonical title']
         media_scans = self.parent.get_media()
         self.config.db.change_metadata(media_scans, self.imdb_search_result.imdb_id)
-        UpdateManager.update_all_posters()
         self.config.show_status(status)
     
     def get_metadata(self):

@@ -102,11 +102,11 @@ class FileWatcher(pyinotify.ProcessEvent):
             if len(self.added) + len(self.removed) > 0:
                 print "Found %d files added, %d removed" % (len(self.added), len(self.removed))
                 self.db.update_metadata(self.media_path_dict, self.extensions)
-                self.db.update_posters(self.poster_loader)
                 self.added = set()
                 self.removed = set()
             else:
                 print "no changes"
+            self.db.update_posters(self.poster_loader)
 
     def process_IN_CLOSE_WRITE(self, event):
 #        print "Modified (closed):", event.pathname

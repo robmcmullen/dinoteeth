@@ -115,6 +115,9 @@ class BaseMetadata(Persistent):
     def __cmp__(self, other):
         return cmp(self.sort_key(), other.sort_key())
     
+    def is_fake(self):
+        return False
+    
     def sort_key(self, credit=None):
         if credit and hasattr(self, credit):
             if credit == "film_series":
@@ -355,6 +358,9 @@ class FakeMetadata(BaseMetadata):
     def __unicode__(self):
         lines = []
         lines.append(u"%s %s (%s)" % (self.id, self.title, self.year))
+    
+    def is_fake(self):
+        return True
 
 class FakeMovieMetadata(FakeMetadata):
     media_category = "movies"
