@@ -1,4 +1,4 @@
-import os, collections, logging
+import os, time, collections, logging
 
 from utils import iter_dir
 from media import MediaScan
@@ -63,6 +63,15 @@ class DBFacade(object):
     
     def abort(self):
         transaction.abort()
+    
+    def get_last_modified(self):
+        return self.get_value("last_modified", -1)
+    
+    def set_last_modified(self):
+        self.set_value("last_modified", time.time())
+    
+    def sync(self):
+        self.connection.sync()
     
     def pack(self):
         self.db.pack()
@@ -221,8 +230,10 @@ class NewDatabase(object):
     scans = property(get_scans)
     
     def get_all(self):
+        self.zodb.sync()
         scans = MediaScanList()
         scans.extend(self.scans.values())
+        log.debug("Last modified: %s, # scans=%d" % (self.zodb.get_last_modified(), len(scans)))
         return scans
     
     def get(self, pathname):
@@ -290,6 +301,7 @@ class NewDatabase(object):
         self.scan_dirs(media_path_dict, valid_extensions)
         self.create_title_key_map()
         self.update_metadata_map()
+        self.zodb.set_last_modified()
         transaction.commit()
     
     def create_title_key_map(self):
