@@ -501,8 +501,9 @@ class MovieMetadata(BaseMetadata):
 <b>Rated:</b> %s
 <b>Released:</b> %s
 <b>Genre:</b> %s
+<b>IMDb ID:</b> %s
 """ % (_(title), _(self.plot), _(self.certificate),
-                          _(self.release_date), _(genres))
+                          _(self.release_date), _(genres), self.id)
         if media_scan:
             text += self.get_audio_markup(media_scan)
             text += self.get_last_played_markup(media_scan)
@@ -677,7 +678,8 @@ class SeriesMetadata(BaseMetadata):
             text += """
 <b>Rated:</b> %s
 <b>Genre:</b> %s
-""" % (self.certificate, genres)
+<b>IMDb ID:</b> %s
+""" % (self.certificate, genres, self.id)
             text += u"""
 <b>Produced by:</b> %s
 <b>Directed by:</b> %s
