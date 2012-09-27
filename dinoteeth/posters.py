@@ -91,6 +91,7 @@ class PosterFetcher(object):
         self.tvdb_api = proxies.tvdb_api
         self.artwork_loader = artwork_loader
         self.language = proxies.language
+        self.ignored_imdb_ids = set()
     
     def __str__(self):
         lines = []
@@ -109,20 +110,30 @@ class PosterFetcher(object):
         return self.artwork_loader.has_poster(imdb_id)
     
     def fetch_poster(self, imdb_id, media_category='movies'):
+        if imdb_id in self.ignored_imdb_ids:
+            return None
         if media_category == 'series':
             loaders = ['tvdb', 'tmdb']
         else:
             loaders = ['tmdb', 'tvdb']
         
+        no_posters = 0
         for loader in loaders:
             try:
                 if loader == 'tvdb':
                     return self.fetch_poster_tvdb(imdb_id)
                 elif loader == 'tmdb':
                     return self.fetch_poster_tmdb(imdb_id)
+            except KeyError:
+                no_posters += 1
             except Exception, e:
+                import traceback
+                traceback.print_exc()
                 log.error("Error loading poster for %s: %s" % (imdb_id, e))
                 pass
+        if no_posters == len(loaders):
+            log.error("No poster for %s: skipping further attempts" % imdb_id)
+            self.ignored_imdb_ids.add(imdb_id)
         return None
     
     # TMDb specific poster lookup
@@ -165,8 +176,7 @@ class PosterFetcher(object):
     def fetch_poster_tvdb(self, imdb_id):
         show = self.tvdb_api.get_imdb_id(imdb_id)
         if not show:
-            log.debug("No tvdb entry for %s" % imdb_id)
-            return
+            raise KeyError
         self.fetch_poster_tvdb_series(show, imdb_id)
         self.fetch_poster_tvdb_seasons(show, imdb_id)
         
