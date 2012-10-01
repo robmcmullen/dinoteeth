@@ -111,6 +111,14 @@ class BaseMetadata(Persistent):
         ("By Number of Seasons", "num_seasons", "series", None, False),
         ("By Rating", "certificate", None, None, False),
         ]
+
+    def __init__(self, id, title_key):
+        self.id = id
+        self.title = title_key[0]
+        self.year = title_key[1]
+        self.kind = title_key[2]
+        self.title_index = ""
+        self.date_added = -1
     
     def __cmp__(self, other):
         return cmp(self.sort_key(), other.sort_key())
@@ -348,12 +356,7 @@ class FakeMetadata(BaseMetadata):
     imdb_prefix = "tt"
 
     def __init__(self, id, title_key, scans, db):
-        self.id = id
-        self.kind = title_key[2]
-        self.title = title_key[0]
-        self.year = title_key[1]
-        self.title_index = ""
-        self.date_added = -1
+        BaseMetadata.__init__(self, id, title_key)
     
     def __unicode__(self):
         lines = []
@@ -400,10 +403,8 @@ class MovieMetadata(BaseMetadata):
     imdb_prefix = "tt"
     
     def __init__(self, movie_obj, tmdb_obj, db):
-        self.id = movie_obj.imdb_id
-        self.kind = movie_obj['kind']
-        self.title = self.get_title(movie_obj, self.imdb_country)
-        self.year = movie_obj['year']
+        title_key = (self.get_title(movie_obj, self.imdb_country), movie_obj['year'], movie_obj['kind'])
+        BaseMetadata.__init__(self, movie_obj.imdb_id, title_key)
         self.title_index = movie_obj.get('imdbIndex', "")
         if tmdb_obj:
             cert = self.get_tmdb_country_list(tmdb_obj, 'releases', 'certification', self.iso_3166_1, if_empty="")
@@ -527,10 +528,8 @@ class SeriesMetadata(BaseMetadata):
     def __init__(self, movie_obj, tvdb_obj, db):
 #'title', 'akas', 'year', 'imdbIndex', 'certificates', 'director', 'writer', 'producer', 'cast', 'writer', 'creator', 'original music', 'plot outline', 'rating', 'votes', 'genres', 'number of seasons', 'number of episodes', 'series years', ]
 #['akas', u'art department', 'art direction', 'aspect ratio', 'assistant director', 'camera and electrical department', 'canonical title', 'cast', 'casting director', 'certificates', 'cinematographer', 'color info', u'costume department', 'costume designer', 'countries', 'cover url', 'director', u'distributors', 'editor', u'editorial department', 'full-size cover url', 'genres', 'kind', 'languages', 'long imdb canonical title', 'long imdb title', 'make up', 'miscellaneous companies', 'miscellaneous crew', u'music department', 'number of seasons', 'plot', 'plot outline', 'producer', u'production companies', 'production design', 'production manager', 'rating', 'runtimes', 'series years', 'smart canonical title', 'smart long imdb canonical title', 'sound crew', 'sound mix', 'title', 'votes', 'writer', 'year']
-        self.id = movie_obj.imdb_id
-        self.kind = movie_obj['kind']
-        self.title = self.get_title(movie_obj, self.imdb_country)
-        self.year = movie_obj['year']
+        title_key = (self.get_title(movie_obj, self.imdb_country), movie_obj['year'], movie_obj['kind'])
+        BaseMetadata.__init__(self, movie_obj.imdb_id, title_key)
         self.title_index = movie_obj.get('imdbIndex', "")
         self.certificate = self.get_imdb_country_list(movie_obj, 'certificates', self.imdb_country, if_empty="unrated")
         self.plot = movie_obj.get('plot outline', "")
