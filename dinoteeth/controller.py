@@ -41,6 +41,8 @@ class VerticalMenuController(object):
             self.process_subtitle()
         elif keycode == k.R:
             self.layout.window.refresh()
+        elif keycode == k.K8 and modifiers & k.MOD_SHIFT:
+            self.process_star()
     
     def process_select(self):
         submenu_found = self.layout.select_child_menu()
@@ -68,6 +70,11 @@ class VerticalMenuController(object):
         menu = self.layout.get_menu()
         selected = menu.get_selected_item()
         selected.do_subtitle(config=self.config)
+    
+    def process_star(self):
+        menu = self.layout.get_menu()
+        selected = menu.get_selected_item()
+        selected.do_star(config=self.config)
     
     def process_back(self):
         self.layout.select_parent_menu()

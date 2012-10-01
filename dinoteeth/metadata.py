@@ -119,6 +119,7 @@ class BaseMetadata(Persistent):
         self.kind = title_key[2]
         self.title_index = ""
         self.date_added = -1
+        self.starred = False
     
     def __cmp__(self, other):
         return cmp(self.sort_key(), other.sort_key())

@@ -66,6 +66,7 @@ def play_date(item):
 class TopLevelLookup(MetadataLookup):
     def iter_create(self):
         yield "All", MetadataLookup(self, self.config)
+        yield "Favorites", MetadataLookup(self, self.config, filter=lambda scan: scan.metadata.starred)
         yield "Recently Added", DateLookup(self, self.config)
         yield "Recently Played", DateLookup(self, self.config, filter=lambda item: item.play_date is not None, time_lookup=play_date)
         
@@ -350,7 +351,8 @@ class RootPopulator(MMDBPopulator):
         yield "Movies & Series", TopLevelLookup(self, self.config)
         yield "Just Movies", TopLevelLookup(self, self.config, lambda scan: scan.type == "movie")
         yield "Just Series", TopLevelLookup(self, self.config, lambda scan: scan.type == "series")
-        yield "Paused...", DateLookup(self, self.config, filter=only_paused, time_lookup=play_date)
+        yield "Favorites", MetadataLookup(self, self.config, filter=lambda scan: scan.metadata.starred)
+        yield "Paused", DateLookup(self, self.config, filter=only_paused, time_lookup=play_date)
         yield "Photos & Home Videos", TopLevelPhoto(self.config)
         yield "Games", TopLevelLookup(self, self.config)
 

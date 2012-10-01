@@ -1,5 +1,7 @@
 import os, sys, glob, bisect, logging
 
+import transaction
+
 from updates import UpdateManager
 
 log = logging.getLogger("dinoteeth.model")
@@ -53,6 +55,16 @@ class MenuItem(object):
         if self.metadata and self.metadata['media_scan']:
             media_scan = self.metadata['media_scan']
             media_scan.next_subtitle()
+    
+    def do_star(self, **kwargs):
+        if self.metadata and 'mmdb' in self.metadata:
+            base_metadata = self.metadata['mmdb']
+            base_metadata.starred = not base_metadata.starred
+            if base_metadata.starred:
+                log.debug("starred %s" % base_metadata.id)
+            else:
+                log.debug("unstarred %s" % base_metadata.id)
+            transaction.commit()
     
     def do_populate(self):
         if not self.populated:
