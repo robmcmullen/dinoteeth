@@ -121,9 +121,14 @@ class PosterFetcher(object):
         for loader in loaders:
             try:
                 if loader == 'tvdb':
-                    return self.fetch_poster_tvdb(imdb_id)
+                    found = self.fetch_poster_tvdb(imdb_id)
                 elif loader == 'tmdb':
-                    return self.fetch_poster_tmdb(imdb_id)
+                    found = self.fetch_poster_tmdb(imdb_id)
+                else:
+                    found = False
+                if found:
+                    return
+                no_posters += 1
             except KeyError:
                 no_posters += 1
             except Exception, e:
@@ -156,8 +161,10 @@ class PosterFetcher(object):
         if found:
             log.debug("best poster: %s" % found)
             self.artwork_loader.save_poster_from_url(imdb_id, found)
+            return True
         else:
             log.debug("No poster for %s" % unicode(tfilm).encode('utf8'))
+        return False
 
     # Tvdb specific poster lookup
     # second level dictionary keys
@@ -177,8 +184,9 @@ class PosterFetcher(object):
         show = self.tvdb_api.get_imdb_id(imdb_id)
         if not show:
             raise KeyError
-        self.fetch_poster_tvdb_series(show, imdb_id)
+        found = self.fetch_poster_tvdb_series(show, imdb_id)
         self.fetch_poster_tvdb_seasons(show, imdb_id)
+        return found
         
     def fetch_poster_tvdb_series(self, show, imdb_id):
         posters = show.data['_banners'][self.poster_key][self.poster_series_key]
@@ -192,8 +200,10 @@ class PosterFetcher(object):
         if best:
             log.debug("best poster: %s" % best)
             self.artwork_loader.save_poster_from_url(imdb_id, best.url)
+            return True
         else:
             log.debug("No poster for %s" % imdb_id)
+        return False
         
     def fetch_poster_tvdb_seasons(self, show, imdb_id):
         posters = show.data['_banners'][self.season_key][self.poster_season_key]
