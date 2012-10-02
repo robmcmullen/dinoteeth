@@ -1,4 +1,4 @@
-import os, sys, glob, bisect, logging
+import os, sys, glob, time, bisect, logging
 
 import transaction
 
@@ -8,6 +8,8 @@ log = logging.getLogger("dinoteeth.model")
 log.setLevel(logging.DEBUG)
 
 class MenuItem(object):
+    refresh_time = time.time()
+    
     def __init__(self, title, enabled=True, action=None, populate_children=None, media=None, metadata=None, **kwargs):
         self.title = title
         self.enabled = enabled
@@ -16,7 +18,7 @@ class MenuItem(object):
         self.media = media
         self.parent = None
         self.metadata = metadata
-        self.populated = False
+        self.populated = 0
         self.cursor = 0
         self.children = []
     
@@ -65,14 +67,16 @@ class MenuItem(object):
             else:
                 log.debug("unstarred %s" % base_metadata.id)
             transaction.commit()
+            self.__class__.refresh_time = time.time()
     
     def do_populate(self):
-        if not self.populated:
+        if self.populated < self.__class__.refresh_time:
+            self.children = []
             if self.populate_children:
                 print "populating children!"
                 for child in self.populate_children(self):
                     self.add(child)
-            self.populated = True
+            self.populated = time.time()
     
     def do_repopulate(self):
         """Refresh this menu and attempt to keep the cursor on the same item
@@ -84,7 +88,7 @@ class MenuItem(object):
         print "refreshing menu"
         current_cursor = self.cursor
         current_title = self.children[current_cursor].title
-        self.populated = False
+        self.populated = 0
         self.children = []
         self.do_populate()
         
