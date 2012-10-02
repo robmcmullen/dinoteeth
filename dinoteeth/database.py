@@ -455,7 +455,6 @@ class NewDatabase(object):
         else:
             best = self.get_fake_metadata(title_key, scans)
         self.metadata[best.id] = best
-        transaction.commit()
         return best
     
     def get_fake_metadata(self, title_key, scans):
@@ -487,7 +486,6 @@ class NewDatabase(object):
             return
         if store:
             self.metadata[imdb_id] = metadata
-            transaction.commit()
         print (u"%s: %s -> %s" % (imdb_obj['title'], imdb_obj['kind'], metadata.media_category)).encode('utf8')
         return metadata
     
