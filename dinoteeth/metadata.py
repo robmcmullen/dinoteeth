@@ -3,7 +3,7 @@
 Get TMDB/IMDB metadata for movies in the database
 """
 
-import os, time, collections, logging
+import os, re, time, collections, logging
 from third_party.sentence import first_sentence
 
 from persistent import Persistent
@@ -89,6 +89,7 @@ class FilmSeries(Persistent):
 
 class BaseMetadata(Persistent):
     imdb_country = None
+    imdb_language = None
     iso_3166_1 = None
     ignore_leading_articles = ["a", "an", "the"]
     media_category = None
@@ -224,19 +225,41 @@ class BaseMetadata(Persistent):
 #        print "get_obj[%s]: %s" % (key, str(obj))
         return list(obj)
     
-    def get_title(self, imdb_obj, country):
-        best = imdb_obj['title']
+    # IMDb contains a lot of alternate titles; this list is used to prune down
+    # the acceptable possible titles by excluding any AKAs with these tags.
+    # See e.g.  http://www.imdb.com/title/tt0017136/releaseinfo#akas
+    skip_title_parts = ["promotional title", "poster title", "IMAX", "DVD title", "complete title", "original title", "short title", "restored version"]
+    skip_title_re = re.compile("|".join(skip_title_parts))
+    
+    def get_title(self, imdb_obj, country, language):
+        best = None
         if imdb_obj.has_key('akas'):
+            possibilities = []
             for aka in imdb_obj['akas']:
                 if "::" in aka:
                     title, note = aka.split("::")
-                    if "imdb display title" in note:
-                        # Only allow official display titles
-#                        print safestr(title)
-                        for part in note.split(","):
-#                            print "  %s" % part
-                            if country in part:
-                                best = title
+                    parts = note.split(",")
+                    for part in parts:
+                        if self.skip_title_re.search(part):
+                            continue
+                        if country in part or "imdb display title" in part or ("International" in part and language in part):
+                            possibilities.append((title, part))
+            
+            def try_possibility(cname, lang):
+                for title, part in possibilities:
+                    if cname in part:
+                        if lang is None:
+                            return title
+                        elif lang in part:
+                            return title
+                
+            best = try_possibility(country, language)
+            if not best:
+                best = try_possibility("International", language)
+            if not best:
+                best = try_possibility(country, None)
+        if not best:
+            best = imdb_obj['title']
         return best
     
     def lambdaify(self, criteria):
@@ -404,7 +427,7 @@ class MovieMetadata(BaseMetadata):
     imdb_prefix = "tt"
     
     def __init__(self, movie_obj, tmdb_obj, db):
-        title_key = (self.get_title(movie_obj, self.imdb_country), movie_obj['year'], movie_obj['kind'])
+        title_key = (self.get_title(movie_obj, self.imdb_country, self.imdb_language), movie_obj['year'], movie_obj['kind'])
         BaseMetadata.__init__(self, movie_obj.imdb_id, title_key)
         self.title_index = movie_obj.get('imdbIndex', "")
         if tmdb_obj:
@@ -529,7 +552,7 @@ class SeriesMetadata(BaseMetadata):
     def __init__(self, movie_obj, tvdb_obj, db):
 #'title', 'akas', 'year', 'imdbIndex', 'certificates', 'director', 'writer', 'producer', 'cast', 'writer', 'creator', 'original music', 'plot outline', 'rating', 'votes', 'genres', 'number of seasons', 'number of episodes', 'series years', ]
 #['akas', u'art department', 'art direction', 'aspect ratio', 'assistant director', 'camera and electrical department', 'canonical title', 'cast', 'casting director', 'certificates', 'cinematographer', 'color info', u'costume department', 'costume designer', 'countries', 'cover url', 'director', u'distributors', 'editor', u'editorial department', 'full-size cover url', 'genres', 'kind', 'languages', 'long imdb canonical title', 'long imdb title', 'make up', 'miscellaneous companies', 'miscellaneous crew', u'music department', 'number of seasons', 'plot', 'plot outline', 'producer', u'production companies', 'production design', 'production manager', 'rating', 'runtimes', 'series years', 'smart canonical title', 'smart long imdb canonical title', 'sound crew', 'sound mix', 'title', 'votes', 'writer', 'year']
-        title_key = (self.get_title(movie_obj, self.imdb_country), movie_obj['year'], movie_obj['kind'])
+        title_key = (self.get_title(movie_obj, self.imdb_country, self.imdb_language), movie_obj['year'], movie_obj['kind'])
         BaseMetadata.__init__(self, movie_obj.imdb_id, title_key)
         self.title_index = movie_obj.get('imdbIndex', "")
         self.certificate = self.get_imdb_country_list(movie_obj, 'certificates', self.imdb_country, if_empty="unrated")

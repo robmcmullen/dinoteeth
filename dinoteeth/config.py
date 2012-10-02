@@ -80,6 +80,7 @@ class Config(object):
         parser.add_argument("--font-size-selected", action="store", type=int, default=24)
         
         parser.add_argument("--imdb-country-code", action="store", default="USA")
+        parser.add_argument("--imdb-language", action="store", default="English")
         parser.add_argument("--country-code", action="store", default="US")
         parser.add_argument("--test-threads", action="store_true", default=False)
         return parser
@@ -155,6 +156,7 @@ class Config(object):
     
     def set_class_defaults(self):
         BaseMetadata.imdb_country = self.options.imdb_country_code
+        BaseMetadata.imdb_language = self.options.imdb_language
         BaseMetadata.iso_3166_1 = self.options.country_code
     
     def get_main_window_class(self):

@@ -2,43 +2,10 @@
 # -*- coding: utf-8 -*-
 
 from dinoteeth_test import *
+from dinoteeth_mock import *
 
 from dinoteeth.database import MediaScanDatabase
 from dinoteeth.utils import iter_dir
-
-class MockMovie(object):
-    def __init__(self, imdb_id):
-        self.id = imdb_id
-        
-class MockMMDB(object):
-    imdb_index = 1
-    def __init__(self):
-        self.title_keys = {}
-        self.imdb_list = set()
-        
-    def remove(self, imdb_id):
-        self.imdb_list.discard(imdb_id)
-        
-    def best_guess_from_media_scans(self, title_key, scans):
-        if title_key[0].startswith("The "):
-            title_key = (title_key[0][4:], title_key[1], title_key[2])
-        print title_key
-        if title_key not in self.title_keys:
-            self.title_keys[title_key] = "tt%07d" % self.imdb_index
-            self.imdb_index += 1
-        imdb_id = self.title_keys[title_key]
-        self.imdb_list.add(imdb_id)
-        return MockMovie(imdb_id)
-    
-    def contains_imdb_id(self, imdb_id):
-        return imdb_id in self.imdb_list
-    
-    def saveStateToFile(self):
-        pass
-
-class MockArtworkLoader(object):
-    def has_poster(self, imdb_id):
-        return True
 
 class TestDatabaseMovies1(TestCase):
     def setUp(self):
@@ -85,6 +52,27 @@ class TestDatabaseMovies1(TestCase):
         self.assertEqual(len(self.db.db), 39)
         self.assertEqual(len(self.db.title_key_map), 15)
         self.assertEqual(len(self.db.imdb_to_title_key), save)
+
+    def testPrunePeople(self):
+        producers = [IMDbObject() for i in range(6)]
+        producers[0].notes = "producer"
+        producers[0]['canonical name'] = u"Jones, Terry"
+        producers[1].notes = "executive producer"
+        producers[1]['canonical name'] = u"Gilliam, Terry"
+        producers[2].notes = "executive producer"
+        producers[2]['canonical name'] = u"Cleese, John"
+        producers[3].notes = "associate producer"
+        producers[3]['canonical name'] = u"Idle, Eric"
+        producers[4].notes = "associate producer"
+        producers[4]['canonical name'] = u"Palin, Michael"
+        producers[5].notes = "producer"
+        producers[5]['canonical name'] = u"Rabbit"
+        b = BaseMetadata()
+        executive_producers = self.db.prune_people(producers, 'executive producer')
+        self.assertEqual(len(executive_producers), 2)
+        producers = self.db.prune_people(producers)
+        self.assertEqual(len(producers), 4)
+        print self.db
     
 
 if __name__ == '__main__':
