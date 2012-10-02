@@ -279,7 +279,7 @@ class Config(object):
         return self.artwork_loader
     
     def get_thumbnail_loader(self):
-        thumbnail_factory = ThumbnailFactory(self.options.thumbnail_dir)
+        thumbnail_factory = ThumbnailFactory(self.options.thumbnail_dir, self.get_metadata_pathname(self.options.image_dir))
         return thumbnail_factory
     
     def get_media_client(self):

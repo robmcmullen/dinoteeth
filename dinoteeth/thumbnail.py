@@ -227,13 +227,19 @@ class VideoThumbnailFactory(AbstractThumbnailFactory):
 
 
 class ThumbnailFactory(object):
-    def __init__(self, basedir=None, image_size=128, video_size=512):
-        self.image = ImageThumbnailFactory(basedir, image_size)
-        self.video = VideoThumbnailFactory(basedir, video_size)
+    def __init__(self, local_basedir=None, shared_basedir=None, image_size=128, video_size=512):
+        self.image = ImageThumbnailFactory(local_basedir, image_size)
+        self.shared_basedir = shared_basedir
+        if shared_basedir is not None:
+            thumbnail_dir = os.path.join(shared_basedir, "thumbnails")
+            self.image_shared = ImageThumbnailFactory(thumbnail_dir, image_size)
+        self.video = VideoThumbnailFactory(local_basedir, video_size)
     
     def which(self, imgpath):
         ext = os.path.splitext(imgpath)[1].lower()
         if ext in [".jpg", ".png", ".gif"]:
+            if self.shared_basedir and imgpath.startswith(self.shared_basedir):
+                return self.image_shared
             return self.image
         return self.video
     
