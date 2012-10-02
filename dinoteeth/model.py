@@ -71,28 +71,26 @@ class MenuItem(object):
     
     def do_populate(self):
         if self.populated < self.__class__.refresh_time:
-            self.children = []
             if self.populate_children:
+                data = self.get_cursor_match_data()
+                self.children = []
                 print "populating children!"
                 for child in self.populate_children(self):
                     self.add(child)
+                if data is not None:
+                    self.set_cursor_from_match_data(data)
             self.populated = time.time()
     
-    def do_repopulate(self):
-        """Refresh this menu and attempt to keep the cursor on the same item
-        even if the new menu is re-sorted
-        """
-        if not self.populate_children:
-            print "can't refresh static menu"
-            return
-        print "refreshing menu"
+    def get_cursor_match_data(self):
+        if len(self.children) == 0:
+            return None
         current_cursor = self.cursor
         current_title = self.children[current_cursor].title
-        self.populated = 0
-        self.children = []
-        self.do_populate()
-        
+        return (current_cursor, current_title)
+    
+    def set_cursor_from_match_data(self, data):
         # Attempt to match cursor position by title
+        current_cursor, current_title = data
         self.cursor = None
         for i, child in enumerate(self.children):
             if child.title == current_title:
@@ -106,6 +104,20 @@ class MenuItem(object):
             self.cursor = current_cursor
             if self.cursor >= len(self.children):
                 self.cursor = len(self.children) - 1
+    
+    def do_repopulate(self):
+        """Refresh this menu and attempt to keep the cursor on the same item
+        even if the new menu is re-sorted
+        """
+        if not self.populate_children:
+            print "can't refresh static menu"
+            return
+        print "refreshing menu"
+        data = self.get_cursor_match_data()
+        self.populated = 0
+        self.do_populate()
+        if data is not None:
+            self.set_cursor_from_match_data(data)
 
     def do_create_edit_menu(self, **kwargs):
         if self.enabled:
