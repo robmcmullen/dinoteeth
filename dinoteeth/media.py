@@ -1,4 +1,4 @@
-import os, sys, re, bisect, time
+import os, sys, re, bisect, time, glob
 from datetime import datetime
 
 from persistent import Persistent
@@ -37,6 +37,7 @@ def enzyme_extensions():
 
 class MediaScan(Persistent):
     ignore_leading_articles = ["a", "an", "the"]
+    subtitle_file_extensions = []
     percent_considered_complete = 0.96
     
     def __init__(self, pathname, flags=""):
@@ -153,13 +154,45 @@ class MediaScan(Persistent):
     def next_audio(self):
         self.selected_audio_id = self.next_option(self.get_audio_options())
     
+    def get_external_subtitles(self):
+        paths = []
+        base, _ = os.path.splitext(self.pathname)
+        for ext in self.subtitle_file_extensions:
+            subs = set(glob.glob("%s*%s" % (base, ext)))
+            
+            # If the plain "file.ext" exists, it will be first.  All others
+            # with more info (e.g.  "file-lang1.ext") in the filename will
+            # be sorted.
+            first = base + ext
+            if first in subs:
+                paths.append(first)
+                subs.remove(first)
+            subs = sorted(subs)
+            paths.extend(subs)
+        return paths
+    
+    def is_subtitle_external(self, id):
+        return id >= len(self.subtitles)
+    
+    def get_subtitle_path(self, id):
+        id = id - len(self.subtitles)
+        external = self.get_external_subtitles()
+        if id < len(external):
+            return external[id]
+        return None
+    
     def get_subtitle_options(self):
         # Unlike audio, "No subtitles" should always be an option in case
         # people don't want to view subtitles
         options = [(-1, -1 == self.selected_subtitle_id, "No subtitles")]
+        i = 0
         for i, subtitle in enumerate(self.iter_subtitles()):
 #            print "subtitle track: %s" % subtitle
             options.append((i, i == self.selected_subtitle_id, subtitle.title))
+        external = self.get_external_subtitles()
+        for path in external:
+            options.append((i, i == self.selected_subtitle_id, os.path.basename(path)))
+            i += 1
         return options
     
     def set_subtitle_options(self, id=-1, **kwargs):

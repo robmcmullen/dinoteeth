@@ -16,7 +16,7 @@ from posters import PosterFetcher
 from thumbnail import ThumbnailFactory
 from hierarchy import RootMenu
 from photo import PhotoDB
-from media import enzyme_extensions
+from media import enzyme_extensions, MediaScan
 from metadata import BaseMetadata
 import i18n
 
@@ -158,6 +158,7 @@ class Config(object):
         BaseMetadata.imdb_country = self.options.imdb_country_code
         BaseMetadata.imdb_language = self.options.imdb_language
         BaseMetadata.iso_3166_1 = self.options.country_code
+        MediaScan.subtitle_file_extensions = self.get_subtitle_extensions()
     
     def get_main_window_class(self):
         if self.options.ui == "sdl":
@@ -242,6 +243,9 @@ class Config(object):
     def get_video_extensions(self):
         """Get list of known video extensions from enzyme"""
         return enzyme_extensions()
+    
+    def get_subtitle_extensions(self):
+        return [".srt", ".ssa", ".ass"]
     
     def get_root(self, window):
         return self.root
