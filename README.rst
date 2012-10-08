@@ -3,7 +3,7 @@ Prerequisites
 
 requests
 imdbpy
-zodb
+zodb3
 pyinotify
 
 
