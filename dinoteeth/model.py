@@ -1,8 +1,7 @@
 import os, sys, glob, time, bisect, logging
 
-import transaction
-
 from updates import UpdateManager
+from database import commit
 
 log = logging.getLogger("dinoteeth.model")
 log.setLevel(logging.DEBUG)
@@ -26,6 +25,10 @@ class MenuItem(object):
     def create_root(cls, populator):
         root = MenuItem(populator.root_title, populate_children=populator)
         return root
+    
+    @classmethod
+    def needs_refresh(cls):
+        cls.refresh_time = time.time()
     
     def __cmp__(self, other):
         return cmp(self.title, other.title)
@@ -66,8 +69,7 @@ class MenuItem(object):
                 log.debug("starred %s" % base_metadata.id)
             else:
                 log.debug("unstarred %s" % base_metadata.id)
-            transaction.commit()
-            self.__class__.refresh_time = time.time()
+            commit()
     
     def do_populate(self):
         if self.populated < self.__class__.refresh_time:

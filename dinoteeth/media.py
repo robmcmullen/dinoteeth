@@ -2,7 +2,7 @@ import os, sys, re, bisect, time, glob
 from datetime import datetime
 
 from persistent import Persistent
-import transaction
+from database import commit
 
 import utils
 
@@ -296,7 +296,7 @@ class MediaScan(Persistent):
             last_pos = -1.0
         self.play_date = datetime.utcnow()
         self.position = last_pos
-        transaction.commit()
+        commit()
 
     def get_last_position(self):
         return self.position

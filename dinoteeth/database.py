@@ -1,8 +1,14 @@
 import os, time, collections, logging
 
+# Have to define this here to get around circular dependency in import of
+# MediaScan and MenuItem
+def commit():
+    DBFacade.commit()
+
 from utils import iter_dir
 from media import MediaScan
 from metadata import Company, Person, FilmSeries, MovieMetadata, SeriesMetadata, FakeMovieMetadata, FakeSeriesMetadata
+from model import MenuItem
 
 log = logging.getLogger("dinoteeth.database")
 log.setLevel(logging.DEBUG)
@@ -55,8 +61,10 @@ class DBFacade(object):
     def add(self, name, obj):
         self.dbroot[name] = obj
     
+    @classmethod
     def commit(self):
         transaction.commit()
+        MenuItem.needs_refresh()
     
     def rollback(self):
         transaction.rollback()
@@ -265,7 +273,7 @@ class NewDatabase(object):
                 log.debug("Changing metadata for %s" % scan.pathname)
                 scan.metadata = metadata
                 metadata.update_with_media_scans(scans)
-        transaction.commit()
+        self.zodb.commit()
     
     def is_current(self, pathname, found_keys=None):
         if pathname in self.scans:
@@ -302,7 +310,7 @@ class NewDatabase(object):
         self.create_title_key_map()
         self.update_metadata_map()
         self.zodb.set_last_modified()
-        transaction.commit()
+        self.zodb.commit()
     
     def create_title_key_map(self):
         t = self.zodb.get_mapping("title_key_map", clear=True)
@@ -317,7 +325,7 @@ class NewDatabase(object):
         t = self.zodb.get_mapping("title_key_map")
         if not t:
             self.create_title_key_map()
-            transaction.commit()
+            self.zodb.commit()
         return t
     
     title_key_map = property(get_title_key_map)
