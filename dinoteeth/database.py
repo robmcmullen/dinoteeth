@@ -170,17 +170,25 @@ class MediaScanList(list):
     
     def get_unique_metadata(self):
         s = set()
+        scans_in_each = dict()
         for item in self:
             s.add(item.metadata)
-        return s
+            if item.metadata not in scans_in_each:
+                scans_in_each[item.metadata] = MediaScanList()
+            scans_in_each[item.metadata].append(item)
+        return s, scans_in_each
     
     def get_unique_metadata_with_value(self, accessor):
         s = dict()
+        scans_in_each = dict()
         for item in self:
             value = accessor(item)
             if item.metadata not in s or value > s[item.metadata]:
                 s[item.metadata] = value
-        return s
+            if item.metadata not in scans_in_each:
+                scans_in_each[item.metadata] = MediaScanList()
+            scans_in_each[item.metadata].append(item)
+        return s, scans_in_each
     
     def filter(self, criteria):
         filtered = MediaScanList(parent=self, filter_callable=criteria)

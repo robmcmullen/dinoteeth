@@ -12,7 +12,8 @@ log.setLevel(logging.DEBUG)
 
 class MMDBPopulator(MenuPopulator):
     def get_sorted_metadata(self):
-        metadata = list(self.media.get_unique_metadata())
+        unique, scans_in_each = self.media.get_unique_metadata()
+        metadata = list(unique)
         metadata.sort()
         return metadata
         
@@ -89,7 +90,8 @@ class DateLookup(MetadataLookup):
         self.time_lookup = time_lookup
     
     def get_sorted_metadata(self):
-        order = sorted([(v, m) for m, v in self.media.get_unique_metadata_with_value(self.time_lookup).iteritems()])
+        unique, scans_in_each = self.media.get_unique_metadata_with_value(self.time_lookup)
+        order = sorted([(v, m) for m, v in unique.iteritems()])
         metadata = [item[1] for item in reversed(order)]
         return metadata
         
@@ -114,7 +116,8 @@ class CreditLookup(MetadataLookup):
     
     def iter_create(self):
         results = {}
-        for metadata in self.media.get_unique_metadata():
+        unique, scans_in_earch = self.media.get_unique_metadata()
+        for metadata in unique:
             if metadata.match(self.credit):
                 for credit_value in metadata.iter_items_of(self.credit):
                     results[self.converter(credit_value)] = credit_value
@@ -284,6 +287,46 @@ class MediaPlayMultiple(MMDBPopulator):
             }
 
 
+class ExpandedLookup(MetadataLookup):
+    def __init__(self, parent, config, filter=None, time_lookup=None):
+        MetadataLookup.__init__(self, parent, config, filter)
+        if time_lookup is None:
+            time_lookup = lambda item: item.metadata.date_added
+        self.time_lookup = time_lookup
+    
+    def get_sorted_metadata(self):
+        metadata, scans_in_each = self.get_sorted_metadata_plus_scans()
+        return metadata
+    
+    def get_sorted_metadata_plus_scans(self):
+        unique, scans_in_each = self.media.get_unique_metadata_with_value(self.time_lookup)
+        order = sorted([(v, m) for m, v in unique.iteritems()])
+        metadata = [item[1] for item in reversed(order)]
+        return metadata, scans_in_each
+        
+    def iter_create(self):
+        metadata, scans_in_each = self.get_sorted_metadata_plus_scans()
+        for m in metadata:
+            media_scans = scans_in_each[m]
+            if m.media_category == "series":
+                if m.is_mini_series():
+                    yield unicode(m.title), None
+                    yield unicode(m.title), SeriesEpisodes(self, self.config, m.id)
+                else:
+                    seasons = media_scans.get_seasons()
+                    for s in seasons:
+                        yield u"%s - Season %d" % (unicode(m.title), s), None
+                        episodes = media_scans.get_episodes(s)
+                        for ms in episodes:
+                            yield "  Resume %s (Paused at %s)" % (unicode(ms.display_title), ms.paused_at_text()), MediaPlay(self.config, m.id, ms, resume=True)
+            elif m.media_category == "movies":
+                yield unicode(m.title), None
+                media_scans.sort()
+                bonus = media_scans.get_bonus()
+                for ms in media_scans:
+                    yield "  Resume %s (Paused at %s)" % (unicode(ms.display_title), ms.paused_at_text()), MediaPlay(self.config, m.id, ms, resume=True)
+
+
 class ChangeImdbRoot(MetadataLookup):
     def __init__(self, parent, config, imdb_id):
         MetadataLookup.__init__(self, parent, config, filter=lambda item: item.metadata.id == imdb_id)
@@ -352,7 +395,7 @@ class RootPopulator(MMDBPopulator):
         yield "Just Movies", TopLevelLookup(self, self.config, lambda scan: scan.type == "movie")
         yield "Just Series", TopLevelLookup(self, self.config, lambda scan: scan.type == "series")
         yield "Favorites", MetadataLookup(self, self.config, filter=lambda scan: scan.metadata.starred)
-        yield "Paused", DateLookup(self, self.config, filter=only_paused, time_lookup=play_date)
+        yield "Paused", ExpandedLookup(self, self.config, filter=only_paused)
         yield "Photos & Home Videos", TopLevelPhoto(self.config)
         yield "Games", TopLevelLookup(self, self.config)
 
