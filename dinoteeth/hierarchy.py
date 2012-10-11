@@ -337,7 +337,7 @@ class ChangeImdbRoot(MetadataLookup):
         media_scans = list(self.get_media())
         if len(media_scans) > 0:
             title_key = media_scans[0].title_key
-            imdb_guesses = self.config.db.guess(title_key[0], year=title_key[1], find=title_key[2])
+            imdb_guesses = self.config.db.guess(title_key.title, year=title_key.year, find=title_key.subcategory)
             for result in imdb_guesses:
                 yield result['title'], ChangeImdb(self, self.config, result)
 

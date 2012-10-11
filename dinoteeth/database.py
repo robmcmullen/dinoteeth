@@ -423,10 +423,10 @@ class NewDatabase(object):
         return None
     
     def best_guess_from_media_scans(self, title_key, scans):
-        kind = title_key[2]
-        guesses = self.guess(title_key[0], year=title_key[1], find=kind)
+        kind = title_key.subcategory
+        guesses = self.guess(title_key.title, year=title_key.year, find=kind)
         if not guesses:
-            log.error("IMDb returned no guesses for %s???" % title_key[0])
+            log.error("IMDb returned no guesses for %s???" % title_key.title)
         total_runtime, num_episodes = scans.get_total_runtime()
         avg_runtime = total_runtime / num_episodes
         avg_scale = avg_runtime * 4 / 60 # +- 4 minutes per hour
@@ -474,7 +474,7 @@ class NewDatabase(object):
         return best
     
     def get_fake_metadata(self, title_key, scans):
-        kind = title_key[2]
+        kind = title_key.subcategory
         id = self.zodb.get_unique_id()
         if kind == "movie":
             metadata = FakeMovieMetadata(id, title_key, scans, self)

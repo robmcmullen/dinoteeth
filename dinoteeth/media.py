@@ -35,6 +35,23 @@ def enzyme_extensions():
     return extensions
 
 
+class TitleKey(Persistent):
+    def __init__(self, category, title, year, subcategory):
+        self.category = category
+        self.title = title
+        self.year = year
+        self.subcategory = subcategory
+
+    def __str__(self):
+        return str(self.__dict__)
+
+    def __hash__(self): 
+        return hash((self.category, self.title, self.year, self.subcategory))
+
+    def __eq__(self, other): 
+        return self.__dict__ == other.__dict__
+
+
 class MediaScan(Persistent):
     ignore_leading_articles = ["a", "an", "the"]
     subtitle_file_extensions = []
@@ -227,7 +244,7 @@ class MediaScan(Persistent):
         except KeyError:
             year = None
         #return self.get_title(), year, self.get_type()
-        return self.get_title(), None, self.get_type()
+        return TitleKey("video", self.get_title(), None, self.get_type())
     
     title_key = property(get_title_key)
     
