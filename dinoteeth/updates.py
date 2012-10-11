@@ -1,22 +1,11 @@
 import os, time, logging
 
-from thread import ThreadTaskManager, ProcessTaskManager, TestSleepTask
+import pyinotify
+
+from thread2 import ThreadTaskManager, ProcessTaskManager, TestSleepTask
 
 log = logging.getLogger("dinoteeth.updates")
 
-
-class PosterLoadTask(object):
-    def __init__(self, imdb_id, media_category, title):
-        self.imdb_id = imdb_id
-        self.media_category = media_category
-        self.title = title
-    
-    def __str__(self):
-        return "%s: imdb_id=%s" % (self.__class__.__name__, self.imdb_id)
-        
-    def __call__(self, posters=None, *args, **kwargs):
-        posters.fetch_poster(self.imdb_id, self.media_category)
-        return "Loaded artwork for %s" % self.title
 
 class ThumbnailLoadTask(object):
     def __init__(self, imgpath):
@@ -47,34 +36,16 @@ class TimerTask(object):
 class UpdateManager(object):
     poster_thread = None
     
-    def __init__(self, window, event_name, db, mmdb, poster_fetcher, thumbnail_loader):
+    def __init__(self, window, event_name, db, thumbnail_loader):
         cls = self.__class__
         if cls.poster_thread is not None:
             raise RuntimeError("UpdateManager already initialized")
         cls.window = window
         cls.event_name = event_name
         cls.db = db
-        cls.mmdb = mmdb
-        cls.posters = poster_fetcher
         cls.thumbnails = thumbnail_loader
-        cls.poster_thread = ProcessTaskManager(window, event_name, num_workers=1, posters=cls.posters, thumbnails=cls.thumbnails)
+        cls.poster_thread = ProcessTaskManager(window, event_name, num_workers=1, thumbnails=cls.thumbnails)
         cls.timer_thread = ThreadTaskManager(window, 'on_timer')
-    
-    @classmethod
-    def update_all_posters(cls):
-#        cls.poster_thread.test()
-        db = cls.db
-        for i, title_key in enumerate(db.iter_title_keys()):
-            if title_key not in db.title_key_to_imdb:
-                continue
-            imdb_id = db.title_key_to_imdb[title_key]
-            if not cls.posters.has_poster(imdb_id):
-                try:
-                    media = cls.mmdb.get(imdb_id)
-                    task = PosterLoadTask(imdb_id, media.media_category, media.title)
-                    cls.poster_thread.add_task(task)
-                except KeyError:
-                    log.error("mmdb doesn't know about %s" % imdb_id)
     
     @classmethod
     def create_thumbnail(cls, imgpath):
@@ -100,3 +71,63 @@ class UpdateManager(object):
     @classmethod
     def stop_all(cls):
         ProcessTaskManager.stop_all()
+
+
+class FileWatcher(pyinotify.ProcessEvent):
+    def __init__(self, db, valid_extensions, poster_loader, pevent=None, **kwargs):
+        pyinotify.ProcessEvent.__init__(self, pevent=pevent, **kwargs)
+        self.db = db
+        self.extensions = valid_extensions
+        self.poster_loader = poster_loader
+        self.media_path_dict = {}
+        self.wm = pyinotify.WatchManager() # Watch Manager
+        self.added = set()
+        self.removed = set()
+    
+    def add_path(self, path, flags):
+        self.media_path_dict[path] = flags
+    
+    def watch(self):
+        self.db.update_metadata(self.media_path_dict, self.extensions)
+        self.db.update_posters(self.poster_loader)
+        mask = pyinotify.IN_DELETE | pyinotify.IN_CLOSE_WRITE | pyinotify.IN_MODIFY | pyinotify.IN_MOVED_TO | pyinotify.IN_MOVED_FROM | pyinotify.IN_CREATE
+        notifier = pyinotify.Notifier(self.wm, self, timeout=1000)
+        for path in self.media_path_dict.keys():
+            self.wm.add_watch(path, mask, rec=True)
+        while True:
+            notifier.process_events()
+            while notifier.check_events():  #loop in case more events appear while we are processing
+                notifier.read_events()
+                notifier.process_events()
+            if len(self.added) + len(self.removed) > 0:
+                print "Found %d files added, %d removed" % (len(self.added), len(self.removed))
+                self.db.update_metadata(self.media_path_dict, self.extensions)
+                self.added = set()
+                self.removed = set()
+            else:
+                print "no changes"
+            self.db.update_posters(self.poster_loader)
+
+    def process_IN_CLOSE_WRITE(self, event):
+#        print "Modified (closed):", event.pathname
+        self.added.add(event.pathname)
+
+    def process_IN_DELETE(self, event):
+#        print "Removed (deleted):", event.pathname
+        self.removed.add(event.pathname)
+
+    def process_IN_MODIFY(self, event):
+#        print "Modified:", event.pathname
+        self.added.add(event.pathname)
+
+    def process_IN_MOVED_TO(self, event):
+#        print "Modified (moved to):", event.pathname
+        self.added.add(event.pathname)
+
+    def process_IN_MOVED_FROM(self, event):
+#        print "Removed (moved from):", event.pathname
+        self.removed.add(event.pathname)
+
+    def process_IN_CREATE(self, event):
+#        print "Removed (deleted):", event.pathname
+        self.added.add(event.pathname)

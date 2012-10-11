@@ -1,11 +1,14 @@
-import os, sys, glob, bisect, logging
+import os, sys, glob, time, bisect, logging
 
 from updates import UpdateManager
+from database import commit
 
 log = logging.getLogger("dinoteeth.model")
-
+log.setLevel(logging.DEBUG)
 
 class MenuItem(object):
+    refresh_time = time.time()
+    
     def __init__(self, title, enabled=True, action=None, populate_children=None, media=None, metadata=None, **kwargs):
         self.title = title
         self.enabled = enabled
@@ -14,7 +17,7 @@ class MenuItem(object):
         self.media = media
         self.parent = None
         self.metadata = metadata
-        self.populated = False
+        self.populated = 0
         self.cursor = 0
         self.children = []
     
@@ -22,6 +25,10 @@ class MenuItem(object):
     def create_root(cls, populator):
         root = MenuItem(populator.root_title, populate_children=populator)
         return root
+    
+    @classmethod
+    def needs_refresh(cls):
+        cls.refresh_time = time.time()
     
     def __cmp__(self, other):
         return cmp(self.title, other.title)
@@ -54,33 +61,42 @@ class MenuItem(object):
             media_scan = self.metadata['media_scan']
             media_scan.next_subtitle()
     
+    def do_star(self, **kwargs):
+        if self.metadata and 'mmdb' in self.metadata:
+            base_metadata = self.metadata['mmdb']
+            base_metadata.starred = not base_metadata.starred
+            if base_metadata.starred:
+                log.debug("starred %s" % base_metadata.id)
+            else:
+                log.debug("unstarred %s" % base_metadata.id)
+            commit()
+    
     def do_populate(self):
-        if not self.populated:
+        if self.populated < self.__class__.refresh_time:
             if self.populate_children:
+                data = self.get_cursor_match_data()
+                self.children = []
                 print "populating children!"
                 for child in self.populate_children(self):
                     self.add(child)
-            self.populated = True
+                if data is not None:
+                    self.set_cursor_from_match_data(data)
+            self.populated = time.time()
     
-    def do_repopulate(self):
-        """Refresh this menu and attempt to keep the cursor on the same item
-        even if the new menu is re-sorted
-        """
-        if not self.populate_children:
-            print "can't refresh static menu"
-            return
-        print "refreshing menu"
+    def get_cursor_match_data(self):
+        if len(self.children) == 0:
+            return None
         current_cursor = self.cursor
         current_title = self.children[current_cursor].title
-        self.populated = False
-        self.children = []
-        self.do_populate()
-        
+        return (current_cursor, current_title)
+    
+    def set_cursor_from_match_data(self, data):
         # Attempt to match cursor position by title
+        current_cursor, current_title = data
         self.cursor = None
         for i, child in enumerate(self.children):
             if child.title == current_title:
-                print "Fount cursor position at %s" % current_title.encode('utf8')
+                print "Found cursor position at %s" % current_title.encode('utf8')
                 self.cursor = i
                 break
         
@@ -90,6 +106,20 @@ class MenuItem(object):
             self.cursor = current_cursor
             if self.cursor >= len(self.children):
                 self.cursor = len(self.children) - 1
+    
+    def do_repopulate(self):
+        """Refresh this menu and attempt to keep the cursor on the same item
+        even if the new menu is re-sorted
+        """
+        if not self.populate_children:
+            print "can't refresh static menu"
+            return
+        print "refreshing menu"
+        data = self.get_cursor_match_data()
+        self.populated = 0
+        self.do_populate()
+        if data is not None:
+            self.set_cursor_from_match_data(data)
 
     def do_create_edit_menu(self, **kwargs):
         if self.enabled:
@@ -120,12 +150,13 @@ class MenuItem(object):
         return bool(self.children)
     
     def move_cursor(self, delta):
-        self.cursor += delta
-        if self.cursor < 0:
-            self.cursor = 0
-        elif self.cursor >= self.num_items():
-            self.cursor = self.num_items() - 1
-        self.verify_cursor(delta)
+        if self.num_items() > 0:
+            self.cursor += delta
+            if self.cursor < 0:
+                self.cursor = 0
+            elif self.cursor >= self.num_items():
+                self.cursor = self.num_items() - 1
+                self.verify_cursor(delta)
     
     def is_selectable(self):
         return self.enabled
@@ -233,6 +264,7 @@ class MenuPopulator(object):
     def __call__(self, parent):
         items = []
         for title, populator in self.iter_create():
+            log.debug(u" ".join(unicode(s) for s in [title, populator]))
             items.append((title, populator))
         if self.autosort:
             items.sort()

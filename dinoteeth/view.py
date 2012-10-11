@@ -2,6 +2,9 @@ import os, sys, glob, time, random, Queue
 
 from controller import *
 
+class MenuEmptyError(RuntimeError):
+    pass
+
 class AbstractLayout(object):
     def __init__(self, window, margins, config):
         self.window = window
@@ -52,9 +55,9 @@ class AbstractLayout(object):
     def select_parent_menu(self):
         menu = self.hierarchy.pop()
         if self.hierarchy:
-            return True
+            return False
         self.hierarchy.append(menu)
-        return False
+        return True
             
     def get_controller(self):
         return self.controller
@@ -92,10 +95,16 @@ class MenuDetail2ColumnLayout(AbstractLayout):
     
     def draw(self):
         self.title_renderer.draw(self.hierarchy)
-        menu = self.get_menu()
-        self.menu_renderer.draw(menu)
-        self.detail_renderer.draw(menu)
-        self.status_renderer.draw()
+        while True:
+            try:
+                menu = self.get_menu()
+                self.menu_renderer.draw(menu)
+                self.detail_renderer.draw(menu)
+                self.status_renderer.draw()
+                break
+            except MenuEmptyError:
+                if self.select_parent_menu():
+                    break
 
 
 class Renderer(object):
@@ -154,7 +163,10 @@ class VerticalMenuRenderer(MenuRenderer):
                                   anchor_x='left', anchor_y='center')
     
     def draw(self, menu):
-        item = menu.get_selected_item()
+        try:
+            item = menu.get_selected_item()
+        except IndexError:
+            raise MenuEmptyError
         self.draw_item(item, self.center, True)
         
         y = self.center + self.window.selected_font.height

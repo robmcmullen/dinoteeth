@@ -2,13 +2,13 @@ import os, sys, glob, re, logging
 try:
     import argparse
 except:
-    import dinoteeth.third_party.argparse as argparse
-from dinoteeth.third_party.configobj import ConfigObj
+    import third_party.argparse as argparse
+from third_party.configobj import ConfigObj
 
 from view import *
 from proxies import Proxies
-from database import MovieMetadataDatabase, MediaScanDatabase
-from updates import UpdateManager
+from database import DBFacade, NewDatabase
+from updates import UpdateManager, FileWatcher
 from mplayer import MPlayerClient
 from utils import decode_title_text
 from image import ArtworkLoader, ScaledArtworkLoader
@@ -16,7 +16,7 @@ from posters import PosterFetcher
 from thumbnail import ThumbnailFactory
 from hierarchy import RootMenu
 from photo import PhotoDB
-from media import enzyme_extensions
+from media import enzyme_extensions, MediaScan
 from metadata import BaseMetadata
 import i18n
 
@@ -55,9 +55,8 @@ class Config(object):
         parser.add_argument("--ui", action="store", default="sdl")
         parser.add_argument("--metadata-root", action="store", default="",
                           help="Default metadata/database root directory for those databases and the image directories that don't specify a full path")
-        parser.add_argument("--db", action="store", dest="database", default="dinoteeth.db")
-        parser.add_argument("--mmdb", action="store", dest="mmdb", default="dinoteeth.mmdb")
-        parser.add_argument("--stats-db", action="store", default="dinoteeth-stats.db")
+        parser.add_argument("--db", action="store", dest="database", default="dinoteeth.zodb")
+        parser.add_argument("--db-host", action="store", dest="db_host", default="")
         parser.add_argument("--imdb-cache-dir", action="store", default="imdb-cache")
         parser.add_argument("--tmdb-cache-dir", action="store", default="tmdb-cache")
         parser.add_argument("--tvdb-cache-dir", action="store", default="tvdb-cache")
@@ -81,6 +80,7 @@ class Config(object):
         parser.add_argument("--font-size-selected", action="store", type=int, default=24)
         
         parser.add_argument("--imdb-country-code", action="store", default="USA")
+        parser.add_argument("--imdb-language", action="store", default="English")
         parser.add_argument("--country-code", action="store", default="US")
         parser.add_argument("--test-threads", action="store_true", default=False)
         return parser
@@ -120,14 +120,11 @@ class Config(object):
         self.set_class_defaults()
         
         self.proxies = self.get_proxies()
-        self.db = self.get_media_database()
-        self.mmdb = self.get_metadata_database()
-        self.init_orm_databases()
+        self.db = self.get_database()
         if self.args:
             for path in self.args:
                 if path not in self.ini["media_paths"]:
                     self.ini["media_paths"][path] = "autodetect"
-        self.update_metadata()
         
         if not options.conf_file:
             # Save the configuration in the global file as long as it's not
@@ -159,7 +156,9 @@ class Config(object):
     
     def set_class_defaults(self):
         BaseMetadata.imdb_country = self.options.imdb_country_code
+        BaseMetadata.imdb_language = self.options.imdb_language
         BaseMetadata.iso_3166_1 = self.options.country_code
+        MediaScan.subtitle_file_extensions = self.get_subtitle_extensions()
     
     def get_main_window_class(self):
         if self.options.ui == "sdl":
@@ -181,8 +180,7 @@ class Config(object):
                                       margins=margins,
                                       thumbnails=self.get_thumbnail_loader())
             
-            UpdateManager(self.main_window, 'on_status_update', self.db, self.mmdb, self.get_poster_fetcher(), self.get_thumbnail_loader())
-            UpdateManager.update_all_posters()
+            UpdateManager(self.main_window, 'on_status_update', self.db, self.get_thumbnail_loader())
             if self.options.test_threads:
                 UpdateManager.test()
         return self.main_window
@@ -206,10 +204,10 @@ class Config(object):
         log.debug("database: %s" % option)
         return option
     
-    def get_media_database(self):
-        db = MediaScanDatabase()
-        db.loadStateFromFile(self.get_metadata_pathname(self.options.database))
-        return db
+    def get_object_database(self):
+        if not hasattr(self, 'zodb'):
+            self.zodb = DBFacade(self.get_metadata_pathname(self.options.database), self.options.db_host)
+        return self.zodb
     
     def get_photo_database(self):
         db = PhotoDB()
@@ -229,30 +227,25 @@ class Config(object):
     def get_poster_fetcher(self):
         return PosterFetcher(self.get_proxies(), self.get_artwork_loader().clone())
     
-    def get_metadata_database(self):
-        mmdb = MovieMetadataDatabase(self.proxies)
-        statefile = self.get_metadata_pathname(self.options.mmdb)
-        print "Loading from %s" % statefile
-        mmdb.loadStateFromFile(statefile)
-        return mmdb
+    def get_database(self):
+        db = NewDatabase(self.get_object_database(), self.proxies)
+        return db
     
-    def update_metadata(self):
+    def start_update_monitor(self):
         valid = self.get_video_extensions()
-        media_path_dict = {}
+        watcher = FileWatcher(self.db, self.get_video_extensions(), self.get_poster_fetcher())
         for path, flags in self.ini["media_paths"].iteritems():
             if self.options.media_root and not os.path.isabs(path):
                 path = os.path.join(self.options.media_root, path)
-            media_path_dict[path] = flags
-        self.db.update_metadata(media_path_dict, self.mmdb, valid)
-
-    def init_orm_databases(self):
-        db = self.get_metadata_pathname(self.options.stats_db)
-        from dinoteeth.standalone.conf import init_orm
-        init_orm(db)
+            watcher.add_path(path, flags)
+        watcher.watch()
     
     def get_video_extensions(self):
         """Get list of known video extensions from enzyme"""
         return enzyme_extensions()
+    
+    def get_subtitle_extensions(self):
+        return [".srt", ".ssa", ".ass"]
     
     def get_root(self, window):
         return self.root
@@ -290,7 +283,7 @@ class Config(object):
         return self.artwork_loader
     
     def get_thumbnail_loader(self):
-        thumbnail_factory = ThumbnailFactory(self.options.thumbnail_dir)
+        thumbnail_factory = ThumbnailFactory(self.options.thumbnail_dir, self.get_metadata_pathname(self.options.image_dir))
         return thumbnail_factory
     
     def get_media_client(self):
@@ -310,6 +303,7 @@ class Config(object):
         win.on_status_update(text)
     
     def do_shutdown_tasks(self):
+        self.db.pack()
         UpdateManager.stop_all()
 
 

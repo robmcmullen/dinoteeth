@@ -70,10 +70,13 @@ class Movie(TMDb3_API):
     def __unicode__(self):
         return simplejson.dumps(self.movie, sort_keys=True, indent=4)
     
+    def __contains__(self, key):
+        return key in self.movie
+    
     def __getitem__(self, key):
         if key in self.movie:
             return self.movie[key]
-        raise KeyError("%s not found in TMDb data")
+        raise KeyError("%s not found in TMDb data" % key)
     
     def get_release_info(self):
         url = "http://api.themoviedb.org/3/movie/%%s/releases?api_key=%s" % (self.API_KEY)

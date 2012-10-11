@@ -10,7 +10,7 @@ class MPlayerClient(object):
     def play(self, media_scan, resume_at=0.0):
         opts = self.config.get_mplayer_opts(media_scan.pathname)
         self.audio_opts(opts, media_scan.selected_audio_id)
-        self.subtitle_opts(opts, media_scan.selected_subtitle_id)
+        self.subtitle_opts(opts, media_scan.selected_subtitle_id, media_scan)
         if resume_at > 0:
             self.resume_opts(opts, resume_at)
         last_pos = self.play_slave(media_scan.pathname, opts)
@@ -25,13 +25,18 @@ class MPlayerClient(object):
         if id is not None:
             opts.extend(["-aid", str(id)])
     
-    def subtitle_opts(self, opts, id):
+    def subtitle_opts(self, opts, id, media_scan):
         print "Subtitles: %s" % id
         if id is not None:
             if id < 0:
                 opts.extend(["-noautosub", "-nosub"])
             else:
-                opts.extend(["-sid", str(id)])
+                if media_scan.is_subtitle_external(id):
+                    path = media_scan.get_subtitle_path(id)
+                    if path is not None:
+                        opts.extend(["-sub", path])
+                else:
+                    opts.extend(["-sid", str(id)])
     
     def resume_opts(self, opts, last_pos):
         # Some fuzziness in mplayer when restarting (perhaps can only start on

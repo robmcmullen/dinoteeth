@@ -91,6 +91,7 @@ class PosterFetcher(object):
         self.tvdb_api = proxies.tvdb_api
         self.artwork_loader = artwork_loader
         self.language = proxies.language
+        self.ignored_imdb_ids = set()
     
     def __str__(self):
         lines = []
@@ -109,20 +110,35 @@ class PosterFetcher(object):
         return self.artwork_loader.has_poster(imdb_id)
     
     def fetch_poster(self, imdb_id, media_category='movies'):
+        if imdb_id in self.ignored_imdb_ids:
+            return None
         if media_category == 'series':
             loaders = ['tvdb', 'tmdb']
         else:
             loaders = ['tmdb', 'tvdb']
         
+        no_posters = 0
         for loader in loaders:
             try:
                 if loader == 'tvdb':
-                    return self.fetch_poster_tvdb(imdb_id)
+                    found = self.fetch_poster_tvdb(imdb_id)
                 elif loader == 'tmdb':
-                    return self.fetch_poster_tmdb(imdb_id)
+                    found = self.fetch_poster_tmdb(imdb_id)
+                else:
+                    found = False
+                if found:
+                    return
+                no_posters += 1
+            except KeyError:
+                no_posters += 1
             except Exception, e:
+                import traceback
+                traceback.print_exc()
                 log.error("Error loading poster for %s: %s" % (imdb_id, e))
                 pass
+        if no_posters == len(loaders):
+            log.error("No poster for %s: skipping further attempts" % imdb_id)
+            self.ignored_imdb_ids.add(imdb_id)
         return None
     
     # TMDb specific poster lookup
@@ -145,8 +161,10 @@ class PosterFetcher(object):
         if found:
             log.debug("best poster: %s" % found)
             self.artwork_loader.save_poster_from_url(imdb_id, found)
+            return True
         else:
             log.debug("No poster for %s" % unicode(tfilm).encode('utf8'))
+        return False
 
     # Tvdb specific poster lookup
     # second level dictionary keys
@@ -165,10 +183,10 @@ class PosterFetcher(object):
     def fetch_poster_tvdb(self, imdb_id):
         show = self.tvdb_api.get_imdb_id(imdb_id)
         if not show:
-            log.debug("No tvdb entry for %s" % imdb_id)
-            return
-        self.fetch_poster_tvdb_series(show, imdb_id)
+            raise KeyError
+        found = self.fetch_poster_tvdb_series(show, imdb_id)
         self.fetch_poster_tvdb_seasons(show, imdb_id)
+        return found
         
     def fetch_poster_tvdb_series(self, show, imdb_id):
         posters = show.data['_banners'][self.poster_key][self.poster_series_key]
@@ -182,8 +200,10 @@ class PosterFetcher(object):
         if best:
             log.debug("best poster: %s" % best)
             self.artwork_loader.save_poster_from_url(imdb_id, best.url)
+            return True
         else:
             log.debug("No poster for %s" % imdb_id)
+        return False
         
     def fetch_poster_tvdb_seasons(self, show, imdb_id):
         posters = show.data['_banners'][self.season_key][self.poster_season_key]

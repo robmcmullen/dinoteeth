@@ -1,5 +1,8 @@
-import os, sys, re, bisect, time
+import os, sys, re, bisect, time, glob
 from datetime import datetime
+
+from persistent import Persistent
+from database import commit
 
 import utils
 
@@ -32,13 +35,16 @@ def enzyme_extensions():
     return extensions
 
 
-class MediaScan(object):
+class MediaScan(Persistent):
     ignore_leading_articles = ["a", "an", "the"]
+    subtitle_file_extensions = []
     percent_considered_complete = 0.96
     
-    def __init__(self, pathname, flags=None):
+    def __init__(self, pathname, flags=""):
         self.pathname = pathname
         self.flags = flags
+        self.play_date = None
+        self.position = 0
         self.reset()
     
     def __str__(self):
@@ -91,9 +97,11 @@ class MediaScan(object):
         else:
             category = "autodetect"
         self.guess = guess_file_info(name, category)
+        self.metadata = None
     
     def is_current(self):
         if os.path.exists(self.pathname):
+            print self.pathname, os.stat(self.pathname).st_mtime, self.mtime
             if os.stat(self.pathname).st_mtime == self.mtime:
                 return True
         return False
@@ -146,13 +154,45 @@ class MediaScan(object):
     def next_audio(self):
         self.selected_audio_id = self.next_option(self.get_audio_options())
     
+    def get_external_subtitles(self):
+        paths = []
+        base, _ = os.path.splitext(self.pathname)
+        for ext in self.subtitle_file_extensions:
+            subs = set(glob.glob("%s*%s" % (base, ext)))
+            
+            # If the plain "file.ext" exists, it will be first.  All others
+            # with more info (e.g.  "file-lang1.ext") in the filename will
+            # be sorted.
+            first = base + ext
+            if first in subs:
+                paths.append(first)
+                subs.remove(first)
+            subs = sorted(subs)
+            paths.extend(subs)
+        return paths
+    
+    def is_subtitle_external(self, id):
+        return id >= len(self.subtitles)
+    
+    def get_subtitle_path(self, id):
+        id = id - len(self.subtitles)
+        external = self.get_external_subtitles()
+        if id < len(external):
+            return external[id]
+        return None
+    
     def get_subtitle_options(self):
         # Unlike audio, "No subtitles" should always be an option in case
         # people don't want to view subtitles
         options = [(-1, -1 == self.selected_subtitle_id, "No subtitles")]
+        i = 0
         for i, subtitle in enumerate(self.iter_subtitles()):
 #            print "subtitle track: %s" % subtitle
             options.append((i, i == self.selected_subtitle_id, subtitle.title))
+        external = self.get_external_subtitles()
+        for path in external:
+            options.append((i, i == self.selected_subtitle_id, os.path.basename(path)))
+            i += 1
         return options
     
     def set_subtitle_options(self, id=-1, **kwargs):
@@ -248,58 +288,31 @@ class MediaScan(object):
     
     film_number = property(get_film_number)
 
-    # ORM interface
-
-    def get_database_object(self):
-        from dinoteeth.standalone.models import LastPlayed
-        objs = LastPlayed.objects.filter(pathname=self.pathname)
-        if len(objs):
-            obj = objs[0]
-#            print "FOUND!!!", obj
-            return obj
-        return None
-
     def is_considered_complete(self, last_pos):
         return last_pos >= self.percent_considered_complete * self.length
 
     def set_last_position(self, last_pos):
         if self.is_considered_complete(last_pos):
             last_pos = -1.0
-        from dinoteeth.standalone.models import LastPlayed
-        obj = self.get_database_object()
-        if obj:
-            obj.play_date = datetime.utcnow()
-            obj.position = last_pos
-        else:
-            obj = LastPlayed(pathname=self.pathname, play_date=datetime.utcnow(),
-                             position=last_pos)
-#            print "CREATING!!!", obj
-        obj.save()
+        self.play_date = datetime.utcnow()
+        self.position = last_pos
+        commit()
+
+    def get_last_position(self):
+        return self.position
     
     def is_paused(self):
-        obj = self.get_database_object()
-        if obj:
-            return obj.position > 0
-        return False
+        return self.position > 0
     
     def paused_at_text(self):
-        seconds = int(self.get_last_position())
+        seconds = int(self.position)
         return utils.time_format(seconds)
     
-    def get_last_position(self):
-        obj = self.get_database_object()
-        if obj:
-            seconds = obj.position
-        else:
-            seconds = 0.0
-        return seconds
-    
     def get_last_played_stats(self):
-        obj = self.get_database_object()
-        if obj:
-            date = utils.time_since(obj.play_date)
-            if obj.position > 0:
-                return date, "%2d%%, elapsed time %s" % (obj.position * 100 / self.length, utils.time_format(obj.position))
+        if self.play_date is not None:
+            date = utils.time_since(self.play_date)
+            if self.position > 0:
+                return date, "%2d%%, elapsed time %s" % (self.position * 100 / self.length, utils.time_format(self.position))
             else:
                 return date, None
         return None, "Never played"
@@ -307,7 +320,17 @@ class MediaScan(object):
 
 if __name__ == "__main__":
     import sys
+    from database import DBFacade
+    
+    db = DBFacade("Data.fs")
+    scans = db.get_mapping("scans")
     
     for file in sys.argv[1:]:
-        print file
-        print enzyme_scan(file)
+        if file not in scans:
+            print file
+            scan = MediaScan(file)
+            scans[file] = scan
+            db.commit()
+        else:
+            scan = scans[file]
+        print scan
