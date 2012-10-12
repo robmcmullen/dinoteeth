@@ -2,7 +2,7 @@ import os, time, logging
 
 import pyinotify
 
-from thread2 import ThreadTaskManager, ProcessTaskManager, TestSleepTask
+from thread import ThreadTaskManager, ProcessTaskManager, TestSleepTask
 
 log = logging.getLogger("dinoteeth.updates")
 
