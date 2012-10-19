@@ -250,12 +250,13 @@ class DetailRenderer(Renderer):
         
         akas = "\n".join([a.replace('::', ' -- ') for a in result.get('akas',[])])
         text = u"""<b>Title:</b> %s
+<b>ID:</b> %s
 <b>Year:</b> %s
 <b>Type:</b> %s
 
 <b>Also known as:</b>
 %s
-""" % (result['title'], result['year'], result['kind'], akas)
+""" % (result['title'], imdb_id, result['year'], result['kind'], akas)
 
         self.window.draw_markup(text, self.window.detail_font,
                                 x=self.x + image.width + 10, y=self.h,
