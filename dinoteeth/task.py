@@ -15,6 +15,8 @@ log = multiprocessing.log_to_stderr()
 
 class Task(object):
     def __init__(self):
+        self.parent = None
+        self.children_running = 0
         self.error = None
         self.exception = None
     
@@ -35,6 +37,9 @@ class Task(object):
         
     def _start(self, processor):
         raise RuntimeError("Abstract method")
+    
+    def post_process(self):
+        return []
 
 class ThreadTask(Task):
     pass
@@ -211,14 +216,36 @@ class TaskManager(object):
             log.debug("No processor for task %s" % str(task))
     
     def get_finished(self):
-        done = []
+        done = set()
         try:
             while True:
                 task = self._finished.get(False)
-                done.append(task)
+                done.add(task)
         except Queue.Empty:
             pass
-        return done
+        root_tasks_done = set()
+        for task in done:
+            log.debug("task %s completed" % str(task))
+            if task.parent is not None:
+                log.debug("  subtask of %s" % str(task.parent))
+            sub_tasks = task.post_process()
+            if sub_tasks:
+                for sub_task in sub_tasks:
+                    sub_task.parent = task
+                    task.children_running += 1
+                    self.add_task(sub_task)
+            else:
+                t = task
+                while t.parent is not None:
+                    t.parent.children_running -= 1
+                    if t.parent.children_running == 0:
+                        t = t.parent
+                    else:
+                        break
+                if t.parent is None and t.children_running == 0:
+                    log.debug("marking root task %s completed" % str(t))
+                    root_tasks_done.add(t)
+        return root_tasks_done
     
     def shutdown(self):
         for processor in self.processors:
