@@ -140,10 +140,17 @@ class BackgroundHttpDownloader(ThreadTaskDispatcher):
                 self.log.debug('counter=%s, # sockets = %d', self._counter, len(asyncore.socket_map))
                 asyncore.loop(timeout=self._timeout, count=1)
             else:
-                self.log.debug('no clients')
-                time.sleep(1)
+                self.log.debug("No current downloads; blocking for a client...")
+                delay = time.time()
+                task = self._queue.get(True)
+                if task is None:
+                    return
+                task._start(self)
+                delay = time.time() - delay
+                self.log.debug("blocked %ss; found client %s", delay, task.url)
             
-            if len(asyncore.socket_map) < self._max_simultaneous:
+            # attempt to start as many downloads as we can
+            while len(asyncore.socket_map) < self._max_simultaneous:
                 try:
                     task = self._queue.get(False)
                     if task is None:
@@ -151,7 +158,7 @@ class BackgroundHttpDownloader(ThreadTaskDispatcher):
                     task._start(self)
                     self.log.debug("found client %s", task.url)
                 except Queue.Empty:
-                    self.log.debug("waiting for clients...")
+                    break
 
 
 if __name__ == '__main__':
