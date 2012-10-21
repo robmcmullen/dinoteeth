@@ -220,7 +220,7 @@ class MediaScanList(list):
             return count
 
 
-class NewDatabase(object):
+class HomeTheaterDatabase(object):
     imdb_allowed_kinds = ['movie', 'video movie', 'tv movie', 'series', 'tv series', 'tv mini series']
 
     def __init__(self, zodb, proxies):

@@ -7,7 +7,7 @@ from third_party.configobj import ConfigObj
 
 from view import *
 from proxies import Proxies
-from database import DBFacade, NewDatabase
+from database import DBFacade, HomeTheaterDatabase
 from updates import UpdateManager, FileWatcher
 from mplayer import MPlayerClient
 from utils import decode_title_text
@@ -120,7 +120,7 @@ class Config(object):
         self.set_class_defaults()
         
         self.proxies = self.get_proxies()
-        self.db = self.get_database()
+        self.db = self.get_home_theater_database()
         if self.args:
             for path in self.args:
                 if path not in self.ini["media_paths"]:
@@ -227,8 +227,8 @@ class Config(object):
     def get_poster_fetcher(self):
         return PosterFetcher(self.get_proxies(), self.get_artwork_loader().clone())
     
-    def get_database(self):
-        db = NewDatabase(self.get_object_database(), self.proxies)
+    def get_home_theater_database(self):
+        db = HomeTheaterDatabase(self.get_object_database(), self.proxies)
         return db
     
     def start_update_monitor(self):
