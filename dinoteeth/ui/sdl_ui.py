@@ -129,6 +129,7 @@ class SdlMainWindow(MainWindow):
     
     # Rather that trying to marshal python arguments into the SDL event, store
     # the python event data a dict and reference it by number.
+    event_data_counter = 1
     event_data = {}
     
     def post_event(self, event, *args):
@@ -136,7 +137,8 @@ class SdlMainWindow(MainWindow):
         ev.type = SDL.SDL_USEREVENT
         ev.user.code = self.known_events[event]
         argcopy = tuple(args)
-        argid = id(argcopy)
+        argid = self.event_data_counter
+        self.event_data_counter += 1
         data1 = ctypes.cast(argid, ctypes.c_void_p)
         self.event_data[argid] = argcopy
         ev.user.data1 = data1
