@@ -103,7 +103,8 @@ class SdlMainWindow(MainWindow):
                     retval = callback(*user_data)
                     if retval != "skip redraw":
                         break
-            
+                
+            UpdateManager.process_tasks()
     
     def on_draw(self):
         self.clear()
@@ -147,7 +148,7 @@ class SdlMainWindow(MainWindow):
     ########## Timer functions
     
     scheduled = {}
-    timer_resolution = .1
+    timer_resolution = .2
     
     def schedule_once(self, callback, seconds):
         scheduled_time = time.time() + seconds

@@ -2,55 +2,58 @@ import os, time, logging
 
 import pyinotify
 
-from thread import ThreadTaskManager, ProcessTaskManager, TestSleepTask
+from task import Task, ProcessTask, TaskManager, ThreadTaskDispatcher, ProcessTaskDispatcher
 
 log = logging.getLogger("dinoteeth.updates")
 
 
-class ThumbnailLoadTask(object):
-    def __init__(self, imgpath):
+class ThumbnailLoadTask(ProcessTask):
+    def __init__(self, thumbnail_loader, imgpath):
+        ProcessTask.__init__(self)
+        self.thumbnail_loader = thumbnail_loader
         self.imgpath = imgpath
     
     def __str__(self):
         return "%s: thumbnail=%s" % (self.__class__.__name__, self.imgpath)
     
-    def __call__(self, thumbnails=None, *args, **kwargs):
-        try:
-            thumbnails.get_thumbnail_file(self.imgpath, True)
-            return "Created thumbnail image for %s" % os.path.basename(self.imgpath)
-        except:
-            return "Failed creating thumbnail image for %s" % os.path.basename(self.imgpath)
-
-class TimerTask(object):
-    def __init__(self, delay, expire_time, repeat=True):
-        self.delay = delay
-        self.expire_time = expire_time
-        self.repeat = repeat
+    def _start(self, processor):
+        self.thumbnail_loader.get_thumbnail_file(self.imgpath, True)
     
-    def __call__(self, *args, **kwargs):
-        time.sleep(self.delay)
-        if time.time() >= self.expire_time:
-            self.repeat = False
-
+    def _success_message(self):
+        return "Created thumbnail image for %s" % os.path.basename(self.imgpath)
+    
+    def _failed_message(self):
+        return "Failed creating thumbnail image for %s" % os.path.basename(self.imgpath)
 
 class UpdateManager(object):
     poster_thread = None
     
-    def __init__(self, window, event_name, db, thumbnail_loader):
+    def __init__(self, event_callback, db, thumbnail_loader):
         cls = self.__class__
         if cls.poster_thread is not None:
             raise RuntimeError("UpdateManager already initialized")
-        cls.window = window
-        cls.event_name = event_name
+        cls.event_callback = event_callback
         cls.db = db
         cls.thumbnails = thumbnail_loader
-        cls.poster_thread = ProcessTaskManager(window, event_name, num_workers=1, thumbnails=cls.thumbnails)
-        cls.timer_thread = ThreadTaskManager(window, 'on_timer')
+        cls.task_manager = TaskManager(event_callback)
+        processor1 = ThreadTaskDispatcher()
+        cls.task_manager.start_processor(processor1)
+        processor2 = ThreadTaskDispatcher(processor1)
+        cls.task_manager.start_processor(processor2)
+        processor3 = ProcessTaskDispatcher()
+        cls.task_manager.start_processor(processor3)
+    
+    @classmethod
+    def process_tasks(cls):
+        print "tasks!"
+        tasks = cls.task_manager.get_finished()
+        for task in tasks:
+            print 'FINISHED:', str(task)
     
     @classmethod
     def create_thumbnail(cls, imgpath):
-        task = ThumbnailLoadTask(imgpath)
-        cls.poster_thread.add_task(task)
+        task = ThumbnailLoadTask(cls.thumbnails, imgpath)
+        cls.task_manager.add_task(task)
     
     @classmethod
     def test(cls, num=4, delay=.5):
@@ -60,17 +63,16 @@ class UpdateManager(object):
     
     @classmethod
     def start_ticks(cls, delay, expire_time):
-        task = TimerTask(delay, expire_time)
-        cls.timer_thread.add_task(task)
+        cls.task_manager.start_ticks(delay, expire_time)
     
     @classmethod
     def stop_ticks(cls):
-        task = TimerTask(0, 0, repeat=False)
-        cls.timer_thread.add_task(task)
+        cls.task_manager.stop_ticks()
     
     @classmethod
     def stop_all(cls):
-        ProcessTaskManager.stop_all()
+        cls.task_manager.shutdown()
+        cls.process_tasks()
 
 
 class FileWatcher(pyinotify.ProcessEvent):

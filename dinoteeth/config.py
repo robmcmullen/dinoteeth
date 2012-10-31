@@ -180,7 +180,8 @@ class Config(object):
                                       margins=margins,
                                       thumbnails=self.get_thumbnail_loader())
             
-            UpdateManager(self.main_window, 'on_status_update', self.db, self.get_thumbnail_loader())
+            event_callback = self.main_window.get_event_callback('on_status_update')
+            UpdateManager(event_callback, self.db, self.get_thumbnail_loader())
             if self.options.test_threads:
                 UpdateManager.test()
         return self.main_window

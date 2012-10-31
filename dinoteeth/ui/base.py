@@ -1,4 +1,4 @@
-import os, Queue
+import os, Queue, functools
 
 class MainWindow(object):
     def __init__(self, config, fullscreen=True, width=800, height=600, margins=None,
@@ -38,10 +38,10 @@ class MainWindow(object):
         """
         self.app_config.do_shutdown_tasks()
     
-    def on_status_update(self, text):
+    def on_status_update(self, text=None):
         if self.using_external_app:
             print "ignoring status; external app in use"
-        else:
+        elif text is not None:
             self.status_text.put(text)
     
     def set_using_external_app(self, state, fullscreen):
@@ -56,6 +56,10 @@ class MainWindow(object):
         # no need to call self.flip
     
     ########## Event functions
+    
+    def get_event_callback(self, event):
+        callback = functools.partial(self.post_event, event)
+        return callback
     
     def post_event(self, event, *args):
         """Thread-safe call to post an event to the event queue

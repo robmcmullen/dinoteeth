@@ -38,6 +38,18 @@ class Task(object):
     def _start(self, processor):
         raise RuntimeError("Abstract method")
     
+    def _success_message(self):
+        return None
+    
+    def _failed_message(self):
+        return None
+
+    def _get_status_message(self):
+        if self.success():
+            return self._success_message()
+        else:
+            return self._failed_message()
+    
     def post_process(self):
         return []
 
@@ -83,8 +95,8 @@ class TaskDispatcher(object):
         else:
             self._queue = Queue.Queue()
     
-    def set_finish_queue(self, finish_queue):
-        self._finished = finish_queue
+    def set_manager(self, manager):
+        self._manager = manager
     
     def start_processing(self):
         raise RuntimeError("Abstract method")
@@ -125,7 +137,7 @@ class ThreadTaskDispatcher(threading.Thread, TaskDispatcher):
             except Exception, e:
                 import traceback
                 task.exception = traceback.format_exc()
-            self._finished.put(task)
+            self._manager._task_done(task)
 
 def testsleep(dum):
     print "Starting ..."
@@ -180,7 +192,7 @@ class ProcessTaskDispatcher(ThreadTaskDispatcher):
             task = self._multiprocessing_finished.get(True)
             
             # Send results back to main thread
-            self._finished.put(task)
+            self._manager._task_done(task)
             
             if task is None:
                 log.debug("%s: Stopping process %s" % (self.name, self._worker))
@@ -189,12 +201,58 @@ class ProcessTaskDispatcher(ThreadTaskDispatcher):
                 break
 
 
+class Timer(threading.Thread):
+    def __init__(self, event_callback, resolution=.2):
+        threading.Thread.__init__(self)
+        self._event_callback = event_callback
+        self._event = threading.Event()
+        self._resolution = resolution
+        self._expire_time = time.time()
+        self._want_abort = False
+        self.start()
+
+    def run(self):
+        while self._event.wait():
+            while self._event.is_set():
+                if self._want_abort:
+                    return
+                time.sleep(self._resolution)
+                print "timer!!!!"
+                self._event_callback()
+                if time.time() > self._expire_time:
+                    self.stop_ticks()
+            if self._want_abort:
+                return
+            self._event_callback()
+
+    def start_ticks(self, resolution, expire_time):
+        self._resolution = resolution
+        self._expire_time = expire_time
+        self._event.set()
+
+    def stop_ticks(self):
+        if not self._want_abort:
+            self._event.clear()
+
+    def abort(self):
+        print "stopping timer"
+        self._want_abort = True
+        self._event.set()
+
 class TaskManager(object):
-    def __init__(self):
+    def __init__(self, event_callback):
         log = logging.getLogger(self.__class__.__name__)
+        self.event_callback = event_callback
         self._finished = Queue.Queue()
         self.processors = []
+        self.timer = Timer(event_callback)
     
+    def start_ticks(self, resolution, expire_time):
+        self.timer.start_ticks(resolution, expire_time)
+    
+    def stop_ticks(self):
+        self.timer.stop_ticks()
+
     def find_processor(self, task):
         for processor in self.processors:
             if processor.can_handle(task):
@@ -203,7 +261,7 @@ class TaskManager(object):
             
     def start_processor(self, processor):
         log.debug("Adding processor %s" % str(processor))
-        processor.set_finish_queue(self._finished)
+        processor.set_manager(self)
         processor.start_processing()
         self.processors.append(processor)
             
@@ -214,6 +272,20 @@ class TaskManager(object):
             processor.add_task(task)
         else:
             log.debug("No processor for task %s" % str(task))
+    
+    def _task_done(self, task):
+        """Called from threads to report completed tasks
+        
+        If event handler is defined, also calls that function to report to the
+        UI that a task is available.
+        """
+        self._finished.put(task)
+        if self.event_callback is not None:
+            if task is not None:
+                message = task._get_status_message()
+            else:
+                message = None
+            self.event_callback(message)
     
     def get_finished(self):
         done = set()
@@ -226,6 +298,9 @@ class TaskManager(object):
         root_tasks_done = set()
         for task in done:
             log.debug("task %s completed" % str(task))
+            if task is None:
+                # Skip any poison pill tasks
+                continue
             if task.parent is not None:
                 log.debug("  subtask of %s" % str(task.parent))
             sub_tasks = task.post_process()
@@ -250,12 +325,24 @@ class TaskManager(object):
     def shutdown(self):
         for processor in self.processors:
             processor.abort()
+        self.timer.abort()
         for processor in self.processors:
             processor.join()
+        self.timer.join()
 
 
 if __name__ == '__main__':
-    manager = TaskManager()
+    import functools
+    
+    def post_event(event_name, *args):
+        print "event: %s.  args=%s" % (event_name, str(args))
+        
+    def get_event_callback(event):
+        callback = functools.partial(post_event, event)
+        return callback
+    
+    callback = get_event_callback("on_status_change")
+    manager = TaskManager(callback)
     processor1 = ThreadTaskDispatcher()
     manager.start_processor(processor1)
     processor2 = ThreadTaskDispatcher(processor1)
