@@ -8,7 +8,7 @@ from third_party.sentence import first_sentence
 
 from persistent import Persistent
 
-from media import TitleKey
+from filescan import TitleKey
 
 log = logging.getLogger("dinoteeth.metadata")
 log.setLevel(logging.DEBUG)
@@ -329,22 +329,22 @@ class BaseMetadata(Persistent):
             return -1
         return len(self.seasons[season])
     
-    def update_with_media_scans(self, media_scans):
-        for scan in media_scans:
-            if scan.mtime > self.date_added:
-                self.date_added = scan.mtime
+    def update_with_media_files(self, media_files):
+        for item in media_files:
+            if item.mtime > self.date_added:
+                self.date_added = item.mtime
 
         pass
     
-    def get_audio_markup(self, media_scan):
+    def get_audio_markup(self, media_file):
         audio = ""
-        for id, selected, name in media_scan.get_audio_options():
+        for id, selected, name in media_file.scan.get_audio_options():
             if selected:
                 audio += "<b>%s</b>\n" % name
             else:
                 audio += "%s\n" % name
         subtitle = ""
-        for id, selected, name in media_scan.get_subtitle_options():
+        for id, selected, name in media_file.scan.get_subtitle_options(media_file.pathname):
             if selected:
                 subtitle += "<b>%s</b>\n" % name
             else:
@@ -359,8 +359,8 @@ class BaseMetadata(Persistent):
 %s""" % (_(audio), _(subtitle))
         return text
 
-    def get_last_played_markup(self, media_scan):
-        date, position = media_scan.get_last_played_stats()
+    def get_last_played_markup(self, media_file):
+        date, position = media_file.scan.get_last_played_stats()
         text = u""
         if date is not None:
             if position is not None:
@@ -373,8 +373,11 @@ class BaseMetadata(Persistent):
 
 <b>Last Played:</b> %s
                 \n""" % _(date)
-        text += """\n
-%s\n""" % _(media_scan.pathname)
+        return text
+
+    def get_file_info_markup(self, media_file):
+        text = """\n
+%s\n""" % _(media_file.pathname)
         return text
 
 
@@ -394,14 +397,15 @@ class FakeMetadata(BaseMetadata):
 class FakeMovieMetadata(FakeMetadata):
     media_category = "movies"
         
-    def get_markup(self, media_scan=None):
+    def get_markup(self, media_file=None):
         title = self.title
         if self.year:
             title += u" (%s)" % self.year
         text = u"<b>%s</b>\n" % _(title)
-        if media_scan:
-            text += self.get_audio_markup(media_scan)
-            text += self.get_last_played_markup(media_scan)
+        if media_file:
+            text += self.get_audio_markup(media_file.scan)
+            text += self.get_last_played_markup(media_file.scan)
+            text += self.get_file_info_markup(media_file)
         else:
             text += u"\nMetadata not found in IMDb or TMDB"
         return text
@@ -409,16 +413,17 @@ class FakeMovieMetadata(FakeMetadata):
 class FakeSeriesMetadata(FakeMetadata):
     media_category = "series"
         
-    def get_markup(self, media_scan=None):
+    def get_markup(self, media_file=None):
         title = self.title
         if self.year:
             title += u" (%s)" % self.year
         text = u"<b>%s</b>\n" % _(title)
         
-        if media_scan:
-            text += "\n<b>Episode:</b> %s" % (_(media_scan.episode))
-            text += self.get_audio_markup(media_scan)
-            text += self.get_last_played_markup(media_scan)
+        if media_file:
+            text += "\n<b>Episode:</b> %s" % (_(media_file.scan.episode))
+            text += self.get_audio_markup(media_file.scan)
+            text += self.get_last_played_markup(media_file.scan)
+            text += self.get_file_info_markup(media_file)
         else:
             text += u"\nMetadata not found in IMDb or TMDB"
         return text
@@ -429,7 +434,7 @@ class MovieMetadata(BaseMetadata):
     imdb_prefix = "tt"
     
     def __init__(self, movie_obj, tmdb_obj, db):
-        title_key = TitleKey("video", self.get_title(movie_obj, self.imdb_country, self.imdb_language), movie_obj['year'], movie_obj['kind'])
+        title_key = TitleKey("video", movie_obj['kind'], self.get_title(movie_obj, self.imdb_country, self.imdb_language), movie_obj['year'])
         BaseMetadata.__init__(self, movie_obj.imdb_id, title_key)
         self.title_index = movie_obj.get('imdbIndex', "")
         if tmdb_obj:
@@ -482,13 +487,13 @@ class MovieMetadata(BaseMetadata):
         self.film_number = 1
         self.date_added = -1
     
-    def update_with_media_scans(self, media_scans):
-        BaseMetadata.update_with_media_scans(self, media_scans)
-        scan = media_scans.get_main_feature()
-        if scan is None:
+    def update_with_media_files(self, media_files):
+        BaseMetadata.update_with_media_files(self, media_files)
+        item = media_files.get_main_feature()
+        if item is None:
             return
-        log.debug((u"update_with_media_scans: %s: %s" % (self.title, scan)).encode('utf8'))
-        self.film_number = scan.film_number
+        log.debug((u"update_with_media_files: %s: %s" % (self.title, item)).encode('utf8'))
+        self.film_number = item.scan.film_number
     
     def __unicode__(self):
         lines = []
@@ -511,7 +516,7 @@ class MovieMetadata(BaseMetadata):
         lines.append(u"  Cast: %s" % ", ".join([unicode(d) for d in self.cast]))
         return "\n".join(lines)
 
-    def get_markup(self, media_scan=None):
+    def get_markup(self, media_file=None):
         genres = u", ".join([unicode(i) for i in self.genres])
         directors = u", ".join([unicode(i) for i in self.directors])
         producers = u", ".join([unicode(i) for i in self.producers[0:3]])
@@ -531,9 +536,10 @@ class MovieMetadata(BaseMetadata):
 <b>IMDb ID:</b> %s
 """ % (_(title), _(self.plot), _(self.certificate),
                           _(self.release_date), _(genres), self.id)
-        if media_scan:
-            text += self.get_audio_markup(media_scan)
-            text += self.get_last_played_markup(media_scan)
+        if media_file:
+            text += self.get_audio_markup(media_file)
+            text += self.get_last_played_markup(media_file)
+            text += self.get_file_info_markup(media_file)
         else:
             text += u"""
 <b>Directed by:</b> %s
@@ -554,7 +560,7 @@ class SeriesMetadata(BaseMetadata):
     def __init__(self, movie_obj, tvdb_obj, db):
 #'title', 'akas', 'year', 'imdbIndex', 'certificates', 'director', 'writer', 'producer', 'cast', 'writer', 'creator', 'original music', 'plot outline', 'rating', 'votes', 'genres', 'number of seasons', 'number of episodes', 'series years', ]
 #['akas', u'art department', 'art direction', 'aspect ratio', 'assistant director', 'camera and electrical department', 'canonical title', 'cast', 'casting director', 'certificates', 'cinematographer', 'color info', u'costume department', 'costume designer', 'countries', 'cover url', 'director', u'distributors', 'editor', u'editorial department', 'full-size cover url', 'genres', 'kind', 'languages', 'long imdb canonical title', 'long imdb title', 'make up', 'miscellaneous companies', 'miscellaneous crew', u'music department', 'number of seasons', 'plot', 'plot outline', 'producer', u'production companies', 'production design', 'production manager', 'rating', 'runtimes', 'series years', 'smart canonical title', 'smart long imdb canonical title', 'sound crew', 'sound mix', 'title', 'votes', 'writer', 'year']
-        title_key = TitleKey("video", self.get_title(movie_obj, self.imdb_country, self.imdb_language), movie_obj['year'], movie_obj['kind'])
+        title_key = TitleKey("video", movie_obj['kind'], self.get_title(movie_obj, self.imdb_country, self.imdb_language), movie_obj['year'])
         BaseMetadata.__init__(self, movie_obj.imdb_id, title_key)
         self.title_index = movie_obj.get('imdbIndex', "")
         self.certificate = self.get_imdb_country_list(movie_obj, 'certificates', self.imdb_country, if_empty="unrated")
@@ -659,7 +665,7 @@ class SeriesMetadata(BaseMetadata):
                 s[epnum] = ep
             self.seasons[season] = s
 
-    def get_markup(self, media_scan=None):
+    def get_markup(self, media_file=None):
         genres = u", ".join([unicode(i) for i in self.genres])
         directors = u", ".join([unicode(i) for i in self.directors])
         producers = u", ".join([unicode(i) for i in self.executive_producers])
@@ -672,11 +678,11 @@ class SeriesMetadata(BaseMetadata):
         text = u"""<b>%s</b>
 """ % title
         
-        if media_scan:
+        if media_file:
             try:
-                s = self.seasons[media_scan.season]
+                s = self.seasons[media_file.scan.season]
                 #print s
-                e = s[media_scan.episode]
+                e = s[media_file.scan.episode]
                 #print e
                 text += """
 <b>Episode:</b> %s
@@ -687,11 +693,12 @@ class SeriesMetadata(BaseMetadata):
 %s
 
 <b>Guest Stars:</b> %s
-""" % (_(media_scan.episode), _(e['aired']), _(e['title']), _(e['plot']), _(", ".join(e['guest'])))
+""" % (_(media_file.scan.episode), _(e['aired']), _(e['title']), _(e['plot']), _(", ".join(e['guest'])))
             except KeyError:
                 pass
-            text += self.get_audio_markup(media_scan)
-            text += self.get_last_played_markup(media_scan)
+            text += self.get_audio_markup(media_file)
+            text += self.get_last_played_markup(media_file)
+            text += self.get_file_info_markup(media_file)
         else:
             text += """
 %s

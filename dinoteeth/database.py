@@ -1,12 +1,12 @@
 import os, time, collections, logging
 
 # Have to define this here to get around circular dependency in import of
-# MediaScan and MenuItem
+# FileScan and MenuItem
 def commit():
     DBFacade.commit()
 
 from utils import iter_dir
-from media import MediaScan
+from filescan import MediaFile
 from metadata import Company, Person, FilmSeries, MovieMetadata, SeriesMetadata, FakeMovieMetadata, FakeSeriesMetadata
 from model import MenuItem
 
@@ -90,7 +90,7 @@ class DBFacade(object):
         self.storage.close()
 
 
-class MediaScanList(list):
+class HomeTheaterFileList(list):
     def __init__(self, parent=None, filter_callable=None, *args, **kwargs):
         list.__init__(self, *args, **kwargs)
         self.parent = parent
@@ -100,17 +100,16 @@ class MediaScanList(list):
         
     def __str__(self):
         lines = []
-        for scan in self:
-            lines.append("scan -> %s" % scan.pathname)
-            lines.append("  title_key: %s" % str(scan.title_key))
-            lines.append("  guess: %s" % scan.guess)
-            lines.append("  metadata: %s" % scan.metadata)
+        for item in self:
+            lines.append("FileScan -> %s" % item.pathname)
+            lines.append("  title_key: %s" % str(item.scan.title_key))
+            lines.append("  metadata: %s" % item.metadata)
         return "\n".join(lines)
         
     def get_seasons(self):
         seasons = set()
         for m in self:
-            seasons.add(m.season)
+            seasons.add(m.scan.season)
         seasons = list(seasons)
         seasons.sort()
         return seasons
@@ -118,7 +117,7 @@ class MediaScanList(list):
     def get_episodes(self, season_number):
         episodes = []
         for m in self:
-            if m.season == season_number:
+            if m.scan.season == season_number:
                 episodes.append(m)
         episodes.sort()
         return episodes
@@ -126,7 +125,7 @@ class MediaScanList(list):
     def get_bonus(self, season_number=-1):
         bonus = []
         for m in self:
-            if (season_number < 0 or m.season == season_number) and m.is_bonus():
+            if (season_number < 0 or m.scan.season == season_number) and m.scan.is_bonus:
                 bonus.append(m)
         bonus.sort()
         return bonus
@@ -139,8 +138,8 @@ class MediaScanList(list):
         """
         runtimes = []
         for m in self:
-            if not m.is_bonus():
-                runtimes.append(m.length / 60.0)
+            if not m.scan.is_bonus:
+                runtimes.append(m.scan.length / 60.0)
         runtimes.sort()
         
         # Handle pathological case
@@ -148,20 +147,20 @@ class MediaScanList(list):
             return (0, 1)
         
         # Throw out largest and smallest, replace with median
-        print "get_total_runtime: %s: before=%s" % (m.title, runtimes)
+        print "get_total_runtime: %s: before=%s" % (m.scan.title, runtimes)
         num = len(runtimes)
         if num > 4:
             median = runtimes[num/2]
             runtimes[0] = median
             runtimes[-1] = median
-        print "get_total_runtime: %s: after median=%s" % (m.title, runtimes)
+        print "get_total_runtime: %s: after median=%s" % (m.scan.title, runtimes)
         return reduce(lambda a,b: a+b, runtimes), num
     
     def get_main_feature(self):
         non_bonus = []
         for m in self:
-            if not m.is_bonus():
-                non_bonus.append((m.length, m))
+            if not m.scan.is_bonus:
+                non_bonus.append((m.scan.length, m))
         non_bonus.sort()
         try:
             return non_bonus[0][1]
@@ -174,7 +173,7 @@ class MediaScanList(list):
         for item in self:
             s.add(item.metadata)
             if item.metadata not in scans_in_each:
-                scans_in_each[item.metadata] = MediaScanList()
+                scans_in_each[item.metadata] = HomeTheaterFileList()
             scans_in_each[item.metadata].append(item)
         return s, scans_in_each
     
@@ -186,12 +185,12 @@ class MediaScanList(list):
             if item.metadata not in s or value > s[item.metadata]:
                 s[item.metadata] = value
             if item.metadata not in scans_in_each:
-                scans_in_each[item.metadata] = MediaScanList()
+                scans_in_each[item.metadata] = HomeTheaterFileList()
             scans_in_each[item.metadata].append(item)
         return s, scans_in_each
     
     def filter(self, criteria):
-        filtered = MediaScanList(parent=self, filter_callable=criteria)
+        filtered = HomeTheaterFileList(parent=self, filter_callable=criteria)
         return filtered
     
     def __iter__(self):
@@ -245,12 +244,15 @@ class HomeTheaterDatabase(object):
     
     scans = property(get_scans)
     
-    def get_all(self):
+    def get_all(self, category):
         self.zodb.sync()
-        scans = MediaScanList()
-        scans.extend(self.scans.values())
-        log.debug("Last modified: %s, # scans=%d" % (self.zodb.get_last_modified(), len(scans)))
-        return scans
+        media_files = HomeTheaterFileList()
+        for media_file in self.scans.itervalues():
+            scan = media_file.scan
+            if scan is not None and (category == "all" or scan.category == category):
+                media_files.append(media_file)
+        log.debug("Last modified: %s, # scans=%d" % (self.zodb.get_last_modified(), len(media_files)))
+        return media_files
     
     def get(self, pathname):
         return self.scans[pathname]
@@ -261,34 +263,34 @@ class HomeTheaterDatabase(object):
         return None
     
     def add(self, pathname, flags=""):
-        media_scan = MediaScan(pathname, flags=flags)
-        self.scans[media_scan.pathname] = media_scan
-        return media_scan
+        media_file = MediaFile(pathname, flags=flags)
+        self.scans[media_file.pathname] = media_file
+        return media_file
     
-    def change_metadata(self, media_scans, imdb_id):
+    def change_metadata(self, media_files, imdb_id):
         metadata = self.fetch_imdb_id(imdb_id)
         
         # Find all title keys referenced by the scans
         title_keys = set()
-        for scan in media_scans:
-            title_keys.add(scan.title_key)
+        for item in media_files:
+            title_keys.add(item.scan.title_key)
         
         # Reset title key lookup to use new metadata
         for title_key in title_keys:
             self.title_key_to_metadata[title_key] = metadata
-            scans = MediaScanList(self.title_key_map[title_key])
-            for scan in scans:
-                log.debug("Changing metadata for %s" % scan.pathname)
-                scan.metadata = metadata
-                metadata.update_with_media_scans(scans)
+            scans = HomeTheaterFileList(self.title_key_map[title_key])
+            for item in scans:
+                log.debug("Changing metadata for %s" % item.pathname)
+                item.metadata = metadata
+                metadata.update_with_media_files(scans)
         self.zodb.commit()
     
     def is_current(self, pathname, found_keys=None):
         if pathname in self.scans:
             if found_keys is not None:
                 found_keys.add(pathname)
-            media_scan = self.scans[pathname]
-            return media_scan.is_current()
+            media_file = self.scans[pathname]
+            return media_file.is_current()
         return False
     
     def scan_files(self, path_iterable, flags, found_keys=None):
@@ -296,9 +298,9 @@ class HomeTheaterDatabase(object):
         """
         for pathname in path_iterable:
             if not self.is_current(pathname, found_keys=found_keys):
-                media_scan = self.add(pathname, flags)
-#                log.debug("added: %s" % self.get(media_scan.pathname))
-                log.debug("added: %s" % media_scan)
+                media_file = self.add(pathname, flags)
+#                log.debug("added: %s" % self.get(media_file.pathname))
+                log.debug("added: %s" % media_file)
         
     def scan_dirs(self, media_path_dict, valid_extensions=None):
         stored_keys = set(self.scans.keys())
@@ -322,11 +324,12 @@ class HomeTheaterDatabase(object):
     
     def create_title_key_map(self):
         t = self.zodb.get_mapping("title_key_map", clear=True)
-        for path, scan in self.scans.iteritems():
-            key = scan.title_key
-            if key not in t:
-                t[key] = list()
-            t[key].append(scan)
+        for path, item in self.scans.iteritems():
+            if item.scan and hasattr(item.scan, 'title_key'):
+                key = item.scan.title_key
+                if key not in t:
+                    t[key] = list()
+                t[key].append(item)
         transaction.savepoint()
     
     def get_title_key_map(self):
@@ -340,7 +343,7 @@ class HomeTheaterDatabase(object):
     
     def iter_title_key_map(self):
         for t, scans in self.title_key_map.iteritems():
-            scans = MediaScanList(scans)
+            scans = HomeTheaterFileList(scans)
             yield t, scans
     
     def update_metadata_map(self):
@@ -348,11 +351,11 @@ class HomeTheaterDatabase(object):
         for title_key, scans in self.iter_title_key_map():
             metadata = t.get(title_key, None)
             if metadata is None:
-                metadata = self.best_guess_from_media_scans(title_key, scans)
+                metadata = self.best_guess_from_media_files(title_key, scans)
                 self.title_key_to_metadata[title_key] = metadata
-            for scan in scans:
-                scan.metadata = metadata
-            metadata.update_with_media_scans(scans)
+            for item in scans:
+                item.metadata = metadata
+            metadata.update_with_media_files(scans)
         transaction.savepoint()
     
     def title_keys_with_metadata(self):
@@ -422,8 +425,9 @@ class HomeTheaterDatabase(object):
             return found[0]
         return None
     
-    def best_guess_from_media_scans(self, title_key, scans):
+    def best_guess_from_media_files(self, title_key, scans):
         kind = title_key.subcategory
+        log.debug("Guessing for: %s" % scans)
         guesses = self.guess(title_key.title, year=title_key.year, find=kind)
         if not guesses:
             log.error("IMDb returned no guesses for %s???" % title_key.title)

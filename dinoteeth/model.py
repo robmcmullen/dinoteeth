@@ -51,15 +51,15 @@ class MenuItem(object):
     
     def do_audio(self, **kwargs):
         print "audio!"
-        if self.metadata and self.metadata['media_scan']:
-            media_scan = self.metadata['media_scan']
-            media_scan.next_audio()
+        if self.metadata and self.metadata['media_file']:
+            media_file = self.metadata['media_file']
+            media_file.scan.next_audio()
     
     def do_subtitle(self, **kwargs):
         print "subtitle!"
-        if self.metadata and self.metadata['media_scan']:
-            media_scan = self.metadata['media_scan']
-            media_scan.next_subtitle()
+        if self.metadata and self.metadata['media_file']:
+            media_file = self.metadata['media_file']
+            media_file.scan.next_subtitle()
     
     def do_star(self, **kwargs):
         if self.metadata and 'mmdb' in self.metadata:

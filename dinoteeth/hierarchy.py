@@ -53,27 +53,29 @@ class MetadataLookup(MMDBPopulator):
 
 
 def only_paused(item):
-    if item.play_date is None:
+    if item.scan.play_date is None:
         return False
-    return item.is_paused()
+    return item.scan.is_paused()
 
 def play_date(item):
-    if item.play_date is None:
+    if item.scan.play_date is None:
         return 0
     # Need to return unix timestamp
-    return calendar.timegm(item.play_date.utctimetuple())
+    return calendar.timegm(item.scan.play_date.utctimetuple())
 
 
 class TopLevelLookup(MetadataLookup):
     def iter_create(self):
         yield "All", MetadataLookup(self, self.config)
-        yield "Favorites", MetadataLookup(self, self.config, filter=lambda scan: scan.metadata.starred)
+        yield "Favorites", MetadataLookup(self, self.config, filter=lambda f: f.metadata.starred)
         yield "Recently Added", DateLookup(self, self.config)
-        yield "Recently Played", DateLookup(self, self.config, filter=lambda item: item.play_date is not None, time_lookup=play_date)
+        yield "Recently Played", DateLookup(self, self.config, filter=lambda f: f.scan.play_date is not None, time_lookup=play_date)
         
-        credit_map = MovieMetadata.credit_map
-        for title, credit, limit, converter, reverse_sort in credit_map:
-            yield title, CreditLookup(self, self.config, credit, converter, reverse_sort)
+        for title, credit_entry in self.iter_credit():
+            yield title, credit_entry
+    
+    def iter_credit(self):
+        raise StopIteration
 
     def get_metadata(self):
         return {
@@ -82,11 +84,31 @@ class TopLevelLookup(MetadataLookup):
             }
 
 
+class TopLevelVideos(TopLevelLookup):
+    def get_media(self):
+        return self.config.db.get_all("video").filter(self.filter)
+    
+    media = property(get_media)
+
+    def iter_credit(self):
+        credit_map = MovieMetadata.credit_map
+        for title, credit, limit, converter, reverse_sort in credit_map:
+            yield title, CreditLookup(self, self.config, credit, converter, reverse_sort)
+
+
+class TopLevelGames(TopLevelLookup):
+    def get_media(self):
+        return self.config.db.get_all("game").filter(self.filter)
+    
+    media = property(get_media)
+
+
+
 class DateLookup(MetadataLookup):
     def __init__(self, parent, config, filter=None, time_lookup=None):
         MetadataLookup.__init__(self, parent, config, filter)
         if time_lookup is None:
-            time_lookup = lambda item: item.metadata.date_added
+            time_lookup = lambda f: f.metadata.date_added
         self.time_lookup = time_lookup
     
     def get_sorted_metadata(self):
@@ -136,7 +158,7 @@ class CreditLookup(MetadataLookup):
             # Have to rebind `credit` to a default argument rather than
             # simply
             #
-            # lambda item: item.metadata.match(self.credit, credit,
+            # lambda f: f.metadata.match(self.credit, credit,
             # self.converter)
             #
             # because the for loop rebinds the local variable during each
@@ -149,7 +171,7 @@ class CreditLookup(MetadataLookup):
 class PlayableEntries(MetadataLookup):
     def __init__(self, parent, config, imdb_id):
         self.imdb_id = imdb_id
-        MetadataLookup.__init__(self, parent, config, filter=lambda item: item.metadata.id == imdb_id)
+        MetadataLookup.__init__(self, parent, config, filter=lambda f: f.metadata.id == imdb_id)
     
     def __call__(self, parent):
         items = []
@@ -161,23 +183,23 @@ class PlayableEntries(MetadataLookup):
             item = MenuItem(title, action=playable.play, metadata=playable.get_metadata())
             yield item
     
-    def get_resume_entry(self, m, season=None):
-        return "  Resume (Paused at %s)" % m.paused_at_text(), MediaPlay(self.config, self.imdb_id, m, season=season, resume=True)
+    def get_resume_entry(self, media_file, season=None):
+        return "  Resume (Paused at %s)" % media_file.scan.paused_at_text(), MediaPlay(self.config, self.imdb_id, media_file, season=season, resume=True)
 
 
 class MovieTopLevel(PlayableEntries):
     def iter_create(self):
-        media_scans = self.get_media()
-        media_scans.sort()
-        bonus = media_scans.get_bonus()
+        media_files = self.get_media()
+        media_files.sort()
+        bonus = media_files.get_bonus()
         found_bonus = False
-        for m in media_scans:
-            if not found_bonus and m.is_bonus() and len(bonus) > 1:
+        for f in media_files:
+            if not found_bonus and f.scan.is_bonus and len(bonus) > 1:
                 yield "Play All Bonus Features", MediaPlayMultiple(self.config, self.imdb_id, bonus)
                 found_bonus = True
-            yield unicode(m.display_title), MediaPlay(self.config, self.imdb_id, m)
-            if m.is_paused():
-                yield self.get_resume_entry(m)
+            yield unicode(f.scan.display_title), MediaPlay(self.config, self.imdb_id, f)
+            if f.scan.is_paused():
+                yield self.get_resume_entry(f)
                 
     
     def get_metadata(self):
@@ -190,11 +212,11 @@ class MovieTopLevel(PlayableEntries):
 class SeriesTopLevel(MetadataLookup):
     def __init__(self, parent, config, imdb_id):
         self.imdb_id = imdb_id
-        MetadataLookup.__init__(self, parent, config, filter=lambda item: item.metadata.id == imdb_id)
+        MetadataLookup.__init__(self, parent, config, filter=lambda f: f.metadata.id == imdb_id)
         
     def iter_create(self):
-        media_scans = self.get_media()
-        seasons = media_scans.get_seasons()
+        media_files = self.get_media()
+        seasons = media_files.get_seasons()
         for s in seasons:
             yield u"Season %d" % s, SeriesEpisodes(self, self.config, self.imdb_id, s)
     
@@ -211,16 +233,16 @@ class SeriesEpisodes(PlayableEntries):
         self.season = season
         
     def iter_create(self):
-        media_scans = self.get_media()
-        episodes = media_scans.get_episodes(self.season)
-        bonus = [m for m in episodes if m.is_bonus()]
+        media_files = self.get_media()
+        episodes = media_files.get_episodes(self.season)
+        bonus = [f for f in episodes if f.scan.is_bonus]
         found_bonus = False
-        for m in episodes:
-            if not found_bonus and m.is_bonus() and len(bonus) > 1:
+        for f in episodes:
+            if not found_bonus and f.scan.is_bonus and len(bonus) > 1:
                 yield "Play All Bonus Features", MediaPlayMultiple(self.config, self.imdb_id, bonus)
                 found_bonus = True
-            yield unicode(m.display_title), MediaPlay(self.config, self.imdb_id, m, season=self.season)
-            if m.is_paused():
+            yield unicode(f.scan.display_title), MediaPlay(self.config, self.imdb_id, m, season=self.season)
+            if f.scan.is_paused():
                 yield self.get_resume_entry(m, self.season)
 
     def get_metadata(self):
@@ -232,10 +254,10 @@ class SeriesEpisodes(PlayableEntries):
 
 
 class MediaPlay(MMDBPopulator):
-    def __init__(self, config, imdb_id, media_scan, season=None, resume=False):
+    def __init__(self, config, imdb_id, media_file, season=None, resume=False):
         MMDBPopulator.__init__(self, config)
         self.imdb_id = imdb_id
-        self.media_scan = media_scan
+        self.media_file = media_file
         self.season = season
         self.resume = resume
         
@@ -243,39 +265,39 @@ class MediaPlay(MMDBPopulator):
         self.config.prepare_for_external_app()
         client = self.config.get_media_client()
         if self.resume:
-            resume_at = self.media_scan.get_last_position()
+            resume_at = self.media_file.scan.get_last_position()
         else:
             resume_at = 0.0
-        last_pos = client.play(self.media_scan, resume_at=resume_at)
-        self.media_scan.set_last_position(last_pos)
+        last_pos = client.play(self.media_file, resume_at=resume_at)
+        self.media_file.scan.set_last_position(last_pos)
         self.config.restore_after_external_app()
     
     def get_metadata(self):
         return {
             'mmdb': self.config.db.get_metadata(self.imdb_id),
-            'media_scan': self.media_scan,
+            'media_file': self.media_file,
             'season': self.season,
             }
 
 class MediaPlayMultiple(MMDBPopulator):
-    def __init__(self, config, imdb_id, media_scans, season=None, resume=False):
+    def __init__(self, config, imdb_id, media_files, season=None, resume=False):
         MMDBPopulator.__init__(self, config)
         self.imdb_id = imdb_id
-        self.media_scans = media_scans
+        self.media_files = media_files
         self.season = season
         self.resume = resume
         
     def play(self, config=None):
         self.config.prepare_for_external_app()
         client = self.config.get_media_client()
-        for m in self.media_scans:
+        for f in self.media_files:
             if self.resume:
-                resume_at = m.get_last_position()
+                resume_at = f.scan.get_last_position()
             else:
                 resume_at = 0.0
-            last_pos = client.play(m)
-            m.set_last_position(last_pos)
-            if not m.is_considered_complete(last_pos):
+            last_pos = client.play(f)
+            f.scan.set_last_position(last_pos)
+            if not f.scan.is_considered_complete(last_pos):
                 # Stop the playlist if the user quits in the middle of playback
                 break
         self.config.restore_after_external_app()
@@ -291,7 +313,7 @@ class ExpandedLookup(MetadataLookup):
     def __init__(self, parent, config, filter=None, time_lookup=None):
         MetadataLookup.__init__(self, parent, config, filter)
         if time_lookup is None:
-            time_lookup = lambda item: item.metadata.date_added
+            time_lookup = lambda f: f.metadata.date_added
         self.time_lookup = time_lookup
     
     def get_sorted_metadata(self):
@@ -307,36 +329,36 @@ class ExpandedLookup(MetadataLookup):
     def iter_create(self):
         metadata, scans_in_each = self.get_sorted_metadata_plus_scans()
         for m in metadata:
-            media_scans = scans_in_each[m]
+            media_files = scans_in_each[m]
             if m.media_category == "series":
                 if m.is_mini_series():
                     yield unicode(m.title), None
                     yield unicode(m.title), SeriesEpisodes(self, self.config, m.id)
                 else:
-                    seasons = media_scans.get_seasons()
+                    seasons = media_files.get_seasons()
                     for s in seasons:
                         yield u"%s - Season %d" % (unicode(m.title), s), None
-                        episodes = media_scans.get_episodes(s)
+                        episodes = media_files.get_episodes(s)
                         for ms in episodes:
                             yield "  Resume %s (Paused at %s)" % (unicode(ms.display_title), ms.paused_at_text()), MediaPlay(self.config, m.id, ms, resume=True)
             elif m.media_category == "movies":
                 yield unicode(m.title), None
-                media_scans.sort()
-                bonus = media_scans.get_bonus()
-                for ms in media_scans:
-                    yield "  Resume %s (Paused at %s)" % (unicode(ms.display_title), ms.paused_at_text()), MediaPlay(self.config, m.id, ms, resume=True)
+                media_files.sort()
+                bonus = media_files.get_bonus()
+                for f in media_files:
+                    yield "  Resume %s (Paused at %s)" % (unicode(f.scan.display_title), f.scan.paused_at_text()), MediaPlay(self.config, m.id, f, resume=True)
 
 
 class ChangeImdbRoot(MetadataLookup):
     def __init__(self, parent, config, imdb_id):
-        MetadataLookup.__init__(self, parent, config, filter=lambda item: item.metadata.id == imdb_id)
+        MetadataLookup.__init__(self, parent, config, filter=lambda f: f.metadata.id == imdb_id)
         self.imdb_id = imdb_id
         self.root_title = "Change Title Lookup"
         
     def iter_create(self):
-        media_scans = list(self.get_media())
-        if len(media_scans) > 0:
-            title_key = media_scans[0].title_key
+        media_files = list(self.get_media())
+        if len(media_files) > 0:
+            title_key = media_files[0].scan.title_key
             imdb_guesses = self.config.db.guess(title_key.title, year=title_key.year, find=title_key.subcategory)
             for result in imdb_guesses:
                 yield result['title'], ChangeImdb(self, self.config, result)
@@ -349,8 +371,8 @@ class ChangeImdb(MMDBPopulator):
         
     def play(self, config=None):
         status = "Selected %s" % self.imdb_search_result['smart long imdb canonical title']
-        media_scans = self.parent.get_media()
-        self.config.db.change_metadata(media_scans, self.imdb_search_result.imdb_id)
+        media_files = self.parent.get_media()
+        self.config.db.change_metadata(media_files, self.imdb_search_result.imdb_id)
         self.config.show_status(status)
     
     def get_metadata(self):
@@ -383,21 +405,20 @@ class RootPopulator(MMDBPopulator):
     def __init__(self, config):
         MenuPopulator.__init__(self, config)
         self.root_title = "Dinoteeth Media Launcher"
-        self.media_cache = None
-    
+        
     def get_media(self):
-        return self.config.db.get_all()
+        return self.config.db.get_all("all")
     
     media = property(get_media)
-        
+
     def iter_create(self):
-        yield "Movies & Series", TopLevelLookup(self, self.config)
-        yield "Just Movies", TopLevelLookup(self, self.config, lambda scan: scan.type == "movie")
-        yield "Just Series", TopLevelLookup(self, self.config, lambda scan: scan.type == "series")
-        yield "Favorites", MetadataLookup(self, self.config, filter=lambda scan: scan.metadata.starred)
+        yield "Movies & Series", TopLevelVideos(self, self.config)
+        yield "Just Movies", TopLevelVideos(self, self.config, lambda f: f.scan.subcat == "movie")
+        yield "Just Series", TopLevelVideos(self, self.config, lambda f: f.scan.subcat == "series")
+        yield "Favorites", MetadataLookup(self, self.config, filter=lambda f: f.metadata and f.metadata.starred)
         yield "Paused", ExpandedLookup(self, self.config, filter=only_paused)
         yield "Photos & Home Videos", TopLevelPhoto(self.config)
-        yield "Games", TopLevelLookup(self, self.config)
+        yield "Games", TopLevelGames(self, self.config)
 
     def get_metadata(self):
         return {

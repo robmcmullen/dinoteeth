@@ -16,7 +16,7 @@ from posters import PosterFetcher
 from thumbnail import ThumbnailFactory
 from hierarchy import RootMenu
 from photo import PhotoDB
-from media import enzyme_extensions, MediaScan
+from filescan import AVScanBase
 from metadata import BaseMetadata
 import i18n
 
@@ -158,7 +158,7 @@ class Config(object):
         BaseMetadata.imdb_country = self.options.imdb_country_code
         BaseMetadata.imdb_language = self.options.imdb_language
         BaseMetadata.iso_3166_1 = self.options.country_code
-        MediaScan.subtitle_file_extensions = self.get_subtitle_extensions()
+        AVScanBase.subtitle_file_extensions = self.get_subtitle_extensions()
     
     def get_main_window_class(self):
         if self.options.ui == "sdl":
@@ -233,17 +233,12 @@ class Config(object):
         return db
     
     def start_update_monitor(self):
-        valid = self.get_video_extensions()
-        watcher = FileWatcher(self.db, self.get_video_extensions(), self.get_poster_fetcher())
+        watcher = FileWatcher(self.db, self.get_poster_fetcher())
         for path, flags in self.ini["media_paths"].iteritems():
             if self.options.media_root and not os.path.isabs(path):
                 path = os.path.join(self.options.media_root, path)
             watcher.add_path(path, flags)
         watcher.watch()
-    
-    def get_video_extensions(self):
-        """Get list of known video extensions from enzyme"""
-        return enzyme_extensions()
     
     def get_subtitle_extensions(self):
         return [".srt", ".ssa", ".ass"]

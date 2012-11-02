@@ -234,7 +234,7 @@ class DetailRenderer(Renderer):
         image = self.window.get_image(imgpath)
         self.window.blit(image, self.x, self.h - image.height, 0)
         
-        self.window.draw_markup(m['mmdb'].get_markup(m.get('media_scan', None)),
+        self.window.draw_markup(m['mmdb'].get_markup(m.get('media_file', None)),
                                 self.window.detail_font,
                                 x=self.x + image.width + 10, y=self.h,
                                 anchor_x='left', anchor_y='top',

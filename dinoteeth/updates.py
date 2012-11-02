@@ -76,10 +76,9 @@ class UpdateManager(object):
 
 
 class FileWatcher(pyinotify.ProcessEvent):
-    def __init__(self, db, valid_extensions, poster_loader, pevent=None, **kwargs):
+    def __init__(self, db, poster_loader, pevent=None, **kwargs):
         pyinotify.ProcessEvent.__init__(self, pevent=pevent, **kwargs)
         self.db = db
-        self.extensions = valid_extensions
         self.poster_loader = poster_loader
         self.media_path_dict = {}
         self.wm = pyinotify.WatchManager() # Watch Manager
@@ -90,7 +89,7 @@ class FileWatcher(pyinotify.ProcessEvent):
         self.media_path_dict[path] = flags
     
     def watch(self):
-        self.db.update_metadata(self.media_path_dict, self.extensions)
+        self.db.update_metadata(self.media_path_dict)
         self.db.update_posters(self.poster_loader)
         mask = pyinotify.IN_DELETE | pyinotify.IN_CLOSE_WRITE | pyinotify.IN_MODIFY | pyinotify.IN_MOVED_TO | pyinotify.IN_MOVED_FROM | pyinotify.IN_CREATE
         notifier = pyinotify.Notifier(self.wm, self, timeout=1000)
@@ -103,7 +102,7 @@ class FileWatcher(pyinotify.ProcessEvent):
                 notifier.process_events()
             if len(self.added) + len(self.removed) > 0:
                 print "Found %d files added, %d removed" % (len(self.added), len(self.removed))
-                self.db.update_metadata(self.media_path_dict, self.extensions)
+                self.db.update_metadata(self.media_path_dict)
                 self.added = set()
                 self.removed = set()
             else:
