@@ -92,7 +92,7 @@ class FileWatcher(pyinotify.ProcessEvent):
         self.db.update_metadata(self.media_path_dict)
         self.db.update_posters(self.poster_loader)
         mask = pyinotify.IN_DELETE | pyinotify.IN_CLOSE_WRITE | pyinotify.IN_MODIFY | pyinotify.IN_MOVED_TO | pyinotify.IN_MOVED_FROM | pyinotify.IN_CREATE
-        notifier = pyinotify.Notifier(self.wm, self, timeout=1000)
+        notifier = pyinotify.Notifier(self.wm, self, timeout=5000)
         for path in self.media_path_dict.keys():
             self.wm.add_watch(path, mask, rec=True)
         while True:
