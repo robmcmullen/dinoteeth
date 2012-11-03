@@ -384,7 +384,7 @@ class BaseMetadata(Persistent):
 class FakeMetadata(BaseMetadata):
     imdb_prefix = "tt"
 
-    def __init__(self, id, title_key, scans, db):
+    def __init__(self, id, title_key, scans, metadata_lookup):
         BaseMetadata.__init__(self, id, title_key)
     
     def __unicode__(self):
@@ -433,7 +433,7 @@ class MovieMetadata(BaseMetadata):
     media_category = "movies"
     imdb_prefix = "tt"
     
-    def __init__(self, movie_obj, tmdb_obj, db):
+    def __init__(self, movie_obj, tmdb_obj, metadata_lookup):
         title_key = TitleKey("video", movie_obj['kind'], self.get_title(movie_obj, self.imdb_country, self.imdb_language), movie_obj['year'])
         BaseMetadata.__init__(self, movie_obj.imdb_id, title_key)
         self.title_index = movie_obj.get('imdbIndex', "")
@@ -458,29 +458,29 @@ class MovieMetadata(BaseMetadata):
         self.release_date = released
         
         directors = self.get_obj(movie_obj, 'director')
-        self.directors = db.prune_people(directors)
+        self.directors = metadata_lookup.prune_people(directors)
         
         producers = self.get_obj(movie_obj, 'producer')
-        self.executive_producers = db.prune_people(producers, 'executive producer')
-        self.producers = db.prune_people(producers)
+        self.executive_producers = metadata_lookup.prune_people(producers, 'executive producer')
+        self.producers = metadata_lookup.prune_people(producers)
         
         writers = self.get_obj(movie_obj, 'writer')
-        self.novel_writers = db.prune_people(writers, 'novel')
-        self.screenplay_writers = db.prune_people(writers, 'screenplay')
-        self.story_writers = db.prune_people(writers, 'story')
-        self.writers = db.prune_people(writers)
+        self.novel_writers = metadata_lookup.prune_people(writers, 'novel')
+        self.screenplay_writers = metadata_lookup.prune_people(writers, 'screenplay')
+        self.story_writers = metadata_lookup.prune_people(writers, 'story')
+        self.writers = metadata_lookup.prune_people(writers)
         
         music = self.get_obj(movie_obj, 'original music')
-        self.music = db.prune_people(music)
+        self.music = metadata_lookup.prune_people(music)
         
         cast = self.get_obj(movie_obj, 'cast')
-        self.cast = db.prune_people(cast)
+        self.cast = metadata_lookup.prune_people(cast)
         
         companies = self.get_obj(movie_obj, 'production companies')
-        self.companies = db.prune_companies(companies)
+        self.companies = metadata_lookup.prune_companies(companies)
         
         if tmdb_obj and tmdb_obj['belongs_to_collection']:
-            film_series = db.get_film_series(tmdb_obj['belongs_to_collection'])
+            film_series = metadata_lookup.get_film_series(tmdb_obj['belongs_to_collection'])
         else:
             film_series = None
         self.film_series = film_series
@@ -557,7 +557,7 @@ class SeriesMetadata(BaseMetadata):
     media_category = "series"
     imdb_prefix = "tt"
     
-    def __init__(self, movie_obj, tvdb_obj, db):
+    def __init__(self, movie_obj, tvdb_obj, metadata_lookup):
 #'title', 'akas', 'year', 'imdbIndex', 'certificates', 'director', 'writer', 'producer', 'cast', 'writer', 'creator', 'original music', 'plot outline', 'rating', 'votes', 'genres', 'number of seasons', 'number of episodes', 'series years', ]
 #['akas', u'art department', 'art direction', 'aspect ratio', 'assistant director', 'camera and electrical department', 'canonical title', 'cast', 'casting director', 'certificates', 'cinematographer', 'color info', u'costume department', 'costume designer', 'countries', 'cover url', 'director', u'distributors', 'editor', u'editorial department', 'full-size cover url', 'genres', 'kind', 'languages', 'long imdb canonical title', 'long imdb title', 'make up', 'miscellaneous companies', 'miscellaneous crew', u'music department', 'number of seasons', 'plot', 'plot outline', 'producer', u'production companies', 'production design', 'production manager', 'rating', 'runtimes', 'series years', 'smart canonical title', 'smart long imdb canonical title', 'sound crew', 'sound mix', 'title', 'votes', 'writer', 'year']
         title_key = TitleKey("video", movie_obj['kind'], self.get_title(movie_obj, self.imdb_country, self.imdb_language), movie_obj['year'])
@@ -573,28 +573,28 @@ class SeriesMetadata(BaseMetadata):
         self.runtimes = self.get_imdb_list(movie_obj, 'runtimes', coerce=int)
         
         directors = self.get_obj(movie_obj, 'director')
-        self.directors = db.prune_people(directors)
+        self.directors = metadata_lookup.prune_people(directors)
         
         producers = self.get_obj(movie_obj, 'producer')
-        self.executive_producers = db.prune_people(producers, 'executive producer')
+        self.executive_producers = metadata_lookup.prune_people(producers, 'executive producer')
         
         writers = self.get_obj(movie_obj, 'writer')
-        self.writers = db.prune_people(writers)
+        self.writers = metadata_lookup.prune_people(writers)
         
         music = self.get_obj(movie_obj, 'original music')
-        self.music = db.prune_people(music)
+        self.music = metadata_lookup.prune_people(music)
         
         cast = self.get_obj(movie_obj, 'cast')
-        self.cast = db.prune_people(cast)
+        self.cast = metadata_lookup.prune_people(cast)
         
         companies = self.get_obj(movie_obj, 'production companies')
-        self.companies = db.prune_companies(companies)
+        self.companies = metadata_lookup.prune_companies(companies)
         
         if tvdb_obj and tvdb_obj.data['network']:
-            network = db.get_company_by_name(tvdb_obj.data['network'])
+            network = metadata_lookup.get_company_by_name(tvdb_obj.data['network'])
         else:
             distributors = self.get_obj(movie_obj, 'distributors')
-            networks = db.prune_companies(distributors, 1)
+            networks = metadata_lookup.prune_companies(distributors, 1)
             if networks:
                 network = networks[0]
             else:

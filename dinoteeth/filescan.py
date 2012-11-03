@@ -427,6 +427,7 @@ class GameScanBase(Persistent):
         self.save_game = None
         self.position = 0
         self.init_common(file, info)
+        self.title_key = self.calc_title_key(file, info)
     
     def __str__(self):
         return "%s/%s" % (self.category, self.subcat)
@@ -446,6 +447,9 @@ class GameScanBase(Persistent):
     
     def init_common(self, file, info):
         self.title = self.calc_title(file, info)
+    
+    def calc_title_key(self, file, info):
+        return TitleKey(self.category, self.subcat, self.title, None)
     
     def calc_title(self, file, info):
         return os.path.basename(file.pathname)
