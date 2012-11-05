@@ -91,7 +91,7 @@ class FileConsumer(Consumer):
         self.size += len(data)
     
     def close(self):
-        self.log.debug('saved %d bytes to %s', self.size, self.path)
+        self.log.debug('saved %d bytes to %s', self.size, self.temp_path)
         self.fh.close()
         if os.path.exists(self.path):
             os.remove(self.path)
@@ -106,18 +106,17 @@ class DownloadTask(Task):
         self.overwrite = overwrite
         self.size = 0
     
-    def _start(self, processor):
+    def _start(self, dispatcher):
         if os.path.exists(self.path) and not self.overwrite:
             self.size = os.path.getsize(self.path)
-            processor._finished.put(self)
+            dispatcher._manager._task_done(self)
         else:
             consumer = FileConsumer(self.path)
-            client = HttpClient(self.url, consumer, self._finished_callback, processor)
+            client = HttpClient(self.url, consumer, self._finished_callback, dispatcher)
     
-    def _finished_callback(self, client, processor):
+    def _finished_callback(self, client, dispatcher):
         self.size = client.consumer.size
-        processor._finished.put(self)
-
+        dispatcher._manager._task_done(self)
 
 class BackgroundHttpDownloader(ThreadTaskDispatcher):
     def __init__(self):
@@ -168,7 +167,7 @@ if __name__ == '__main__':
 
     manager = TaskManager()
     downloader = BackgroundHttpDownloader()
-    manager.start_processor(downloader)
+    manager.start_dispatcher(downloader)
     manager.add_task(DownloadTask('http://www.python.org/', "python.html", overwrite=True))
     manager.add_task(DownloadTask('http://www.doughellmann.com/PyMOTW/contents.html',"pymotw.html"))
     manager.add_task(DownloadTask('http://docs.python.org/release/2.6.8/_static/py.png', "py.png"))
