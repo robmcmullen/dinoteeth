@@ -1,94 +1,19 @@
-import os, sys, re, bisect, time, glob
+import os, sys
 from datetime import datetime
 
 from persistent import Persistent
-from database import commit
+from ..database import commit
 
-import utils
+from . import settings
+from .. import utils
 
-from third_party.guessit import guess_file_info, Guess
-import kaa.metadata
+from ..third_party.guessit import guess_file_info, Guess
 
-class TitleKey(Persistent):
-    def __init__(self, category, subcategory, title, year):
-        self.category = category
-        self.subcategory = subcategory
-        self.title = title
-        self.year = year
-
-    def __str__(self):
-        return str(self.__dict__)
-
-    def __hash__(self): 
-        return hash((self.category, self.subcategory, self.title, self.year))
-
-    def __eq__(self, other): 
-        return self.__dict__ == other.__dict__
-
-class MediaFile(Persistent):
-    def __init__(self, pathname, flags=""):
-        self.pathname = pathname
-        self.flags = flags
-        self.mtime = -1
-        self.scan = None
-        self.metadata = None
-        self.reset()
-    
-    def __str__(self):
-        return "%s: %s" % (self.pathname, str(self.scan))
-    
-    def __cmp__(self, other):
-        return cmp(self.sort_key(), other.sort_key())
-    
-    def sort_key(self):
-        """Return a key that can be used to sort like-kinds of files,
-        e.g.  sorting a list of AVScanBase instances, or sorting GameBase
-        instances.  Not designed (yet) to sort among unmatched types.
-        
-        Different types of MediaFiles may be sortable on the scan or the
-        metadata; it depends on the type.  Scan is checked first, then
-        metadata.
-        """
-        if self.scan is not None and hasattr(self.scan, "sort_key"):
-            return self.scan.sort_key()
-        if self.metadata is not None and hasattr(self.metadata, "sort_key"):
-            return self.metadata.sort_key()
-        return self.pathname
-
-    def reset(self):
-        # Rather than saving a copy of the entire metadata scan, just save the
-        # parts that we are going to use later.  This reduces database size by
-        # almost an order of magnitude
-        info = kaa.metadata.parse(self.pathname)
-        
-        if os.path.exists(self.pathname):
-            self.mtime = os.stat(self.pathname).st_mtime
-        else:
-            self.mtime = -1
-        
-#        print info
-        if info is None:
-            return
-        if info.media == "MEDIA_GAME":
-            scan = GameScanBase.guess(self, info)
-        elif info.media == "MEDIA_AV":
-            scan = AVScanBase.guess(self, info)
-        else:
-            scan = None
-        self.scan = scan
-    
-    def is_current(self):
-        if os.path.exists(self.pathname):
-            print self.pathname, os.stat(self.pathname).st_mtime, self.mtime
-            if os.stat(self.pathname).st_mtime == self.mtime:
-                return True
-        return False
 
 class AVScanBase(Persistent):
     category = "video"
     subcat = None
     ignore_leading_articles = ["a", "an", "the"]
-    subtitle_file_extensions = []
     percent_considered_complete = 0.96
     
     @classmethod
@@ -160,7 +85,7 @@ class AVScanBase(Persistent):
         except KeyError:
             year = None
         #return TitleKey(self.category, self.subcat, self.title, year)
-        return TitleKey(self.category, self.subcat, self.title, None)
+        return utils.TitleKey(self.category, self.subcat, self.title, None)
     
     def init_common(self, file, info, guess):
         # Rather than saving a copy of the entire metadata scan, just save the
@@ -227,7 +152,7 @@ class AVScanBase(Persistent):
     def get_external_subtitles(self, pathname):
         paths = []
         base, _ = os.path.splitext(pathname)
-        for ext in self.subtitle_file_extensions:
+        for ext in settings.subtitle_file_extensions:
             subs = set(glob.glob("%s*%s" % (base, ext)))
             
             # If the plain "file.ext" exists, it will be first.  All others
@@ -404,77 +329,5 @@ class SeriesScan(AVScanBase):
         return title
 
 
-class GameScanBase(Persistent):
-    category = "game"
-    subcat = None
-    ignore_leading_articles = ["a", "an", "the"]
-    
-    @classmethod
-    def guess(cls, file, info):
-        if "basename" in file.flags:
-            name = os.path.basename(file.pathname)
-        else:
-            name = file.pathname
-        name = utils.decode_title_text(name)
-        if info.mime.startswith("games/atari-8bit"):
-            return Atari8bitScan(file, info)
-        elif info.mime.startswith("games/atari-st"):
-            return AtariSTScan(file, info)
-        return GameScanBase(file, info)
-    
-    def __init__(self, file, info):
-        self.play_date = None
-        self.save_game = None
-        self.position = 0
-        self.init_common(file, info)
-        self.title_key = self.calc_title_key(file, info)
-    
-    def __str__(self):
-        return "%s/%s" % (self.category, self.subcat)
-    
-    def sort_key(self):
-        """Return a 1-tuple:
-        
-        name
-        """
-        t = self.title.lower()
-        for article in self.ignore_leading_articles:
-            a = "%s " % article.lower()
-            if t.startswith(a):
-                t = t[len(a):] + ", %s" % t[0:len(article)]
-                break
-        return (t,)
-    
-    def init_common(self, file, info):
-        self.title = self.calc_title(file, info)
-    
-    def calc_title_key(self, file, info):
-        return TitleKey(self.category, self.subcat, self.title, None)
-    
-    def calc_title(self, file, info):
-        return os.path.basename(file.pathname)
-
-class Atari8bitScan(GameScanBase):
-    category = "game"
-    subcat = "atari-8bit"
-
-class AtariSTScan(GameScanBase):
-    category = "game"
-    subcat = "atari-st"
-
-
-if __name__ == "__main__":
-    import sys
-    from database import DBFacade
-    
-    db = DBFacade("Data.fs")
-    files = db.get_mapping("files")
-    
-    for filename in sys.argv[1:]:
-        if filename not in files:
-            file = MediaFile(filename)
-            files[filename] = file
-#            db.commit()
-        else:
-            file = files[filename]
-        print file
+from base import register
+register("MEDIA_AV", AVScanBase)

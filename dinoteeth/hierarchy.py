@@ -1,7 +1,7 @@
 import os, sys, glob, re, logging, time, calendar
 
 from model import MenuItem, MenuPopulator
-from metadata import MovieMetadata, SeriesMetadata
+from metadata import settings
 from photo import TopLevelPhoto
 from updates import UpdateManager
 
@@ -91,8 +91,7 @@ class TopLevelVideos(TopLevelLookup):
     media = property(get_media)
 
     def iter_credit(self):
-        credit_map = MovieMetadata.credit_map
-        for title, credit, limit, converter, reverse_sort in credit_map:
+        for title, credit, limit, converter, reverse_sort in settings.credit_map:
             yield title, CreditLookup(self, self.config, credit, converter, reverse_sort)
 
 

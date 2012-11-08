@@ -2,7 +2,7 @@ import os, logging
 
 import imdb
 import tmdb3
-from third_party.tvdb_api import tvdb_api, tvdb_exceptions
+from ..third_party.tvdb_api import tvdb_api, tvdb_exceptions
 
 log = logging.getLogger("dinoteeth.proxies")
 

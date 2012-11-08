@@ -3,7 +3,7 @@ import os, time, collections, logging
 log = logging.getLogger("dinoteeth.metadata")
 log.setLevel(logging.DEBUG)
 
-from metadata import Company, Person, FilmSeries, MovieMetadata, SeriesMetadata, FakeMovieMetadata, FakeSeriesMetadata
+from home_theater import Company, Person, FilmSeries, MovieMetadata, SeriesMetadata, FakeMovieMetadata, FakeSeriesMetadata
 
 class MetadataLookup(object):
     imdb_allowed_kinds = ['movie', 'video movie', 'tv movie', 'series', 'tv series', 'tv mini series']

@@ -1,7 +1,25 @@
 import os, sys, glob, logging, re
 from datetime import datetime, timedelta
 
+from persistent import Persistent
+
 log = logging.getLogger("dinoteeth.utils")
+
+class TitleKey(Persistent):
+    def __init__(self, category, subcategory, title, year):
+        self.category = category
+        self.subcategory = subcategory
+        self.title = title
+        self.year = year
+
+    def __str__(self):
+        return str(self.__dict__)
+
+    def __hash__(self): 
+        return hash((self.category, self.subcategory, self.title, self.year))
+
+    def __eq__(self, other): 
+        return self.__dict__ == other.__dict__
 
 def decode_title_text(text):
     return text.replace('_n_',' & ').replace('-s_','\'s ').replace('-t_','\'t ').replace('-m_','\'m ').replace('.._',': ').replace('.,_','; ').replace('_',' ')

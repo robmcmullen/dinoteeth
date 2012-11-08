@@ -7,7 +7,7 @@ def commit():
 
 from utils import iter_dir
 from filescan import MediaFile
-from metadata_lookup import MetadataLookup
+from metadata import MetadataLookup
 from model import MenuItem
 
 log = logging.getLogger("dinoteeth.database")

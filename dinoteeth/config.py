@@ -6,7 +6,7 @@ except:
 from third_party.configobj import ConfigObj
 
 from view import *
-from proxies import Proxies
+from metadata import Proxies
 from database import DBFacade, HomeTheaterDatabase
 from updates import UpdateManager, FileWatcher
 from mplayer import MPlayerClient
@@ -16,8 +16,8 @@ from posters import PosterFetcher
 from thumbnail import ThumbnailFactory
 from hierarchy import RootMenu
 from photo import PhotoDB
-from filescan import AVScanBase
-from metadata import BaseMetadata
+from filescan import settings as filescan_settings
+from metadata import settings as metadata_settings
 import i18n
 
 logging.basicConfig(level=logging.WARNING)
@@ -155,10 +155,10 @@ class Config(object):
             log.error("Can't save configuration file %s: %s" % (name, e))
     
     def set_class_defaults(self):
-        BaseMetadata.imdb_country = self.options.imdb_country_code
-        BaseMetadata.imdb_language = self.options.imdb_language
-        BaseMetadata.iso_3166_1 = self.options.country_code
-        AVScanBase.subtitle_file_extensions = self.get_subtitle_extensions()
+        metadata_settings.imdb_country = self.options.imdb_country_code
+        metadata_settings.imdb_language = self.options.imdb_language
+        metadata_settings.iso_3166_1 = self.options.country_code
+        filescan_settings.subtitle_file_extensions = self.get_subtitle_extensions()
     
     def get_main_window_class(self):
         if self.options.ui == "sdl":

@@ -4,11 +4,12 @@ Get TMDB/IMDB metadata for movies in the database
 """
 
 import os, re, time, collections, logging
-from third_party.sentence import first_sentence
+from ..third_party.sentence import first_sentence
 
 from persistent import Persistent
 
-from filescan import TitleKey
+from . import settings
+from .. import utils
 
 log = logging.getLogger("dinoteeth.metadata")
 log.setLevel(logging.DEBUG)
@@ -95,25 +96,6 @@ class BaseMetadata(Persistent):
     iso_3166_1 = None
     ignore_leading_articles = ["a", "an", "the"]
     media_category = None
-    credit_map = [
-        # Title, attribute, limit_category (one of: 'series', 'movies' or None), converter (to change the data; e.g. change a raw timestamp into a month/year for bucketing), reverse sort flag (True or False/None)
-        ("By Date Added", "date_added", None, lambda d: time.strftime("%B %Y", time.localtime(d)), True),
-        ("By Genre", "genres", None, None, False),
-        ("By Film Series", "film_series", "movies", None, False),
-        ("By Director", "directors", None, None, False),
-        ("By Actor", "cast", None, None, False),
-        ("By Executive Producer", "executive_producers", "series", None, False),
-        ("By Producer", "producers", "movies", None, False),
-        ("By Production Company", "companies", None, None, False),
-        ("By Composer", "music", None, None, False),
-        ("By Screenwriter", "screenplay_writers", "movies", None, False),
-        ("Based on a Novel By", "novel_writers", "movies", None, False),
-        ("By Year", "year", None, None, False),
-        ("By Years Broadcast", "series_years", "series", None, False),
-        ("By Broadcast Network", "network", "series", None, False),
-        ("By Number of Seasons", "num_seasons", "series", None, False),
-        ("By Rating", "certificate", None, None, False),
-        ]
 
     def __init__(self, id, title_key):
         self.id = id
@@ -434,15 +416,15 @@ class MovieMetadata(BaseMetadata):
     imdb_prefix = "tt"
     
     def __init__(self, movie_obj, tmdb_obj, metadata_lookup):
-        title_key = TitleKey("video", movie_obj['kind'], self.get_title(movie_obj, self.imdb_country, self.imdb_language), movie_obj['year'])
+        title_key = utils.TitleKey("video", movie_obj['kind'], self.get_title(movie_obj, settings.imdb_country, settings.imdb_language), movie_obj['year'])
         BaseMetadata.__init__(self, movie_obj.imdb_id, title_key)
         self.title_index = movie_obj.get('imdbIndex', "")
         if tmdb_obj:
-            cert = self.get_tmdb_country_list(tmdb_obj, 'releases', 'certification', self.iso_3166_1, if_empty="")
+            cert = self.get_tmdb_country_list(tmdb_obj, 'releases', 'certification', settings.iso_3166_1, if_empty="")
         else:
             cert = None
         if not cert:
-            cert = self.get_imdb_country_list(movie_obj, 'certificates', self.imdb_country, skip="TV rating", if_empty="unrated")
+            cert = self.get_imdb_country_list(movie_obj, 'certificates', settings.imdb_country, skip="TV rating", if_empty="unrated")
         self.certificate = cert
         self.plot = movie_obj.get('plot outline', "")
         self.genres = movie_obj.get('genres', list())
@@ -450,7 +432,7 @@ class MovieMetadata(BaseMetadata):
         self.votes = movie_obj.get('votes', "")
         self.runtimes = self.get_imdb_list(movie_obj, 'runtimes', coerce=int)
         if tmdb_obj:
-            released = self.get_tmdb_country_list(tmdb_obj, 'releases', 'release_date', self.iso_3166_1, if_empty="")
+            released = self.get_tmdb_country_list(tmdb_obj, 'releases', 'release_date', settings.iso_3166_1, if_empty="")
         else:
             released = None
         if not released:
@@ -560,10 +542,10 @@ class SeriesMetadata(BaseMetadata):
     def __init__(self, movie_obj, tvdb_obj, metadata_lookup):
 #'title', 'akas', 'year', 'imdbIndex', 'certificates', 'director', 'writer', 'producer', 'cast', 'writer', 'creator', 'original music', 'plot outline', 'rating', 'votes', 'genres', 'number of seasons', 'number of episodes', 'series years', ]
 #['akas', u'art department', 'art direction', 'aspect ratio', 'assistant director', 'camera and electrical department', 'canonical title', 'cast', 'casting director', 'certificates', 'cinematographer', 'color info', u'costume department', 'costume designer', 'countries', 'cover url', 'director', u'distributors', 'editor', u'editorial department', 'full-size cover url', 'genres', 'kind', 'languages', 'long imdb canonical title', 'long imdb title', 'make up', 'miscellaneous companies', 'miscellaneous crew', u'music department', 'number of seasons', 'plot', 'plot outline', 'producer', u'production companies', 'production design', 'production manager', 'rating', 'runtimes', 'series years', 'smart canonical title', 'smart long imdb canonical title', 'sound crew', 'sound mix', 'title', 'votes', 'writer', 'year']
-        title_key = TitleKey("video", movie_obj['kind'], self.get_title(movie_obj, self.imdb_country, self.imdb_language), movie_obj['year'])
+        title_key = utils.TitleKey("video", movie_obj['kind'], self.get_title(movie_obj, settings.imdb_country, settings.imdb_language), movie_obj['year'])
         BaseMetadata.__init__(self, movie_obj.imdb_id, title_key)
         self.title_index = movie_obj.get('imdbIndex', "")
-        self.certificate = self.get_imdb_country_list(movie_obj, 'certificates', self.imdb_country, if_empty="unrated")
+        self.certificate = self.get_imdb_country_list(movie_obj, 'certificates', settings.imdb_country, if_empty="unrated")
         self.plot = movie_obj.get('plot outline', "")
         self.genres = movie_obj.get('genres', list())
         self.rating = movie_obj.get('rating', "")
