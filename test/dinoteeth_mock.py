@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import os, sys
-from dinoteeth.metadata import BaseMetadata, MovieMetadata
+from dinoteeth.metadata.home_theater import BaseMetadata, MovieMetadata
+from dinoteeth.utils import TitleKey
 
 class IMDbObject(dict):
     count = 1
@@ -21,7 +22,8 @@ class IMDbObject(dict):
 
 class MockMetadata(BaseMetadata):
     def __init__(self):
-        BaseMetadata.__init__(self, "-123456", ("Title", "Year", "Kind"))
+        title_key = TitleKey("video", "movie", "Title", "Year")
+        BaseMetadata.__init__(self, "-123456", title_key)
 
 class MockMovie(object):
     def __init__(self, imdb_id):
@@ -37,8 +39,8 @@ class MockMMDB(object):
         self.imdb_list.discard(imdb_id)
         
     def best_guess_from_media_scans(self, title_key, scans):
-        if title_key[0].startswith("The "):
-            title_key = (title_key[0][4:], title_key[1], title_key[2])
+        if title_key.title.startswith("The "):
+            title_key.title = title_key.title[4:]
         print title_key
         if title_key not in self.title_keys:
             self.title_keys[title_key] = "tt%07d" % self.imdb_index
