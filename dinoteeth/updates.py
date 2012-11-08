@@ -16,7 +16,7 @@ class ThumbnailLoadTask(ProcessTask):
     def __str__(self):
         return "%s: thumbnail=%s" % (self.__class__.__name__, self.imgpath)
     
-    def _start(self, processor):
+    def _start(self, dispatcher):
         self.thumbnail_loader.get_thumbnail_file(self.imgpath, True)
     
     def _success_message(self):
@@ -36,12 +36,12 @@ class UpdateManager(object):
         cls.db = db
         cls.thumbnails = thumbnail_loader
         cls.task_manager = TaskManager(event_callback)
-        processor1 = ThreadTaskDispatcher()
-        cls.task_manager.start_processor(processor1)
-        processor2 = ThreadTaskDispatcher(processor1)
-        cls.task_manager.start_processor(processor2)
-        processor3 = ProcessTaskDispatcher()
-        cls.task_manager.start_processor(processor3)
+        dispatcher1 = ThreadTaskDispatcher()
+        cls.task_manager.start_dispatcher(dispatcher1)
+        dispatcher2 = ThreadTaskDispatcher(dispatcher1)
+        cls.task_manager.start_dispatcher(dispatcher2)
+        dispatcher3 = ProcessTaskDispatcher()
+        cls.task_manager.start_dispatcher(dispatcher3)
     
     @classmethod
     def process_tasks(cls):
