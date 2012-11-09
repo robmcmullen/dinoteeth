@@ -11,6 +11,8 @@ from persistent import Persistent
 from . import settings
 from .. import utils
 
+from base import MetadataLoader, register
+
 log = logging.getLogger("dinoteeth.metadata")
 log.setLevel(logging.DEBUG)
 
@@ -703,3 +705,48 @@ class SeriesMetadata(BaseMetadata):
 <b>Rating:</b> %s/10""" % (_(producers), _(directors), _(writers), _(music), _(actors), _(self.rating))
             
         return text
+
+
+class HomeTheaterMetadataLoader(MetadataLoader):
+    imdb_allowed_kinds = ['movie', 'video movie', 'tv movie', 'series', 'tv series', 'tv mini series']
+
+    def search(self, title_key):
+        title = title_key.title
+        subcat = title_key.subcategory
+        if title_key.year:
+            title = "%s (%s)" % (title, title_key.year)
+        found = []
+        try:
+            results = self.proxies.imdb_api.search_movie(title)
+        except:
+            log.info("Failed looking up %s" % title)
+            #return None
+            raise
+        for result in results:
+            imdb_id = result.imdb_id
+            if imdb_id is None:
+                continue
+            kind = result['kind']
+            if kind not in self.imdb_allowed_kinds:
+                log.warning("Unrecognized IMDb kind %s for %s; skipping" % (kind, imdb_id))
+                continue
+            elif (subcat == "movie" or subcat == "series") and kind == "tv movie":
+                # TV Movies are treated as possible matches for both movies
+                # and series
+                pass
+            elif subcat is not None and subcat not in kind:
+                # Other than TV Movies, skip results different from the
+                # requested kind
+                #
+                # IMDB seems to have at least these kinds:
+                #
+                # movie, tv movie, tv series, video game, video movie
+                # (something like a youtube video?)
+                log.debug("Skipping %s (%s) because %s != %s" % (unicode(result['title']).encode("utf8"), result.get('year','<????>'), unicode(result['kind']).encode("utf8"), subcat))
+                continue
+            
+            log.debug("Using %s (%s) because %s could match %s" % (unicode(result['title']).encode("utf8"), result['year'], unicode(result['kind']).encode("utf8"), subcat))
+            found.append(result)
+        return found
+
+register("video", HomeTheaterMetadataLoader)

@@ -7,10 +7,11 @@ from third_party.configobj import ConfigObj
 
 from view import *
 from metadata import Proxies
-from database import DBFacade, HomeTheaterDatabase
+from database import HomeTheaterDatabase
+from model import MenuItem
 from updates import UpdateManager, FileWatcher
 from mplayer import MPlayerClient
-from utils import decode_title_text
+from utils import DBFacade, decode_title_text
 from image import ArtworkLoader, ScaledArtworkLoader
 from posters import PosterFetcher
 from thumbnail import ThumbnailFactory
@@ -208,6 +209,7 @@ class Config(object):
     def get_object_database(self):
         if not hasattr(self, 'zodb'):
             self.zodb = DBFacade(self.get_metadata_pathname(self.options.database), self.options.db_host)
+            self.zodb.add_commit_callback(MenuItem.needs_refresh)
         return self.zodb
     
     def get_photo_database(self):

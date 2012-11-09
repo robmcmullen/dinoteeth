@@ -5,6 +5,89 @@ from persistent import Persistent
 
 log = logging.getLogger("dinoteeth.utils")
 
+from ZEO import ClientStorage
+from ZODB import DB, FileStorage
+import transaction
+from persistent.mapping import PersistentMapping
+
+
+class DBFacade(object):
+    def __init__(self, path, host=""):
+        if host:
+            addr = host.split(":")
+            addr = addr[0], int(addr[1])
+            self.storage = ClientStorage.ClientStorage(addr, wait=False)
+        else:
+            self.storage = FileStorage.FileStorage(path)
+        try:
+            self.db = DB(self.storage)
+            self.connection = self.db.open()
+            self.dbroot = self.connection.root()
+        except Exception, e:
+            raise RuntimeError("Error connecting to dinoteeth database at %s" % str(addr))
+    
+    def get_unique_id(self):
+        id = self.get_value("unique_counter", 0)
+        id -= 1
+        self.set_value("unique_counter", id)
+        return id
+    
+    def add(self, name, obj):
+        self.dbroot[name] = obj
+    
+    def get_mapping(self, name, clear=False):
+        if name not in self.dbroot:
+            self.dbroot[name] = PersistentMapping()
+        if clear:
+            self.dbroot[name].clear()
+        return self.dbroot[name]
+    
+    def get_value(self, name, initial):
+        if name not in self.dbroot:
+            self.dbroot[name] = initial
+        return self.dbroot[name]
+    
+    def set_value(self, name, value):
+        self.dbroot[name] = value
+    
+    def add(self, name, obj):
+        self.dbroot[name] = obj
+    
+    callbacks = []
+    @classmethod
+    def add_commit_callback(cls, callback):
+        cls.callbacks.append(callback)
+        
+    @classmethod
+    def commit(cls):
+        transaction.commit()
+        for callback in cls.callbacks:
+            callback()
+    
+    def rollback(self):
+        transaction.rollback()
+    
+    def abort(self):
+        transaction.abort()
+    
+    def get_last_modified(self):
+        return self.get_value("last_modified", -1)
+    
+    def set_last_modified(self):
+        self.set_value("last_modified", time.time())
+    
+    def sync(self):
+        self.connection.sync()
+    
+    def pack(self):
+        self.db.pack()
+
+    def close(self):
+        self.connection.close()
+        self.db.close()
+        self.storage.close()
+
+
 class TitleKey(Persistent):
     def __init__(self, category, subcategory, title, year):
         self.category = category

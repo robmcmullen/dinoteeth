@@ -1,93 +1,11 @@
 import os, time, collections, logging
 
-# Have to define this here to get around circular dependency in import of
-# FileScan and MenuItem
-def commit():
-    DBFacade.commit()
-
 from utils import iter_dir
 from filescan import MediaFile
-from metadata import MetadataLookup
-from model import MenuItem
+from metadata import get_loader
 
 log = logging.getLogger("dinoteeth.database")
 log.setLevel(logging.DEBUG)
-
-from ZEO import ClientStorage
-from ZODB import DB, FileStorage
-import transaction
-from persistent.mapping import PersistentMapping
-
-
-class DBFacade(object):
-    def __init__(self, path, host=""):
-        if host:
-            addr = host.split(":")
-            addr = addr[0], int(addr[1])
-            self.storage = ClientStorage.ClientStorage(addr, wait=False)
-        else:
-            self.storage = FileStorage.FileStorage(path)
-        try:
-            self.db = DB(self.storage)
-            self.connection = self.db.open()
-            self.dbroot = self.connection.root()
-        except Exception, e:
-            raise RuntimeError("Error connecting to dinoteeth database at %s" % str(addr))
-    
-    def get_unique_id(self):
-        id = self.get_value("unique_counter", 0)
-        id -= 1
-        self.set_value("unique_counter", id)
-        return id
-    
-    def add(self, name, obj):
-        self.dbroot[name] = obj
-    
-    def get_mapping(self, name, clear=False):
-        if name not in self.dbroot:
-            self.dbroot[name] = PersistentMapping()
-        if clear:
-            self.dbroot[name].clear()
-        return self.dbroot[name]
-    
-    def get_value(self, name, initial):
-        if name not in self.dbroot:
-            self.dbroot[name] = initial
-        return self.dbroot[name]
-    
-    def set_value(self, name, value):
-        self.dbroot[name] = value
-    
-    def add(self, name, obj):
-        self.dbroot[name] = obj
-    
-    @classmethod
-    def commit(self):
-        transaction.commit()
-        MenuItem.needs_refresh()
-    
-    def rollback(self):
-        transaction.rollback()
-    
-    def abort(self):
-        transaction.abort()
-    
-    def get_last_modified(self):
-        return self.get_value("last_modified", -1)
-    
-    def set_last_modified(self):
-        self.set_value("last_modified", time.time())
-    
-    def sync(self):
-        self.connection.sync()
-    
-    def pack(self):
-        self.db.pack()
-
-    def close(self):
-        self.connection.close()
-        self.db.close()
-        self.storage.close()
 
 
 class HomeTheaterFileList(list):
@@ -220,22 +138,16 @@ class HomeTheaterFileList(list):
 
 
 class HomeTheaterDatabase(object):
-    imdb_allowed_kinds = ['movie', 'video movie', 'tv movie', 'series', 'tv series', 'tv mini series']
-
     def __init__(self, zodb, proxies):
         self.zodb = zodb
+        self.proxies = proxies
+        self.scans = zodb.get_mapping("scans")
+        self.metadata = zodb.get_mapping("metadata")
         self.title_key_to_metadata = zodb.get_mapping("title_key_to_metadata")
         self.zodb_title_key_map = zodb.get_mapping("title_key_map")
-        self.metadata_lookup = MetadataLookup(zodb, proxies)
     
     def pack(self):
         self.zodb.pack()
-    
-    def get_scans(self):
-        s = self.zodb.get_mapping("scans")
-        return s
-    
-    scans = property(get_scans)
     
     def get_all(self, category):
         self.zodb.sync()
@@ -251,9 +163,7 @@ class HomeTheaterDatabase(object):
         return self.scans[pathname]
     
     def get_metadata(self, imdb_id):
-        if self.metadata_lookup.contains_imdb_id(imdb_id):
-            return self.metadata_lookup.get(imdb_id)
-        return None
+        return self.metadata.get(imdb_id, None)
     
     def add(self, pathname, flags=""):
         media_file = MediaFile(pathname, flags=flags)
@@ -261,7 +171,9 @@ class HomeTheaterDatabase(object):
         return media_file
     
     def change_metadata(self, media_files, imdb_id):
-        metadata = self.metadata_lookup.fetch_imdb_id(imdb_id)
+        metadata = self.get_metadata(imdb_id)
+        if metadata is None:
+            log.error("Metadata for %s must be stored in database before changing media files' metadata" % imdb_id)
         
         # Find all title keys referenced by the scans
         title_keys = set()

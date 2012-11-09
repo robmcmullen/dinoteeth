@@ -2,7 +2,6 @@ import os, sys
 from datetime import datetime
 
 from persistent import Persistent
-from ..database import commit
 
 from . import settings
 from .. import utils
@@ -208,7 +207,7 @@ class AVScanBase(Persistent):
             last_pos = -1.0
         self.play_date = datetime.utcnow()
         self.position = last_pos
-        commit()
+        utils.DBFacade.commit()
 
     def get_last_position(self):
         return self.position
