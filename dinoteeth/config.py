@@ -17,8 +17,7 @@ from posters import PosterFetcher
 from thumbnail import ThumbnailFactory
 from hierarchy import RootMenu
 from photo import PhotoDB
-from filescan import settings as filescan_settings
-from metadata import settings as metadata_settings
+import settings
 import i18n
 
 logging.basicConfig(level=logging.WARNING)
@@ -58,9 +57,6 @@ class Config(object):
                           help="Default metadata/database root directory for those databases and the image directories that don't specify a full path")
         parser.add_argument("--db", action="store", dest="database", default="dinoteeth.zodb")
         parser.add_argument("--db-host", action="store", dest="db_host", default="")
-        parser.add_argument("--imdb-cache-dir", action="store", default="imdb-cache")
-        parser.add_argument("--tmdb-cache-dir", action="store", default="tmdb-cache")
-        parser.add_argument("--tvdb-cache-dir", action="store", default="tvdb-cache")
         parser.add_argument("--thumbnail-dir", action="store", default="")
         parser.add_argument("-i", "--image-dir", action="store", dest="image_dir", default="graphics")
         parser.add_argument("--poster-width", action="store", type=int, default=-1, help="Maximum displayed poster width")
@@ -120,7 +116,6 @@ class Config(object):
         
         self.set_class_defaults()
         
-        self.proxies = self.get_proxies()
         self.db = self.get_home_theater_database()
         if self.args:
             for path in self.args:
@@ -156,10 +151,11 @@ class Config(object):
             log.error("Can't save configuration file %s: %s" % (name, e))
     
     def set_class_defaults(self):
-        metadata_settings.imdb_country = self.options.imdb_country_code
-        metadata_settings.imdb_language = self.options.imdb_language
-        metadata_settings.iso_3166_1 = self.options.country_code
-        filescan_settings.subtitle_file_extensions = self.get_subtitle_extensions()
+        settings.metadata_root = self.options.metadata_root
+        settings.imdb_country = self.options.imdb_country_code
+        settings.imdb_language = self.options.imdb_language
+        settings.iso_3166_1 = self.options.country_code
+        settings.subtitle_file_extensions = self.get_subtitle_extensions()
     
     def get_main_window_class(self):
         if self.options.ui == "sdl":
@@ -218,14 +214,6 @@ class Config(object):
             for path, flags in self.ini["photo_paths"].iteritems():
                 db.add_path(path)
         return db
-    
-    def get_proxies(self):
-        proxies = Proxies(
-            imdb_cache_dir=self.get_metadata_pathname(self.options.imdb_cache_dir),
-            tmdb_cache_dir=self.get_metadata_pathname(self.options.tmdb_cache_dir),
-            tvdb_cache_dir=self.get_metadata_pathname(self.options.tvdb_cache_dir),
-            language=self.options.language)
-        return proxies
     
     def get_poster_fetcher(self):
         return PosterFetcher(self.get_proxies(), self.get_artwork_loader().clone())

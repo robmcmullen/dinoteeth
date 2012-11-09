@@ -8,10 +8,11 @@ from ..third_party.sentence import first_sentence
 
 from persistent import Persistent
 
-from . import settings
 from .. import utils
 
-from base import MetadataLoader, register
+from ..metadata import MetadataLoader
+from .. import settings
+from proxies import Proxies
 
 log = logging.getLogger("dinoteeth.metadata")
 log.setLevel(logging.DEBUG)
@@ -709,6 +710,12 @@ class SeriesMetadata(BaseMetadata):
 
 class HomeTheaterMetadataLoader(MetadataLoader):
     imdb_allowed_kinds = ['movie', 'video movie', 'tv movie', 'series', 'tv series', 'tv mini series']
+    proxies = None
+    
+    def init_proxies(self):
+        if self.proxies is not None:
+            return
+        self.__class__.proxies = Proxies(settings.metadata_root, language=settings.iso_639_1)
 
     def search(self, title_key):
         title = title_key.title
@@ -749,4 +756,4 @@ class HomeTheaterMetadataLoader(MetadataLoader):
             found.append(result)
         return found
 
-register("video", HomeTheaterMetadataLoader)
+MetadataLoader.register("video", HomeTheaterMetadataLoader)

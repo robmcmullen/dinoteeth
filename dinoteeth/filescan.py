@@ -3,10 +3,24 @@ from datetime import datetime
 
 from persistent import Persistent
 
-from ..third_party.guessit import guess_file_info, Guess
+from third_party.guessit import guess_file_info, Guess
 import kaa.metadata
 
 class MediaFile(Persistent):
+    media_list = {}
+    
+    @classmethod
+    def guess(cls, media_file, info):
+        try:
+            baseclass = cls.media_list[info.media]
+        except KeyError:
+            return None
+        return baseclass.guess(media_file, info)
+
+    @classmethod
+    def register(cls, kaa_media_type, baseclass):
+        cls.media_list[kaa_media_type] = baseclass
+
     def __init__(self, pathname, flags=""):
         self.pathname = pathname
         self.flags = flags
@@ -50,7 +64,7 @@ class MediaFile(Persistent):
 #        print info
         if info is None:
             return
-        self.scan = Register.guess(self, info)
+        self.scan = self.__class__.guess(self, info)
     
     def is_current(self):
         if os.path.exists(self.pathname):
@@ -58,18 +72,3 @@ class MediaFile(Persistent):
             if os.stat(self.pathname).st_mtime == self.mtime:
                 return True
         return False
-
-
-class Register(object):
-    media_list = {}
-    
-    @classmethod
-    def guess(cls, media_file, info):
-        try:
-            baseclass = cls.media_list[info.media]
-        except KeyError:
-            return None
-        return baseclass.guess(media_file, info)
-
-def register(kaa_media_type, baseclass):
-    Register.media_list[kaa_media_type] = baseclass

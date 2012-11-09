@@ -3,8 +3,8 @@ from datetime import datetime
 
 from persistent import Persistent
 
-from . import settings
 from .. import utils
+from .. import settings
 
 from ..third_party.guessit import guess_file_info, Guess
 
@@ -328,5 +328,5 @@ class SeriesScan(AVScanBase):
         return title
 
 
-from base import register
-register("MEDIA_AV", AVScanBase)
+from ..filescan import MediaFile
+MediaFile.register("MEDIA_AV", AVScanBase)

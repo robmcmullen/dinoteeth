@@ -1,6 +1,11 @@
+metadata_root = "/tmp"
+
+subtitle_file_extensions = []
+
 imdb_country = None
-imdb_language = None
+imdb_language = "English"
 iso_3166_1 = None
+iso_639_1 = "en"
 
 credit_map = [
     # Title, attribute, limit_category (one of: 'series', 'movies' or None), converter (to change the data; e.g. change a raw timestamp into a month/year for bucketing), reverse sort flag (True or False/None)

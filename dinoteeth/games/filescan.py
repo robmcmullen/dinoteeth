@@ -64,5 +64,5 @@ class AtariSTScan(GameScanBase):
     subcat = "atari-st"
 
 
-from base import register
-register("MEDIA_GAME", GameScanBase)
+from ..filescan import MediaFile
+MediaFile.register("MEDIA_GAME", GameScanBase)

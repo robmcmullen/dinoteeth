@@ -88,6 +88,59 @@ class DBFacade(object):
         self.storage.close()
 
 
+class FilePickleDict(object):
+    """Emulated dictionary that stores items on the filesystem as pickles
+    
+    """
+    def __init__(self, pathname, prefix="x", non_empty_to_save=True):
+        self.root = pathname
+        self.prefix = prefix
+        self.non_empty_to_save = non_empty_to_save
+        if not os.path.exists(self.root):
+            os.mkdir(self.root)
+        elif os.path.exists(self.root) and not os.path.isdir(self.root):
+            raise RuntimeError("%s is not a directory" % self.root)
+
+    def __getitem__(self, key):
+        import cPickle as pickle
+
+        filename = self.pathname_from_key(key)
+        if os.path.exists(filename):
+            with open(filename, "rb") as fh:
+                bytes = fh.read()
+                try:
+                    data = pickle.loads(bytes)
+                except ImportError:
+                    data = pickle_loads_renamed(bytes)
+            return data
+
+    def __setitem__(self, key, value):
+        import cPickle as pickle
+
+        if self.non_empty_to_save and not bool(value):
+            # Don't save empty values if requested not to
+            return
+        filename = self.pathname_from_key(key)
+        bytes = pickle.dumps(value)
+        with open(filename, "wb") as fh:
+            fh.write(bytes)
+    
+    def __contains__(self, key):
+        filename = self.pathname_from_key(key)
+        return os.path.exists(filename)
+    
+    def filename_from_key(self, key):
+        """Method to generate a filesystem-safe name representing the key
+        
+        Default mapping uses url encoding
+        """
+        import urllib
+        return self.prefix + urllib.quote_plus(unicode(key).encode('utf8'))
+    
+    def pathname_from_key(self, key):
+        return os.path.join(self.root, self.filename_from_key(key))
+
+
 class TitleKey(Persistent):
     def __init__(self, category, subcategory, title, year):
         self.category = category
