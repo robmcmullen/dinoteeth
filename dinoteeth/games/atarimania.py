@@ -12,8 +12,7 @@ import os, re, urllib, time, logging
 from bs4 import BeautifulSoup
 import requests
 
-from task import Task, TaskManager
-from download import DownloadTask, BackgroundHttpDownloader
+from ..download import DownloadTask
 
 class Game(object):
     def __init__(self, div=None):
@@ -181,44 +180,3 @@ class Atari8BitScreenshot(Atari8BitTask):
         Atari8BitTask.__init__(self, api, screenshot_url)
         self.game = game
         print "screenshot for %s from %s -> %s" % (game.name, self.url, self.path)
-
-
-if __name__ == '__main__':
-    import sys
-    logging.basicConfig(level=logging.DEBUG,
-                        format='%(name)s: %(message)s',
-                        )
-    
-    api = AtariMania_API()
-#    path = "../tmp/list_games_atari_search_77.85.76.69._8_G.html"
-#    data = open(path).read()
-#    soup = BeautifulSoup(data)
-#    for result in api.process_search(soup):
-#        print result
-#    path = "../tmp/list_games_atari_search_106.117.109.112.109.97.110._8_G.html"
-#    data = open(path).read()
-#    soup = BeautifulSoup(data)
-    
-#    results = api.search("Jumpman")
-#    for result in results:
-#        print result
-#    if results:
-#        best = results[0]
-#        api.get_game_details(best)
-        
-    manager = TaskManager(None)
-    downloader = BackgroundHttpDownloader()
-    manager.start_dispatcher(downloader)
-    
-    tasks = set([Atari8BitSearch(api, "Jumpman"), Atari8BitSearch(api, "Bruce Lee")])
-    for task in tasks:
-        manager.add_task(task)
-    
-    while len(tasks):
-        time.sleep(1)
-        done = manager.get_finished()
-        for task in done:
-            print 'FINISHED:', str(task)
-            tasks.remove(task)
-    
-    manager.shutdown()
