@@ -1,4 +1,4 @@
-import os, logging
+import os, logging, urllib
 
 import imdb
 import tmdb3
@@ -156,3 +156,68 @@ class Proxies(object):
         self.tvdb_api = TVDbFileProxy(tvdb_cache_dir)
         self.language = language
 
+
+
+
+from ..download import DownloadTask
+
+import types
+from imdb import Movie
+
+def replaced_retrieve(self, url, size=-1, _noCookies=False):
+    print url
+    return url
+
+def search_results_from_http_data(self, cont, results):
+    print cont
+    res = self.smProxy.search_movie_parser.parse(cont, results=results)['data']
+    print res
+    return [Movie.Movie(movieID=self._get_real_movieID(mi),
+                        data=md, modFunct=self._defModFunct,
+                        accessSystem=self.accessSystem) for mi, md in res][:results]
+    
+
+class IMDbProxy(object):
+    def __init__(self, base_dir, imdb_cache_dir="imdb-cache", language="en"):
+        if base_dir:
+            if imdb_cache_dir is not None:
+                imdb_cache_dir = os.path.join(base_dir, imdb_cache_dir)
+        self.search_cache = FilePickleDict(imdb_cache_dir, "s")
+        self.api = imdb.IMDb(accessSystem='http', adultSearch=1)
+        self.api._retrieve = types.MethodType(replaced_retrieve, self.api)
+        self.api.search_results_from_http_data = types.MethodType(search_results_from_http_data, self.api)
+        self.language = language
+    
+    def search_url(self, title, num_results=20):
+        return self.api._get_search_content('tt', title, num_results)
+    
+    def search_results_from_data(self, data, num_results=20):
+        return self.api.search_results_from_http_data(data, num_results)
+
+class IMDbSearchTask(DownloadTask):
+    def __init__(self, api, title, num_results=20):
+        self.api = api
+        self.title = title
+        self.num_results = num_results
+        url = self.api.search_url(title, num_results)
+        self.path = os.path.join("/tmp", urllib.quote_plus(url))
+        DownloadTask.__init__(self, url, self.path, include_header=False)
+    
+    def _is_cached(self):
+        return self.title in self.api.search_cache or os.path.exists(self.path)
+        
+    def success_callback(self):
+        if self.title in self.api.search_cache:
+            log.debug("*** FOUND %s in search cache: " % self.title)
+            results = self.api.search_cache[self.title]
+        else:
+            log.debug("*** NOT FOUND in search cache: %s" % self.title)
+            if os.path.exists(self.path):
+                self.data = open(self.path).read()
+            results = self.api.search_results_from_data(self.data, self.num_results)
+            log.debug("*** STORING %s in search cache: " % self.title)
+            self.api.search_cache[self.title] = results
+        for result in results:
+            result.imdb_id = "tt" + result.movieID
+            print result.imdb_id, result
+        self.results = results
