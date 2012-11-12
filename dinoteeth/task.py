@@ -17,6 +17,7 @@ class Task(object):
     def __init__(self):
         self.parent = None
         self.children_running = 0
+        self.children_scheduled = []
         self.error = None
         self.exception = None
     
@@ -53,9 +54,12 @@ class Task(object):
     def success_callback(self):
         """Called in main thread if task completes successfully.
         
-        Since it occurs in the main thread, GUI methods may be safely called.
+        This method's primary use is to start any subtasks that depend on this
+        task.  Note that since it occurs in the main thread, GUI methods may
+        be safely called.
         
-        The task is not reported complete until all subtasks are complete.
+        The task is not returned by TaskManager.get_finished until all subtasks
+        are complete.
         
         @returns: list of sub-tasks to process
         """
@@ -64,13 +68,38 @@ class Task(object):
     def failure_callback(self):
         """Called in main thread if task fails during the thread processing.
         
-        Since it occurs in the main thread, GUI methods may be safely called.
+        This method's primary use is to start any subtasks that might work
+        around the error encountered during this task.  Note that since it
+        occurs in the main thread, GUI methods may be safely called.
         
-        The task is not reported complete until all subtasks are complete.
+        The task is not returned by TaskManager.get_finished until all subtasks
+        are complete.
         
         @returns: list of sub-tasks to process
         """
         return []
+    
+    def subtasks_complete_callback(self):
+        """Called in main thread when all subtasks have completed.
+        
+        Since it occurs in the main thread, GUI methods may be safely called.
+        
+        This method is called when all subtasks have been completed,
+        successfully or not.  It is called iff some subtasks were
+        created in either success_callback or failure_callback.
+        """
+        pass
+    
+    def root_task_complete_callback(self):
+        """Called in main thread when a directly-added task completes.
+        
+        Since it occurs in the main thread, GUI methods may be safely called.
+        
+        This method is called when a root task is marked as completed by
+        TaskManager.get_finished.  This method will not be called on subtasks
+        added by success_callback or failure_callback.
+        """
+        pass
 
 class ThreadTask(Task):
     pass
@@ -291,6 +320,7 @@ class TaskManager(object):
             dispatcher.add_task(task)
         else:
             log.debug("No dispatcher for task %s" % str(task))
+        return dispatcher is not None
     
     def _task_done(self, task):
         """Called from threads to report completed tasks
@@ -329,18 +359,27 @@ class TaskManager(object):
             if sub_tasks:
                 for sub_task in sub_tasks:
                     sub_task.parent = task
-                    task.children_running += 1
-                    self.add_task(sub_task)
+                    scheduled = self.add_task(sub_task)
+                    if scheduled:
+                        task.children_running += 1
+                        task.children_scheduled.append(task)
+                    else:
+                        # remove parent if task wasn't scheduled.  Can't simply
+                        # add parent after add_task because the task may have
+                        # already been started by the thread
+                        sub_task.parent = None
             else:
                 t = task
                 while t.parent is not None:
                     t.parent.children_running -= 1
                     if t.parent.children_running == 0:
+                        t.parent.subtasks_complete_callback()
                         t = t.parent
                     else:
                         break
                 if t.parent is None and t.children_running == 0:
                     log.debug("marking root task %s completed" % str(t))
+                    t.root_task_complete_callback()
                     root_tasks_done.add(t)
         return root_tasks_done
     

@@ -150,11 +150,15 @@ class Atari8BitSearch(Atari8BitTask):
             for game in games:
                 print game
             if games:
-                best = games[0]
-                tasks.append(Atari8BitGetGameDetails(self.api, games[0]))
+                self.game = games[0]
+                tasks.append(Atari8BitGetGameDetails(self.api, self.game))
         else:
             print "Failed loading %s" % self.url
         return tasks
+    
+    def subtasks_complete_callback(self):
+        print "All subtasks complete: %s  Full game details:" % str(self.children_scheduled)
+        print self.game
 
 class Atari8BitGetGameDetails(Atari8BitTask):
     def __init__(self, api, game):
