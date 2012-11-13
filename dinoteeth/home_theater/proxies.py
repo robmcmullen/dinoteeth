@@ -168,31 +168,74 @@ def replaced_retrieve(self, url, size=-1, _noCookies=False):
     print url
     return url
 
-def search_results_from_http_data(self, cont, results):
-    print cont
-    res = self.smProxy.search_movie_parser.parse(cont, results=results)['data']
-    print res
-    return [Movie.Movie(movieID=self._get_real_movieID(mi),
-                        data=md, modFunct=self._defModFunct,
-                        accessSystem=self.accessSystem) for mi, md in res][:results]
-    
-
 class IMDbProxy(object):
     def __init__(self, base_dir, imdb_cache_dir="imdb-cache", language="en"):
         if base_dir:
             if imdb_cache_dir is not None:
                 imdb_cache_dir = os.path.join(base_dir, imdb_cache_dir)
         self.search_cache = FilePickleDict(imdb_cache_dir, "s")
+        self.movie_obj_cache = FilePickleDict(imdb_cache_dir, "")
         self.api = imdb.IMDb(accessSystem='http', adultSearch=1)
         self.api._retrieve = types.MethodType(replaced_retrieve, self.api)
-        self.api.search_results_from_http_data = types.MethodType(search_results_from_http_data, self.api)
         self.language = language
     
     def search_url(self, title, num_results=20):
         return self.api._get_search_content('tt', title, num_results)
     
     def search_results_from_data(self, data, num_results=20):
-        return self.api.search_results_from_http_data(data, num_results)
+        res = self.api.smProxy.search_movie_parser.parse(data, results=num_results)['data']
+        print res
+        return [Movie.Movie(movieID=self.api._get_real_movieID(mi),
+                            data=md, modFunct=self.api._defModFunct,
+                            accessSystem=self.api.accessSystem) for mi, md in res][:num_results]
+
+    def get_movie_main_url(self, movie_id):
+        return self.api.urls['movie_main'] % movie_id + 'combined'
+        
+    def get_movie_plot_url(self, movie_id):
+        return self.api.urls['movie_main'] % movie_id + 'plotsummary'
+        
+    def get_url_from_task(self, task):
+        method = getattr(self, "get_movie_%s_url" % task.info_name)
+        return method(task.movie_id)
+    
+    def get_blank_movie(self, movie_id):
+        return Movie.Movie(movieID=movie_id, accessSystem=self.api.accessSystem)
+        
+    def get_movie_main_from_data(self, data):
+        return self.api.mProxy.movie_parser.parse(data, mdparse=self.api._mdparse)
+    
+    def get_movie_plot_from_data(self, data):
+        return self.api.mProxy.plot_parser.parse(data, getRefs=self.api._getRefs)
+    
+    def merge_movie_tasks(self, mop, tasks, override=0):
+        res = {}
+        for task in tasks:
+            i = task.info_name
+            if i in mop.current_info and not override:
+                continue
+            if not i:
+                continue
+            ret_method = getattr(self, "get_movie_%s_from_data" % i)
+            ret = ret_method(task.data)
+            keys = None
+            if 'data' in ret:
+                res.update(ret['data'])
+                if isinstance(ret['data'], dict):
+                    keys = ret['data'].keys()
+            if 'info sets' in ret:
+                for ri in ret['info sets']:
+                    mop.add_to_current_info(ri, keys, mainInfoset=i)
+            else:
+                mop.add_to_current_info(i, keys)
+            if 'titlesRefs' in ret:
+                mop.update_titlesRefs(ret['titlesRefs'])
+            if 'namesRefs' in ret:
+                mop.update_namesRefs(ret['namesRefs'])
+            if 'charactersRefs' in ret:
+                mop.update_charactersRefs(ret['charactersRefs'])
+        mop.set_data(res, override=0)
+
 
 class IMDbSearchTask(DownloadTask):
     def __init__(self, api, title, num_results=20):
@@ -221,3 +264,78 @@ class IMDbSearchTask(DownloadTask):
             result.imdb_id = "tt" + result.movieID
             print result.imdb_id, result
         self.results = results
+
+def safeprint(s):
+    if isinstance(s, basestring):
+        return unicode(s).encode('utf8')
+    return s
+
+def print_info(movie):
+    keys = ['kind', 'title', 'canonical title', 'long imdb title', 'long imdb canonical title', 'smart canonical title', 'smart long imdb canonical title','akas', 'year', 'imdbIndex', 'certificates', 'mpaa', 'runtimes', 'rating', 'votes', 'genres', 'director', 'writer', 'producer', 'cast', 'writer', 'creator', 'original music', 'plot outline', 'number of seasons', 'number of episodes', 'series years', 'production companies' ]
+    print sorted(movie.keys())
+    print sorted(dir(movie))
+    #for k,v in movie.iteritems():
+    #    print "**%s**:   %s" % (safeprint(k), safeprint(v))
+    for k in keys:
+        if movie.has_key(k):
+            print "%s: %s" % (k, safeprint(movie[k]))
+
+class IMDbMovieDetailDownloadTask(DownloadTask):
+    def __init__(self, api, imdb_id, info_name):
+        self.api = api
+        if imdb_id.startswith('tt'):
+            movie_id = imdb_id[2:]
+        else:
+            movie_id = '%07d' % int(imdb_id)
+            imdb_id = "tt" + movie_id
+        self.imdb_id = imdb_id
+        self.movie_id = movie_id
+        self.info_name = info_name
+        url = self.api.get_url_from_task(self)
+        self.path = os.path.join("/tmp", urllib.quote_plus(url))
+        DownloadTask.__init__(self, url, self.path, include_header=False)
+
+class IMDbMovieDetailTask(IMDbMovieDetailDownloadTask):
+    """
+    imdb.get_movie(movie_id):
+        movieID = imdb._normalize_movieID(movieID)
+        movieID = imdb._get_real_movieID(movieID)
+        movie = Movie.Movie(movieID=movieID)
+        info = ('main', 'plot')
+        imdb.update(movie, info)
+            method = getattr(aSystem, 'get_%s_%s' %
+                                    (prefix, i.replace(' ', '_')))
+            # e.g.: get_movie_main, get_movie_plot
+            ret = method(movieID)
+    
+    imdb.get_movie_main(movie_id):
+        cont = self._retrieve(self.urls['movie_main'] % movieID + 'combined')
+        return self.mProxy.movie_parser.parse(cont, mdparse=self._mdparse)
+
+    """
+    def __init__(self, api, imdb_id):
+        IMDbMovieDetailDownloadTask.__init__(self, api, imdb_id, "main")
+    
+    def _is_cached(self):
+        return self.imdb_id in self.api.movie_obj_cache or os.path.exists(self.path)
+        
+    def success_callback(self):
+        if self.imdb_id not in self.api.movie_obj_cache:
+            log.debug("*** NOT FOUND in movie cache: %s" % self.imdb_id)
+            if os.path.exists(self.path):
+                self.data = open(self.path).read()
+            tasks = [IMDbMovieDetailDownloadTask(self.api, self.imdb_id, "plot")]
+            return tasks
+    
+    def root_task_complete_callback(self):
+        if self.imdb_id in self.api.movie_obj_cache:
+            log.debug("*** FOUND %s in movie cache: " % self.imdb_id)
+            self.movie_obj = self.api.movie_obj_cache[self.imdb_id]
+        else:
+            self.movie_obj = self.api.get_blank_movie(self.movie_id)
+            tasks = [self]
+            tasks.extend(self.children_scheduled)
+            self.api.merge_movie_tasks(self.movie_obj, tasks)
+            self.api.movie_obj_cache[self.imdb_id] = self.movie_obj
+        print_info(self.movie_obj)
+        log.debug("*** STORING %s in movie cache: " % self.imdb_id)

@@ -20,11 +20,11 @@ if __name__ == '__main__':
     
     api = IMDbProxy("/tmp")
         
-    tasks = [IMDbSearchTask(api, "The Man Who Never Was")]
-    for task in tasks:
-        if task._is_cached():
-            task.success_callback()
-            sys.exit()
+    tasks = [IMDbSearchTask(api, "The Man Who Never Was"), IMDbMovieDetailTask(api, "tt0049471")]
+#    for task in tasks:
+#        if task._is_cached():
+#            task.success_callback()
+#            sys.exit()
     
     manager = TaskManager(None)
     downloader = BackgroundHttpDownloader()
