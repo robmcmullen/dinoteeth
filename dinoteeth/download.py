@@ -15,7 +15,7 @@ class HttpClient(asyncore.dispatcher):
         self.log = logging.getLogger(self.url)
         self.parsed_url = urlparse.urlparse(url)
         asyncore.dispatcher.__init__(self)
-        self.write_buffer = 'GET %s HTTP/1.0\r\n\r\n' % self.url
+        self.write_buffer = 'GET %s HTTP/1.0\r\nAccept:*/*;q=0.8\r\n\r\n' % self.url
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         address = (self.parsed_url.netloc, 80)
         self.log.debug('connecting to %s', address)
