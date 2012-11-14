@@ -13,6 +13,7 @@ References:
   http://help.themoviedb.org/kb/api/configuration
   http://help.themoviedb.org/kb/api/movie-images
 """
+import os, urllib
 
 try:
     import simplejson
@@ -26,28 +27,70 @@ class TMDb3_API(object):
     base_url = None
     image_sizes = {}
     
+    def __init__(self, cache_dir):
+        self.cache_dir = cache_dir
+        self.movie_obj_cache = {}
+
+    def get_cache_path(self, url):
+        return os.path.join(self.cache_dir, urllib.quote_plus(url))
+
     @classmethod
-    def getJSON(cls, url):
-        page = requests.get(url).content
+    def getJSON(cls, page):
         try:
             return simplejson.loads(page)
         except:
             return simplejson.loads(page.decode('utf-8'))
     
     @classmethod
+    def load_url(cls, url):
+        page = requests.get(url).content
+        return page
+    
+    @classmethod
     def get_conf(cls):
         if cls.base_url:
             return
-        url = "http://api.themoviedb.org/3/configuration?api_key=%s" % (cls.API_KEY)
-        conf = cls.getJSON(url)
+        url = cls.get_conf_url()
+        page = load_url(url)
+        cls.process_conf(page)
+    
+    @classmethod
+    def get_conf_url(cls):
+        return "http://api.themoviedb.org/3/configuration?api_key=%s" % (cls.API_KEY)
+    
+    @classmethod
+    def process_conf(cls, page):
+        conf = cls.getJSON(page)
         cls.base_url = conf['images']['base_url']
         cls.image_sizes['backdrops'] = conf['images']['backdrop_sizes']
         cls.image_sizes['posters'] = conf['images']['poster_sizes']
 
+    movie_urls = {
+        'main': "http://api.themoviedb.org/3/movie/%s?api_key=%s",
+        'release_info': "http://api.themoviedb.org/3/movie/%s/releases?api_key=%s",
+        'images': "http://api.themoviedb.org/3/movie/%s/images?api_key=%s",
+        }
+    
+    def get_url_from_task(self, task, movie=None):
+        if movie is not None:
+            m_id = movie.tmdb_id
+        else:
+            m_id = task.imdb_id
+        return self.movie_urls[task.info_name] % (m_id, self.API_KEY)
+
+    def get_imdb_id_url(self, imdb_id):
+        return "http://api.themoviedb.org/3/movie/%s?api_key=%s" % (imdb_id, self.API_KEY)
+
     def get_imdb_id(self, imdb_id):
-        url = "http://api.themoviedb.org/3/movie/%%s?api_key=%s" % (self.API_KEY)
+        url = self.get_imdb_id_url(imdb_id)
+        page = self.load_url(url)
+        return self.get_movie(page)
+
+    def get_movie(self, page):
+        print page
         try:
-            movie = self.getJSON(url % imdb_id)
+            movie = self.getJSON(page)
+            print movie
             if 'id' in movie:
                 return Movie(movie)
         except Exception, e:
@@ -62,7 +105,12 @@ class Movie(TMDb3_API):
         self.tmdb_id = self.movie['id']
         self.image_language = None
         self.images = None
-        self.get_release_info()
+#        self.get_release_info()
+    
+    def process_from_task(self, task):
+        page = task.data
+        method = getattr(self, "process_%s" % task.info_name)
+        method(page)
     
     def __str__(self):
         return simplejson.dumps(self.movie, sort_keys=True, indent=4)
@@ -80,7 +128,12 @@ class Movie(TMDb3_API):
     
     def get_release_info(self):
         url = "http://api.themoviedb.org/3/movie/%%s/releases?api_key=%s" % (self.API_KEY)
-        releases = self.getJSON(url % (self.tmdb_id))
+        data = self.load_url(url % (self.tmdb_id))
+        self.process_release_info(data)
+    
+    def process_release_info(self, data):
+        releases = self.getJSON(data)
+        print "Releases: %s" % str(releases)
         self.movie['releases'] = releases['countries']
     
     def discover_images(self, language):

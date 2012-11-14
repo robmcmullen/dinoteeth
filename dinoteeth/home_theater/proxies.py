@@ -339,3 +339,72 @@ class IMDbMovieDetailTask(IMDbMovieDetailDownloadTask):
             self.api.movie_obj_cache[self.imdb_id] = self.movie_obj
         print_info(self.movie_obj)
         log.debug("*** STORING %s in movie cache: " % self.imdb_id)
+
+
+
+class TMDbAPITask(DownloadTask):
+    def __init__(self, api):
+        self.api = api
+        url = self.api.get_conf_url()
+        self.path = self.api.get_cache_path(url)
+        DownloadTask.__init__(self, url, self.path, include_header=False)
+    
+    def _is_cached(self):
+        return os.path.exists(self.path)
+        
+    def success_callback(self):
+        if hasattr(self, 'data'):
+            data = self.data
+        elif os.path.exists(self.path):
+            data = open(self.path).read()
+        self.api.process_conf(data)
+        print self.api.base_url
+        print self.api.image_sizes
+
+class TMDbMovieDetailDownloadTask(DownloadTask):
+    def __init__(self, api, imdb_id, info_name):
+        self.api = api
+        if not imdb_id.startswith('tt'):
+            movie_id = '%07d' % int(imdb_id)
+            imdb_id = "tt" + movie_id
+        self.imdb_id = imdb_id
+        self.info_name = info_name
+        url = self.api.get_url_from_task(self)
+        print url
+        self.path = self.api.get_cache_path(url)
+        DownloadTask.__init__(self, url, self.path, include_header=False)
+
+class TMDbMovieDetailSubTask(DownloadTask):
+    def __init__(self, api, movie, info_name):
+        self.api = api
+        self.movie = movie
+        self.info_name = info_name
+        url = self.api.get_url_from_task(self, self.movie)
+        self.path = self.api.get_cache_path(url)
+        DownloadTask.__init__(self, url, self.path, include_header=False)
+        
+    def success_callback(self):
+        if os.path.exists(self.path):
+            self.data = open(self.path).read()
+            self.movie.process_from_task(self)
+
+class TMDbMovieDetailTask(TMDbMovieDetailDownloadTask):
+    def __init__(self, api, imdb_id):
+        TMDbMovieDetailDownloadTask.__init__(self, api, imdb_id, "main")
+    
+    def _is_cached(self):
+        return self.imdb_id in self.api.movie_obj_cache or os.path.exists(self.path)
+        
+    def success_callback(self):
+        if self.imdb_id not in self.api.movie_obj_cache:
+            log.debug("*** NOT FOUND in movie cache: %s" % self.imdb_id)
+            if os.path.exists(self.path):
+                self.data = open(self.path).read()
+                self.movie = self.api.get_movie(self.data)
+                tasks = [TMDbMovieDetailSubTask(self.api, self.movie, "release_info")]
+                return tasks
+        else:
+            self.movie = self.api.movie_obj_cache[self.imdb_id]
+    
+    def root_task_complete_callback(self):
+        print self.movie
