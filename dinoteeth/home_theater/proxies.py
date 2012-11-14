@@ -401,7 +401,7 @@ class TMDbMovieDetailTask(TMDbMovieDetailDownloadTask):
             if os.path.exists(self.path):
                 self.data = open(self.path).read()
                 self.movie = self.api.get_movie(self.data)
-                tasks = [TMDbMovieDetailSubTask(self.api, self.movie, "release_info")]
+                tasks = [TMDbMovieDetailSubTask(self.api, self.movie, "release_info"), TMDbMovieDetailSubTask(self.api, self.movie, "images")]
                 return tasks
         else:
             self.movie = self.api.movie_obj_cache[self.imdb_id]

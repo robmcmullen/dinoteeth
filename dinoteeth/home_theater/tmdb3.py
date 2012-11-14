@@ -27,9 +27,10 @@ class TMDb3_API(object):
     base_url = None
     image_sizes = {}
     
-    def __init__(self, cache_dir):
+    def __init__(self, cache_dir, language):
         self.cache_dir = cache_dir
         self.movie_obj_cache = {}
+        self.language = language
 
     def get_cache_path(self, url):
         return os.path.join(self.cache_dir, urllib.quote_plus(url))
@@ -92,7 +93,7 @@ class TMDb3_API(object):
             movie = self.getJSON(page)
             print movie
             if 'id' in movie:
-                return Movie(movie)
+                return Movie(movie, self.language)
         except Exception, e:
             print "Failed loading tmdb info: %s" % str(e)
             import traceback
@@ -100,8 +101,9 @@ class TMDb3_API(object):
         return None
 
 class Movie(TMDb3_API):
-    def __init__(self, json):
+    def __init__(self, json, language):
         self.movie = json
+        self.language = language
         self.tmdb_id = self.movie['id']
         self.image_language = None
         self.images = None
@@ -113,10 +115,10 @@ class Movie(TMDb3_API):
         method(page)
     
     def __str__(self):
-        return simplejson.dumps(self.movie, sort_keys=True, indent=4)
+        return simplejson.dumps(self.movie, sort_keys=True, indent=4) + simplejson.dumps(self.images, sort_keys=True, indent=4)
     
     def __unicode__(self):
-        return simplejson.dumps(self.movie, sort_keys=True, indent=4)
+        return simplejson.dumps(self.movie, sort_keys=True, indent=4) + simplejson.dumps(self.images, sort_keys=True, indent=4)
     
     def __contains__(self, key):
         return key in self.movie
@@ -141,18 +143,22 @@ class Movie(TMDb3_API):
             if self.image_language == language:
                 return
         url = "http://api.themoviedb.org/3/movie/%%s/images?api_key=%s" % (self.API_KEY)
-        all_images = self.getJSON(url % (self.tmdb_id))
+        data = self.load_url(url % (self.tmdb_id))
+        self.process_images(self, data)
+        
+    def process_images(self, data):
+        all_images = self.getJSON(data)
         self.images = {}
         for key in ['backdrops', 'posters']:
             valid = []
             print key
             for image in all_images[key]:
                 lang = image['iso_639_1']
-                if lang is None or lang == language:
+                if lang is None or lang == self.language:
                     valid.append(image)
                     print image['file_path'], image['width'], image['height'], image['vote_average'], image['vote_count']
             self.images[key] = valid
-        self.image_language = language
+        self.image_language = self.language
     
     def get_best_image(self, key, size, language):
         self.get_conf()

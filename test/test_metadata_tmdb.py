@@ -19,7 +19,7 @@ if __name__ == '__main__':
                         format='%(name)s: %(message)s',
                         )
     
-    api = TMDb3_API("/tmp")
+    api = TMDb3_API("/tmp", "en")
         
     tasks = [TMDbAPITask(api), TMDbMovieDetailTask(api, "tt0049471")]
 #    for task in tasks:
