@@ -249,6 +249,37 @@ class BaseMetadata(Persistent):
             best = imdb_obj['title']
         return best
     
+    def prune_people(self, imdb_obj, match="", max=25):
+        """Create list of Person objects where the notes field of the imdb
+        Person object matches the criteria.
+        
+        Side effect: removes matched IMDb Person objects from input list
+        """
+        persons = []
+        unmatched = imdb_obj[:]
+        for p in unmatched:
+            if match in p.notes:
+                persons.append(Person(p))
+                imdb_obj.remove(p)
+                if len(persons) >= max:
+                    break
+        return persons
+    
+    def prune_companies(self, imdb_obj, max=5):
+        """Create list of Company objects where the notes field of the imdb
+        Person object matches the criteria.
+        
+        Side effect: removes matched IMDb Person objects from input list
+        """
+        companies = []
+        unmatched = imdb_obj[:]
+        for p in unmatched:
+            companies.append(Company(p))
+            imdb_obj.remove(p)
+            if len(companies) >= max:
+                break
+        return companies
+    
     def lambdaify(self, criteria):
         if isinstance(criteria, collections.Callable):
             return criteria
@@ -369,7 +400,7 @@ class BaseMetadata(Persistent):
 class FakeMetadata(BaseMetadata):
     imdb_prefix = "tt"
 
-    def __init__(self, id, title_key, scans, metadata_lookup):
+    def __init__(self, id, title_key, scans):
         BaseMetadata.__init__(self, id, title_key)
     
     def __unicode__(self):
@@ -418,7 +449,7 @@ class MovieMetadata(BaseMetadata):
     media_category = "movies"
     imdb_prefix = "tt"
     
-    def __init__(self, movie_obj, tmdb_obj, metadata_lookup):
+    def __init__(self, movie_obj, tmdb_obj):
         title_key = utils.TitleKey("video", movie_obj['kind'], self.get_title(movie_obj, settings.imdb_country, settings.imdb_language), movie_obj['year'])
         BaseMetadata.__init__(self, movie_obj.imdb_id, title_key)
         self.title_index = movie_obj.get('imdbIndex', "")
@@ -443,29 +474,29 @@ class MovieMetadata(BaseMetadata):
         self.release_date = released
         
         directors = self.get_obj(movie_obj, 'director')
-        self.directors = metadata_lookup.prune_people(directors)
+        self.directors = self.prune_people(directors)
         
         producers = self.get_obj(movie_obj, 'producer')
-        self.executive_producers = metadata_lookup.prune_people(producers, 'executive producer')
-        self.producers = metadata_lookup.prune_people(producers)
+        self.executive_producers = self.prune_people(producers, 'executive producer')
+        self.producers = self.prune_people(producers)
         
         writers = self.get_obj(movie_obj, 'writer')
-        self.novel_writers = metadata_lookup.prune_people(writers, 'novel')
-        self.screenplay_writers = metadata_lookup.prune_people(writers, 'screenplay')
-        self.story_writers = metadata_lookup.prune_people(writers, 'story')
-        self.writers = metadata_lookup.prune_people(writers)
+        self.novel_writers = self.prune_people(writers, 'novel')
+        self.screenplay_writers = self.prune_people(writers, 'screenplay')
+        self.story_writers = self.prune_people(writers, 'story')
+        self.writers = self.prune_people(writers)
         
         music = self.get_obj(movie_obj, 'original music')
-        self.music = metadata_lookup.prune_people(music)
+        self.music = self.prune_people(music)
         
         cast = self.get_obj(movie_obj, 'cast')
-        self.cast = metadata_lookup.prune_people(cast)
+        self.cast = self.prune_people(cast)
         
         companies = self.get_obj(movie_obj, 'production companies')
-        self.companies = metadata_lookup.prune_companies(companies)
+        self.companies = self.prune_companies(companies)
         
         if tmdb_obj and tmdb_obj['belongs_to_collection']:
-            film_series = metadata_lookup.get_film_series(tmdb_obj['belongs_to_collection'])
+            film_series = FilmSeries(tmdb_obj['belongs_to_collection'])
         else:
             film_series = None
         self.film_series = film_series
@@ -542,7 +573,7 @@ class SeriesMetadata(BaseMetadata):
     media_category = "series"
     imdb_prefix = "tt"
     
-    def __init__(self, movie_obj, tvdb_obj, metadata_lookup):
+    def __init__(self, movie_obj, tvdb_obj):
 #'title', 'akas', 'year', 'imdbIndex', 'certificates', 'director', 'writer', 'producer', 'cast', 'writer', 'creator', 'original music', 'plot outline', 'rating', 'votes', 'genres', 'number of seasons', 'number of episodes', 'series years', ]
 #['akas', u'art department', 'art direction', 'aspect ratio', 'assistant director', 'camera and electrical department', 'canonical title', 'cast', 'casting director', 'certificates', 'cinematographer', 'color info', u'costume department', 'costume designer', 'countries', 'cover url', 'director', u'distributors', 'editor', u'editorial department', 'full-size cover url', 'genres', 'kind', 'languages', 'long imdb canonical title', 'long imdb title', 'make up', 'miscellaneous companies', 'miscellaneous crew', u'music department', 'number of seasons', 'plot', 'plot outline', 'producer', u'production companies', 'production design', 'production manager', 'rating', 'runtimes', 'series years', 'smart canonical title', 'smart long imdb canonical title', 'sound crew', 'sound mix', 'title', 'votes', 'writer', 'year']
         title_key = utils.TitleKey("video", movie_obj['kind'], self.get_title(movie_obj, settings.imdb_country, settings.imdb_language), movie_obj['year'])
@@ -558,28 +589,28 @@ class SeriesMetadata(BaseMetadata):
         self.runtimes = self.get_imdb_list(movie_obj, 'runtimes', coerce=int)
         
         directors = self.get_obj(movie_obj, 'director')
-        self.directors = metadata_lookup.prune_people(directors)
+        self.directors = self.prune_people(directors)
         
         producers = self.get_obj(movie_obj, 'producer')
-        self.executive_producers = metadata_lookup.prune_people(producers, 'executive producer')
+        self.executive_producers = self.prune_people(producers, 'executive producer')
         
         writers = self.get_obj(movie_obj, 'writer')
-        self.writers = metadata_lookup.prune_people(writers)
+        self.writers = self.prune_people(writers)
         
         music = self.get_obj(movie_obj, 'original music')
-        self.music = metadata_lookup.prune_people(music)
+        self.music = self.prune_people(music)
         
         cast = self.get_obj(movie_obj, 'cast')
-        self.cast = metadata_lookup.prune_people(cast)
+        self.cast = self.prune_people(cast)
         
         companies = self.get_obj(movie_obj, 'production companies')
-        self.companies = metadata_lookup.prune_companies(companies)
+        self.companies = self.prune_companies(companies)
         
         if tvdb_obj and tvdb_obj.data['network']:
-            network = metadata_lookup.get_company_by_name(tvdb_obj.data['network'])
+            network = self.Company(None, None, tvdb_obj.data['network'])
         else:
             distributors = self.get_obj(movie_obj, 'distributors')
-            networks = metadata_lookup.prune_companies(distributors, 1)
+            networks = self.prune_companies(distributors, 1)
             if networks:
                 network = networks[0]
             else:
@@ -715,7 +746,7 @@ class HomeTheaterMetadataLoader(MetadataLoader):
     def init_proxies(self):
         if self.proxies is not None:
             return
-        self.__class__.proxies = Proxies(settings.metadata_root, language=settings.iso_639_1)
+        self.__class__.proxies = Proxies(settings)
 
     def search(self, title_key):
         title = title_key.title
@@ -755,5 +786,24 @@ class HomeTheaterMetadataLoader(MetadataLoader):
             log.debug("Using %s (%s) because %s could match %s" % (unicode(result['title']).encode("utf8"), result['year'], unicode(result['kind']).encode("utf8"), subcat))
             found.append(result)
         return found
+    
+    def get_metadata_by_id(self, imdb_id):
+        imdb_obj = self.proxies.imdb_api.get_movie(imdb_id)
+        if imdb_obj['kind'] in ['movie', 'video movie', 'tv movie']:
+            tmdb_obj = self.proxies.tmdb_api.get_imdb_id(imdb_id)
+            metadata = MovieMetadata(imdb_obj, tmdb_obj)
+        elif imdb_obj['kind'] in ['series', 'tv series', 'tv mini series']:
+            tvdb_obj = self.proxies.tvdb_api.get_imdb_id(imdb_id)
+            metadata = SeriesMetadata(imdb_obj, tvdb_obj)
+        else:
+            # It's a video game or something else; skip it
+            log.error("Unhandled IMDb type '%s' for %s" % (imdb_obj['kind'], imdb_id))
+            return
+        print (u"%s: %s -> %s" % (imdb_obj['title'], imdb_obj['kind'], metadata.media_category)).encode('utf8')
+        return metadata
+    
+    def get_metadata(self, result):
+        imdb_id = result.imdb_id
+        return self.get_metadata_by_id(imdb_id)
 
 MetadataLoader.register("video", HomeTheaterMetadataLoader)

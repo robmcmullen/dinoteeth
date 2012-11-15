@@ -141,6 +141,40 @@ class FilePickleDict(object):
         return os.path.join(self.root, self.filename_from_key(key))
 
 
+class HttpProxyBase(object):
+    def __init__(self, cache_dir):
+        self.http_cache_dir = cache_dir
+
+    def get_cache_path(self, url):
+        path_part = url.split("//", 1)[1]
+        full_path = os.path.join(self.http_cache_dir, path_part)
+        dir_part = os.path.dirname(full_path)
+        if not os.path.exists(dir_part):
+            os.makedirs(dir_part)
+        return full_path
+
+    @classmethod
+    def get_json(cls, page):
+        try:
+            import simplejson
+        except:
+            import json as simplejson
+        try:
+            return simplejson.loads(page)
+        except:
+            return simplejson.loads(page.decode('utf-8'))
+    
+    def load_url(self, url, use_cache=True):
+        if use_cache:
+            cached = self.get_cache_path(url)
+            if os.path.exists(cached):
+                page = open(cached).read()
+                return page
+        import requests
+        page = requests.get(url).content
+        return page
+
+
 class TitleKey(Persistent):
     def __init__(self, category, subcategory, title, year):
         self.category = category

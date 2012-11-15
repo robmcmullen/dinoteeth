@@ -15,25 +15,22 @@ References:
 """
 import os, urllib
 
-try:
-    import simplejson
-except:
-    import json as simplejson
+from ..utils import HttpProxyBase
 
-import requests
-
-class TMDb3_API(object):
+class TMDb3_API(HttpProxyBase):
     API_KEY = 'a8b9f96dde091408a03cb4c78477bd14'
     base_url = None
     image_sizes = {}
     
     def __init__(self, cache_dir, language, poster_size):
+        HttpProxyBase.__init__(self, cache_dir)
         self.cache_dir = cache_dir
         self.movie_obj_cache = {}
         self.language = language
         self.poster_size = poster_size
 
     def get_cache_path(self, url):
+        """Different from superclass to remove api_key from cached pathname"""
         path_part = url.split("//", 1)[1]
         if "?api_key=" in path_part:
             path_part = path_part.split("?api_key=", 1)[0]
@@ -43,33 +40,19 @@ class TMDb3_API(object):
             os.makedirs(dir_part)
         return full_path
 
-    @classmethod
-    def getJSON(cls, page):
-        try:
-            return simplejson.loads(page)
-        except:
-            return simplejson.loads(page.decode('utf-8'))
-    
-    @classmethod
-    def load_url(cls, url):
-        page = requests.get(url).content
-        return page
-    
-    @classmethod
-    def get_conf(cls):
-        if cls.base_url:
+    def get_conf(self):
+        if self.__class__.base_url:
             return
-        url = cls.get_conf_url()
-        page = load_url(url)
-        cls.process_conf(page)
+        url = self.get_conf_url()
+        page = self.load_url(url)
+        self.process_conf(page)
     
-    @classmethod
     def get_conf_url(cls):
         return "http://api.themoviedb.org/3/configuration?api_key=%s" % (cls.API_KEY)
     
     @classmethod
     def process_conf(cls, page):
-        conf = cls.getJSON(page)
+        conf = cls.get_json(page)
         cls.base_url = conf['images']['base_url']
         cls.image_sizes['backdrops'] = conf['images']['backdrop_sizes']
         cls.image_sizes['posters'] = conf['images']['poster_sizes']
@@ -98,7 +81,7 @@ class TMDb3_API(object):
     def get_movie(self, page):
         print page
         try:
-            movie = self.getJSON(page)
+            movie = self.get_json(page)
             print movie
             if 'id' in movie:
                 return Movie(movie, self.language, self.poster_size)
@@ -146,7 +129,7 @@ class Movie(TMDb3_API):
         self.process_release_info(data)
     
     def process_release_info(self, data):
-        releases = self.getJSON(data)
+        releases = self.get_json(data)
         print "Releases: %s" % str(releases)
         self.movie['releases'] = releases['countries']
     
@@ -159,7 +142,7 @@ class Movie(TMDb3_API):
         self.process_images(self, data)
         
     def process_images(self, data):
-        all_images = self.getJSON(data)
+        all_images = self.get_json(data)
         self.images = {}
         for key in ['backdrops', 'posters']:
             valid = []

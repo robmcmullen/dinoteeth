@@ -4,90 +4,10 @@ import imdb
 import tmdb3
 from ..third_party.tvdb_api import tvdb_api, tvdb_exceptions
 
-from ..utils import FilePickleDict
+from ..utils import FilePickleDict, HttpProxyBase
 
 log = logging.getLogger("dinoteeth.proxies")
 
-class FileProxy(object):
-    def __init__(self, cache_dir=None):
-        self.create_api_connection()
-        if cache_dir:
-            self.search_cache = FilePickleDict(cache_dir, "s")
-            self.movie_obj_cache = FilePickleDict(cache_dir, "")
-            self.use_cache = True
-        else:
-            self.search_cache = {}
-            self.movie_obj_cache = {}
-            self.use_cache = False
-        
-    def __str__(self):
-        lines = []
-        titles = sorted(self.search_cache.keys())
-        for title in titles:
-            lines.append("%s: %s" % (title, self.search_cache[title]))
-        return "\n".join(lines)
-    
-    def create_api_connection(self):
-        raise RuntimeError()
-        
-class IMDbFileProxy(FileProxy):
-    def create_api_connection(self):
-        self.imdb_api = imdb.IMDb(accessSystem='http', adultSearch=1)
-        
-    def search_movie(self, title):
-        if title in self.search_cache:
-            log.debug("*** FOUND %s in search cache: " % title)
-            results = self.search_cache[title]
-        else:
-            log.debug("*** NOT FOUND in search cache: %s" % title )
-            try:
-                results = self.imdb_api.search_movie(title)
-                if self.use_cache:
-                    log.debug("*** STORING %s in search cache: " % title)
-                    self.search_cache[title] = results
-            except imdb.IMDbDataAccessError:
-                results = []
-        for result in results:
-            result.imdb_id = "tt" + result.movieID
-        return results
-        
-    def get_movie(self, imdb_id):
-        if type(imdb_id) == int:
-            imdb_id = "tt%07d" % imdb_id
-        if imdb_id in self.movie_obj_cache:
-            log.debug("*** FOUND %s in movie cache: " % imdb_id)
-            movie_obj = self.movie_obj_cache[imdb_id]
-        else:
-            log.debug("*** NOT FOUND in movie cache: %s" % imdb_id)
-            try:
-                movie_obj = self.imdb_api.get_movie(imdb_id[2:])
-                if self.use_cache and movie_obj:
-                    log.debug("*** STORING %s in movie cache: " % imdb_id)
-                    self.movie_obj_cache[imdb_id] = movie_obj
-            except imdb.IMDbDataAccessError:
-                movie_obj = None
-        if movie_obj:
-            movie_obj.imdb_id = "tt" + movie_obj.movieID
-        return movie_obj
-
-class TMDbFileProxy(FileProxy):
-    def create_api_connection(self):
-        self.tmdb_api = tmdb3.TMDb3_API()
-    
-    def get_imdb_id(self, imdb_id):
-        if type(imdb_id) == int:
-            imdb_id = "tt%07d" % imdb_id
-        if not imdb_id.startswith("tt"):
-            imdb_id = "tt" + imdb_id
-        if imdb_id in self.movie_obj_cache:
-            log.debug("*** FOUND %s in tmdb cache: " % imdb_id)
-            return self.movie_obj_cache[imdb_id]
-        log.debug("*** NOT FOUND in tmdb cache: %s" % imdb_id)
-        movie_obj = self.tmdb_api.get_imdb_id(imdb_id)
-        log.debug("*** STORING %s in tmdb cache: " % imdb_id)
-        if self.use_cache:
-            self.movie_obj_cache[imdb_id] = movie_obj
-        return movie_obj
 
 class TvdbSelectByIMDb:
     """Non-interactive UI for Tvdb_api which selects the result based on IMDb ID
@@ -143,18 +63,18 @@ class TVDbFileProxy(object):
         return show
 
 class Proxies(object):
-    def __init__(self, base_dir, imdb_cache_dir="imdb-cache", tmdb_cache_dir="tmdb-cache", tvdb_cache_dir="tvdb-cache", language="en"):
-        if base_dir:
-            if imdb_cache_dir is not None:
-                imdb_cache_dir = os.path.join(base_dir, imdb_cache_dir)
-            if tmdb_cache_dir is not None:
-                tmdb_cache_dir = os.path.join(base_dir, tmdb_cache_dir)
-            if tvdb_cache_dir is not None:
-                tvdb_cache_dir = os.path.join(base_dir, tvdb_cache_dir)
-        self.imdb_api = IMDbFileProxy(imdb_cache_dir)
-        self.tmdb_api = TMDbFileProxy(tmdb_cache_dir)
-        self.tvdb_api = TVDbFileProxy(tvdb_cache_dir)
-        self.language = language
+    def __init__(self, settings):
+        base_dir = settings.metadata_root
+        for subdir in ["imdb_cache_dir", "tmdb_cache_dir", "tvdb_cache_dir"]:
+            path = getattr(settings, subdir)
+            if not path:
+                path = base_dir
+            elif not os.path.isabs(path):
+                path = os.path.join(base_dir, path)
+            setattr(self, subdir, path)
+        self.imdb_api = IMDbProxy(self.imdb_cache_dir, settings.imdb_language)
+        self.tmdb_api = tmdb3.TMDb3_API(self.tmdb_cache_dir, settings.iso_639_1, settings.tmdb_poster_size)
+        self.tvdb_api = TVDbFileProxy(self.tvdb_cache_dir)
 
 
 
@@ -168,15 +88,14 @@ def replaced_retrieve(self, url, size=-1, _noCookies=False):
     print url
     return url
 
-class IMDbProxy(object):
-    def __init__(self, base_dir, imdb_cache_dir="imdb-cache", language="en"):
-        if base_dir:
-            if imdb_cache_dir is not None:
-                imdb_cache_dir = os.path.join(base_dir, imdb_cache_dir)
+class IMDbProxy(HttpProxyBase):
+    def __init__(self, imdb_cache_dir, language="en"):
+        HttpProxyBase.__init__(self, imdb_cache_dir)
         self.search_cache = FilePickleDict(imdb_cache_dir, "s")
         self.movie_obj_cache = FilePickleDict(imdb_cache_dir, "")
         self.api = imdb.IMDb(accessSystem='http', adultSearch=1)
         self.api._retrieve = types.MethodType(replaced_retrieve, self.api)
+        self.http_api = imdb.IMDb(accessSystem='http', adultSearch=1)
         self.language = language
     
     def search_url(self, title, num_results=20):
@@ -188,6 +107,44 @@ class IMDbProxy(object):
         return [Movie.Movie(movieID=self.api._get_real_movieID(mi),
                             data=md, modFunct=self.api._defModFunct,
                             accessSystem=self.api.accessSystem) for mi, md in res][:num_results]
+    
+    def process_search(self, data, title, num_results):
+        results = self.search_results_from_data(data, num_results)
+        log.debug("*** STORING %s in search cache: " % title)
+        for result in results:
+            result.imdb_id = "tt" + result.movieID
+            print result.imdb_id, result
+        self.search_cache[title] = results
+        return results
+    
+    def search_movie(self, title, num_results=20):
+        if title in self.search_cache:
+            log.debug("*** FOUND %s in search cache: " % title)
+            results = self.search_cache[title]
+        else:
+            log.debug("*** NOT FOUND in search cache: %s" % title)
+            url = self.search_url(title, num_results)
+            data = self.load_url(url)
+            results = self.process_search(data, title, num_results)
+        return results
+    
+    def get_movie(self, imdb_id):
+        if type(imdb_id) == int:
+            imdb_id = "tt%07d" % imdb_id
+        if imdb_id in self.movie_obj_cache:
+            log.debug("*** FOUND %s in movie cache: " % imdb_id)
+            movie_obj = self.movie_obj_cache[imdb_id]
+        else:
+            log.debug("*** NOT FOUND in movie cache: %s" % imdb_id)
+            try:
+                movie_obj = self.http_api.get_movie(imdb_id[2:])
+                log.debug("*** STORING %s in movie cache: " % imdb_id)
+                if movie_obj:
+                    movie_obj.imdb_id = "tt" + movie_obj.movieID
+                self.movie_obj_cache[imdb_id] = movie_obj
+            except imdb.IMDbDataAccessError:
+                movie_obj = None
+        return movie_obj
 
     def get_movie_main_url(self, movie_id):
         return self.api.urls['movie_main'] % movie_id + 'combined'
@@ -243,7 +200,7 @@ class IMDbSearchTask(DownloadTask):
         self.title = title
         self.num_results = num_results
         url = self.api.search_url(title, num_results)
-        self.path = os.path.join("/tmp", urllib.quote_plus(url))
+        self.path = os.path.join(api.http_cache, urllib.quote_plus(url))
         DownloadTask.__init__(self, url, self.path, include_header=False)
     
     def _is_cached(self):

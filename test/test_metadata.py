@@ -20,3 +20,5 @@ if __name__ == "__main__":
         guesses = loader.search(file.scan.title_key)
         print guesses
         
+        metadata = loader.get_metadata(guesses[0])
+        print unicode(metadata).encode("utf-8")
