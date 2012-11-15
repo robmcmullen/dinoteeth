@@ -142,6 +142,8 @@ class FilePickleDict(object):
 
 
 class HttpProxyBase(object):
+    base_url = None
+    
     def __init__(self, cache_dir):
         self.http_cache_dir = cache_dir
 
@@ -164,6 +166,11 @@ class HttpProxyBase(object):
         except:
             return simplejson.loads(page.decode('utf-8'))
     
+    @classmethod
+    def get_soup(cls, page):
+        import bs4
+        return bs4.BeautifulSoup(page)
+    
     def load_url(self, url, use_cache=True):
         if use_cache:
             cached = self.get_cache_path(url)
@@ -172,7 +179,18 @@ class HttpProxyBase(object):
                 return page
         import requests
         page = requests.get(url).content
+        if use_cache:
+            fh = open(cached, "wb")
+            fh.write(page)
+            fh.close()
         return page
+    
+    def get_rel_url(self, rel_url):
+        return self.base_url + rel_url
+    
+    def load_rel_url(self, rel_url, use_cache=True):
+        url = self.get_rel_url(rel_url)
+        return self.load_url(url, use_cache)
 
 
 class TitleKey(Persistent):

@@ -12,6 +12,7 @@ import os, re, urllib, time, logging
 from bs4 import BeautifulSoup
 import requests
 
+from api_base import GameAPI
 from ..download import DownloadTask
 
 class Game(object):
@@ -71,41 +72,24 @@ class Game(object):
 #            print url
             self.all_image_urls.append(url)
 
-class AtariMania_API(object):
+class AtariMania_API(GameAPI):
+    subcategory = "atari-8bit"
+    
     API_KEY = 'a8b9f96dde091408a03cb4c78477bd14'
     base_url = "http://www.atarimania.com/"
     image_sizes = {}
-    cache_path = "/tmp"
-    
-    @classmethod
-    def get_path(cls, rel_url):
-        encoded_path = urllib.quote_plus(rel_url)
-        cached = os.path.join(cls.cache_path, encoded_path)
-        return cached
-        
-    @classmethod
-    def get_url(cls, rel_url):
-        return cls.base_url + rel_url
-        
-    @classmethod
-    def getSoup(cls, rel_url):
-        cached = cls.get_path(rel_url)
-        if os.path.exists(cached):
-            page = open(cached, "rb").read()
-        else:
-            page = requests.get(cls.base_url + rel_url).content
-            fh = open(cached, "wb")
-            fh.write(page)
-            fh.close()
-        return BeautifulSoup(page)
     
     @classmethod
     def encode_title(cls, title):
         return ".".join([str(ord(c)) for c in title])
     
+    def get_soup_from_path(self, path):
+        page = self.load_rel_url(path)
+        return self.get_soup(page)
+    
     def search(self, title):
         path = "list_games_atari_search_%s._8_G.html" % self.encode_title(title)
-        soup = self.getSoup(path)
+        soup = self.get_soup_from_path(path)
         return self.process_search(soup)
     
     def process_search(self, soup):
@@ -122,15 +106,15 @@ class AtariMania_API(object):
         return possibilities
     
     def get_game_details(self, game):
-        soup = self.getSoup(game.url)
+        soup = self.get_soup_from_path(game.url)
         game.process_details(soup)
 
 
 class Atari8BitTask(DownloadTask):
     def __init__(self, api, rel_url):
         self.api = api
-        url = api.get_url(rel_url)
-        path = api.get_path(rel_url)
+        url = api.get_rel_url(rel_url)
+        path = api.get_cache_path(url)
         DownloadTask.__init__(self, url, path)
 
 class Atari8BitSearch(Atari8BitTask):
