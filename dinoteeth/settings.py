@@ -2,10 +2,19 @@ metadata_root = "/tmp"
 
 subtitle_file_extensions = []
 
+# IMDb settings
+imdb_cache_dir = "imdb-cache"
 imdb_country = "USA"
 imdb_language = "English"
+
+# TMDb settings
+tmdb_cache_dir = "tmdb-cache"
 iso_3166_1 = "US"
 iso_639_1 = "en"
+tmdb_poster_size = "w342"
+
+# TVDB settings
+tvdb_cache_dir = "tvdb-cache"
 
 credit_map = [
     # Title, attribute, limit_category (one of: 'series', 'movies' or None), converter (to change the data; e.g. change a raw timestamp into a month/year for bucketing), reverse sort flag (True or False/None)

@@ -76,7 +76,7 @@ class Config(object):
         parser.add_argument("--font-size-detail", action="store", type=int, default=12)
         parser.add_argument("--font-size-selected", action="store", type=int, default=24)
         
-        parser.add_argument("--imdb-country-code", action="store", default="USA")
+        parser.add_argument("--imdb-country", action="store", default="USA")
         parser.add_argument("--imdb-language", action="store", default="English")
         parser.add_argument("--country-code", action="store", default="US")
         parser.add_argument("--test-threads", action="store_true", default=False)
@@ -152,7 +152,7 @@ class Config(object):
     
     def set_class_defaults(self):
         settings.metadata_root = self.options.metadata_root
-        settings.imdb_country = self.options.imdb_country_code
+        settings.imdb_country = self.options.imdb_country
         settings.imdb_language = self.options.imdb_language
         settings.iso_3166_1 = self.options.country_code
         settings.subtitle_file_extensions = self.get_subtitle_extensions()
