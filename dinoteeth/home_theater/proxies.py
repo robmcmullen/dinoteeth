@@ -408,3 +408,18 @@ class TMDbMovieDetailTask(TMDbMovieDetailDownloadTask):
     
     def root_task_complete_callback(self):
         print self.movie
+
+class TMDbMovieBestPosterTask(DownloadTask):
+    def __init__(self, api, movie):
+        self.api = api
+        self.movie = movie
+        url = self.movie.get_best_poster_url()
+        self.path = self.api.get_cache_path(url)
+        DownloadTask.__init__(self, url, self.path, include_header=False)
+    
+    def _is_cached(self):
+        return os.path.exists(self.path)
+        
+    def success_callback(self):
+        print "downloaded poster %s: %s" % (self.movie.movie['title'], os.path.getsize(self.path))
+

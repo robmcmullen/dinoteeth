@@ -19,9 +19,10 @@ if __name__ == '__main__':
                         format='%(name)s: %(message)s',
                         )
     
-    api = TMDb3_API("/tmp", "en")
-        
-    tasks = [TMDbAPITask(api), TMDbMovieDetailTask(api, "tt0049471")]
+    api = TMDb3_API("/tmp", "en", "w342")
+    
+    detail = TMDbMovieDetailTask(api, "tt0049471")
+    tasks = [TMDbAPITask(api), detail]
 #    for task in tasks:
 #        if task._is_cached():
 #            task.success_callback()
@@ -40,5 +41,11 @@ if __name__ == '__main__':
         for task in done:
             print 'FINISHED:', str(task)
             tasks.remove(task)
+            if task == detail:
+                poster = TMDbMovieBestPosterTask(api, detail.movie)
+                manager.add_task(poster)
+                tasks.append(poster)
     
     manager.shutdown()
+    
+    print api.image_sizes
