@@ -2,9 +2,9 @@ metadata_root = "/tmp"
 
 subtitle_file_extensions = []
 
-imdb_country = None
+imdb_country = "USA"
 imdb_language = "English"
-iso_3166_1 = None
+iso_3166_1 = "US"
 iso_639_1 = "en"
 
 credit_map = [
