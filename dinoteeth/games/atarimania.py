@@ -62,6 +62,7 @@ class AtariMania_API(GameAPI):
     
     API_KEY = 'a8b9f96dde091408a03cb4c78477bd14'
     base_url = "http://www.atarimania.com/"
+    ignore_query_string_params = ['timestamp']
     image_sizes = {}
     
     def get_cache_dir(self, settings):
@@ -95,7 +96,7 @@ class AtariMania_API(GameAPI):
         """
         title = title.lower()
         path = "search.php?q=%s&limit=10&timestamp=%d&s=8&t=G" % (title, int(time.time()))
-        page = self.load_rel_url(path, use_cache=False)
+        page = self.load_rel_url(path)
         results = []
         for line in page.splitlines():
             print "-->%s<--" % line

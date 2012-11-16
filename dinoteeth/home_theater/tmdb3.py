@@ -20,6 +20,7 @@ from ..utils import HttpProxyBase
 class TMDb3_API(HttpProxyBase):
     API_KEY = 'a8b9f96dde091408a03cb4c78477bd14'
     base_url = None
+    ignore_query_string_params = ['api_key']
     image_sizes = {}
     
     def __init__(self, cache_dir, language, poster_size):
@@ -28,17 +29,6 @@ class TMDb3_API(HttpProxyBase):
         self.movie_obj_cache = {}
         self.language = language
         self.poster_size = poster_size
-
-    def get_cache_path(self, url):
-        """Different from superclass to remove api_key from cached pathname"""
-        path_part = url.split("//", 1)[1]
-        if "?api_key=" in path_part:
-            path_part = path_part.split("?api_key=", 1)[0]
-        full_path = os.path.join(self.cache_dir, path_part)
-        dir_part = os.path.dirname(full_path)
-        if not os.path.exists(dir_part):
-            os.makedirs(dir_part)
-        return full_path
 
     def get_conf(self):
         if self.__class__.base_url:

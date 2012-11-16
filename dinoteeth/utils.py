@@ -143,12 +143,31 @@ class FilePickleDict(object):
 
 class HttpProxyBase(object):
     base_url = None
+    ignore_query_string_params = []
     
     def __init__(self, cache_dir):
         self.http_cache_dir = cache_dir
 
     def get_cache_path(self, url):
         path_part = url.split("//", 1)[1]
+        
+        # remove query string params listed in ignore_query_string_params.
+        # This is used to remove timestamps or other volatile parts of the
+        # URL that don't change the content of the request
+        if "?" in path_part:
+            path_part, query_string = path_part.split("?", 1)
+            params = []
+            for param in query_string.split("&"):
+                if "=" in param:
+                    field, value = param.split("=", 1)
+                else:
+                    field = param
+                if field in self.ignore_query_string_params:
+                    continue
+                params.append(param)
+            query_string = "&".join(params)
+            if query_string:
+                path_part += "?" + query_string
         full_path = os.path.join(self.http_cache_dir, path_part)
         dir_part = os.path.dirname(full_path)
         if not os.path.exists(dir_part):
