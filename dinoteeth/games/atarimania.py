@@ -12,24 +12,14 @@ import os, re, urllib, time, logging
 from bs4 import BeautifulSoup
 import requests
 
-from api_base import GameAPI
+from api_base import Game, GameAPI
 from ..download import DownloadTask
 
-class Game(object):
+class Atari8bitGame(Game):
+    subcategory = "atari-8bit"
+    
     def __init__(self, div=None):
-        self.name = ""
-        self.id = -1
-        self.url = ""
-        self.default_image_url = ""
-        self.all_image_urls = []
-        self.publisher = None
-        self.publisher_id = None
-        self.year = None
-        self.year_id = None
-        self.genre = None
-        self.genre_id = None
-        self.country = None
-        self.country_id = None
+        Game.__init__(self)
         if div:
             self.parse_summary(div)
     
@@ -54,16 +44,11 @@ class Game(object):
                 self.id = href.split("_")[1].split(".")[0]
                 self.url = href
                 self.default_image_url = link.img.attrs['src']
+        self.imdb_id = "am%s" % self.id
     
     def split(self, href, key):
         return href.split(key)[1].split('_')[0]
     
-    def __unicode__(self):
-        return u"%s (%s, %s, %s): %s, %s" % (self.name, self.year, self.publisher, self.country, self.url, self.default_image_url)
-    
-    def __str__(self):
-        return "%s (%s, %s, %s): %s, %s" % (self.name, self.year, self.publisher, self.country, self.url, self.default_image_url)
-
     def process_details(self, soup):
         div = soup.find(id="galleryb")
 #        print div
@@ -79,6 +64,11 @@ class AtariMania_API(GameAPI):
     base_url = "http://www.atarimania.com/"
     image_sizes = {}
     
+    def get_cache_dir(self, settings):
+        if hasattr(settings, "atarimania_cache_dir"):
+            return settings.atarimania_cache_dir
+        return "/tmp"
+    
     @classmethod
     def encode_title(cls, title):
         return ".".join([str(ord(c)) for c in title])
@@ -88,6 +78,33 @@ class AtariMania_API(GameAPI):
         return self.get_soup(page)
     
     def search(self, title):
+        title, ext = os.path.splitext(title)
+        while len(title) > 2:
+            print "trying title -->%s<--" % title
+            matches = self.autocomplete_title(title)
+            if len(matches) > 0:
+                return self.get_search_results(matches[0])
+            title = title[:-1]
+        return []
+    
+    def autocomplete_title(self, title):
+        """Use atarimania autocomplete API to get a title
+        
+        Reverse engineered the URL from watching XMLHTTPRequests in Firebug.
+        The param "s" is the platform: '8' for 8-bit search, 'S' for ST search.
+        """
+        title = title.lower()
+        path = "search.php?q=%s&limit=10&timestamp=%d&s=8&t=G" % (title, int(time.time()))
+        page = self.load_rel_url(path, use_cache=False)
+        results = []
+        for line in page.splitlines():
+            print "-->%s<--" % line
+            if line.endswith("|"):
+                line = line[:-1]
+            results.append(line)
+        return results
+    
+    def get_search_results(self, title):
         path = "list_games_atari_search_%s._8_G.html" % self.encode_title(title)
         soup = self.get_soup_from_path(path)
         return self.process_search(soup)
@@ -101,7 +118,7 @@ class AtariMania_API(GameAPI):
                 while link.name != 'div':
                     link = link.parent
 #                print link
-                r = Game(link)
+                r = Atari8bitGame(link)
                 possibilities.append(r)
         return possibilities
     

@@ -9,6 +9,7 @@ from dinoteeth.metadata import *
 if __name__ == "__main__":
     import sys
     import dinoteeth.games
+    import dinoteeth.games.atarimania
     import dinoteeth.home_theater
     
     for filename in sys.argv[1:]:
@@ -20,5 +21,8 @@ if __name__ == "__main__":
         guesses = loader.search(file.scan.title_key)
         print guesses
         
-        metadata = loader.get_metadata(guesses[0])
-        print unicode(metadata).encode("utf-8")
+        if len(guesses) > 0:
+            metadata = loader.get_metadata(guesses[0])
+            print unicode(metadata).encode("utf-8")
+        else:
+            print "No search results for %s" % str(file.scan.title_key)
