@@ -13,13 +13,13 @@ from bs4 import BeautifulSoup
 import requests
 
 from api_base import GameAPI
-from metadata import GameMetadata
+from metadata import GameMetadata, GameMetadataLoader
 from ..download import DownloadTask
+from ..metadata import MetadataLoader
 
 
 class Atari8bitGame(GameMetadata):
-    imdb_prefix = "8b"
-    subcategory = "atari-8bit"
+    game_platform = "atari-8bit"
     
     def __init__(self, div=None):
         GameMetadata.__init__(self, None, None)
@@ -66,7 +66,7 @@ class Atari8bitGame(GameMetadata):
                 self.id = unicode(href.split("_")[1].split(".")[0])
                 self.url = str(href)
                 self.default_image_url = str(link.img.attrs['src'])
-        self.imdb_id = self.imdb_prefix + str(self.id)
+        self.imdb_id = str(self.id)
     
     def split(self, href, key):
         return href.split(key)[1].split('_')[0]
@@ -80,8 +80,6 @@ class Atari8bitGame(GameMetadata):
             self.all_image_urls.append(url)
 
 class AtariMania_API(GameAPI):
-    subcategory = "atari-8bit"
-    
     API_KEY = 'a8b9f96dde091408a03cb4c78477bd14'
     base_url = "http://www.atarimania.com/"
     ignore_query_string_params = ['timestamp']
@@ -208,3 +206,10 @@ class Atari8BitScreenshot(Atari8BitTask):
         Atari8BitTask.__init__(self, api, screenshot_url)
         self.game = game
         print "screenshot for %s from %s -> %s" % (game.name, self.url, self.path)
+
+
+
+class AtariMania8bitLoader(GameMetadataLoader):
+    api_class = AtariMania_API
+
+MetadataLoader.register("game", "atari-8bit", AtariMania8bitLoader)
