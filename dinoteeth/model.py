@@ -1,7 +1,7 @@
 import os, sys, glob, time, bisect, logging
 
 from updates import UpdateManager
-from database import commit
+from utils import DBFacade
 
 log = logging.getLogger("dinoteeth.model")
 log.setLevel(logging.DEBUG)
@@ -69,7 +69,7 @@ class MenuItem(object):
                 log.debug("starred %s" % base_metadata.id)
             else:
                 log.debug("unstarred %s" % base_metadata.id)
-            commit()
+            DBFacade.commit()
     
     def do_populate(self):
         if self.populated < self.__class__.refresh_time:
