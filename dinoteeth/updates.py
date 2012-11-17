@@ -102,7 +102,7 @@ class FileWatcher(pyinotify.ProcessEvent):
                 notifier.process_events()
             if len(self.added) + len(self.removed) > 0:
                 print "Found %d files added, %d removed" % (len(self.added), len(self.removed))
-                self.db.update_metadata(self.media_path_dict)
+                self.db.scan_and_update(self.media_path_dict)
                 self.added = set()
                 self.removed = set()
             else:

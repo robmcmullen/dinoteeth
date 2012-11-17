@@ -1,8 +1,10 @@
 import os, time, collections, logging
 
+import transaction
+
 from utils import iter_dir
 from filescan import MediaFile
-from metadata import get_loader
+from metadata import MetadataLoader
 
 log = logging.getLogger("dinoteeth.database")
 log.setLevel(logging.DEBUG)
@@ -138,9 +140,8 @@ class HomeTheaterFileList(list):
 
 
 class HomeTheaterDatabase(object):
-    def __init__(self, zodb, proxies):
+    def __init__(self, zodb):
         self.zodb = zodb
-        self.proxies = proxies
         self.scans = zodb.get_mapping("scans")
         self.metadata = zodb.get_mapping("metadata")
         self.title_key_to_metadata = zodb.get_mapping("title_key_to_metadata")
@@ -218,14 +219,17 @@ class HomeTheaterDatabase(object):
         for key in removed_keys:
             print "Removing %s" % key
             del self.scans[key]
-        transaction.savepoint()
+        self.zodb.commit()
     
-    def update_metadata(self, media_path_dict, valid_extensions=None):
-        self.scan_dirs(media_path_dict, valid_extensions)
+    def update_metadata(self):
         self.create_title_key_map()
         self.update_metadata_map()
         self.zodb.set_last_modified()
         self.zodb.commit()
+    
+    def scan_and_update(self, media_path_dict, valid_extensions=None):
+        self.scan_dirs(media_path_dict, valid_extensions)
+        self.update_metadata()
     
     def create_title_key_map(self):
         t = self.zodb.get_mapping("title_key_map", clear=True)
@@ -256,13 +260,28 @@ class HomeTheaterDatabase(object):
         for title_key, scans in self.iter_title_key_map():
             metadata = t.get(title_key, None)
             if metadata is None:
-                metadata = self.metadata_lookup.best_guess_from_media_files(title_key, scans)
+                loader = MetadataLoader.get_loader(title_key)
+                metadata = loader.best_guess(title_key, scans)
                 if metadata is None:
                     continue
                 self.title_key_to_metadata[title_key] = metadata
             for item in scans:
                 item.metadata = metadata
             metadata.update_with_media_files(scans)
+            metadata.merge_database_objects(self)
+            
+        # Help for debugging a recursion error in zodb
+        if False:
+            for title_key, metadata in self.title_key_to_metadata.iteritems():
+                print "%s: %s" % (title_key, metadata)
+                import pprint
+                print metadata.__class__
+                from persistent import Persistent
+                from persistent.wref import WeakRefMarker, WeakRef
+                print isinstance(metadata, (Persistent, type, WeakRef))
+                oid = metadata._p_oid
+                print oid
+                pprint.pprint(vars(metadata))
         transaction.savepoint()
     
     def title_keys_with_metadata(self):

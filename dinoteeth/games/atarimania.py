@@ -12,14 +12,17 @@ import os, re, urllib, time, logging
 from bs4 import BeautifulSoup
 import requests
 
-from api_base import Game, GameAPI
+from api_base import GameAPI
+from metadata import GameMetadata
 from ..download import DownloadTask
 
-class Atari8bitGame(Game):
+
+class Atari8bitGame(GameMetadata):
+    imdb_prefix = "8b"
     subcategory = "atari-8bit"
     
     def __init__(self, div=None):
-        Game.__init__(self)
+        GameMetadata.__init__(self, None, None)
         if div:
             self.parse_summary(div)
     
@@ -27,24 +30,43 @@ class Atari8bitGame(Game):
         for link in div.find_all('a'):
 #            print link
             href = link.attrs['href']
+            
+            # Note: must convert beautiful soup results into strings or some
+            # other native type because serialization fails with an odd error:
+            #
+            #  File "/usr/lib64/python2.7/site-packages/ZODB/serialize.py", line 431, in _dump
+            #    self._p.dump(state)
+            #  File "/usr/lib64/python2.7/site-packages/ZODB/serialize.py", line 276, in persistent_id
+            #    if not isinstance(obj, (Persistent, type, WeakRef)):
+            #RuntimeError: maximum recursion depth exceeded while calling a Python object
+            # when using savepoints in zodb, or when saving the database direcly:
+            # 
+            #  File "/usr/lib64/python2.7/site-packages/ZODB/serialize.py", line 431, in _dump
+            #    self._p.dump(state)
+            #  File "/usr/lib64/python2.7/copy_reg.py", line 74, in _reduce_ex
+            #    getstate = self.__getstate__
+            #  File "/usr/lib64/python2.7/site-packages/bs4/element.py", line 924, in __getattr__
+            #    "'%s' object has no attribute '%s'" % (self.__class__, tag))
+            #RuntimeError: maximum recursion depth exceeded while getting the str of an object
+
             if 'publisher_' in href:
-                self.publisher_id = self.split(href, "publisher_")
-                self.publisher = link.string
+                self.publisher_id = unicode(self.split(href, "publisher_"))
+                self.publisher = unicode(link.string)
             elif 'year_' in href:
-                self.year_id = self.split(href, "year_")
-                self.year = link.string
+                self.year_id = unicode(self.split(href, "year_"))
+                self.year = unicode(link.string)
             elif 'genre_' in href:
-                self.genre_id = self.split(href, "genre_")
-                self.genre = link.string
+                self.genre_id = unicode(self.split(href, "genre_"))
+                self.genre = unicode(link.string)
             elif 'country_' in href:
-                self.country_id = self.split(href, "country_")
-                self.country = link.img.attrs['alt']
+                self.country_id = unicode(self.split(href, "country_"))
+                self.country = unicode(link.img.attrs['alt'])
             elif 'class' in link.attrs and 'preview' in link.attrs['class']:
-                self.name = link.img.attrs['alt']
-                self.id = href.split("_")[1].split(".")[0]
-                self.url = href
-                self.default_image_url = link.img.attrs['src']
-        self.imdb_id = "am%s" % self.id
+                self.title = unicode(link.img.attrs['alt'])
+                self.id = unicode(href.split("_")[1].split(".")[0])
+                self.url = str(href)
+                self.default_image_url = str(link.img.attrs['src'])
+        self.imdb_id = self.imdb_prefix + str(self.id)
     
     def split(self, href, key):
         return href.split(key)[1].split('_')[0]

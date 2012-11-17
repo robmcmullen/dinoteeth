@@ -38,3 +38,9 @@ class MetadataLoader(object):
         an appropriate criteria.
         """
         return []
+    
+    def best_guess(self, title_key, scans):
+        """Return best guess for metadata given the list of MediaFiles that
+        match the specified title key.
+        """
+        return []

@@ -25,6 +25,7 @@ def safestr(s):
 
 
 class Company(Persistent):
+    zodb_mapping_name = "companies"
     imdb_prefix = "co"
     
     def __init__(self, company_obj, id=None, name=None):
@@ -45,6 +46,7 @@ class Company(Persistent):
         return u"%s" % self.name
 
 class Person(Persistent):
+    zodb_mapping_name = "people"
     imdb_prefix = "nm"
     
     def __init__(self, person_obj):
@@ -71,6 +73,7 @@ class Person(Persistent):
         return sname[0], ""
 
 class FilmSeries(Persistent):
+    zodb_mapping_name = "film_series"
     imdb_prefix = "--"
     
     def __init__(self, tmdb_obj, id=None, name=None):
@@ -108,6 +111,7 @@ class BaseMetadata(Persistent):
         self.title_index = ""
         self.date_added = -1
         self.starred = False
+        self.runtimes = []
     
     def __cmp__(self, other):
         return cmp(self.sort_key(), other.sort_key())
@@ -279,6 +283,34 @@ class BaseMetadata(Persistent):
             if len(companies) >= max:
                 break
         return companies
+    
+    def merge_database_objects(self, db):
+        """Loop through all persistent objects to point to any that are already
+        in the database
+        
+        Persistent objects may be in any list in the instance.
+        """
+        for name in dir(self):
+            attr = getattr(self, name)
+            if isinstance(attr, list):
+                try:
+                    obj = attr[0]
+                except IndexError:
+                    continue
+                if hasattr(obj, "zodb_mapping_name"):
+                    self.merge_mapping(db, name, attr)
+    
+    def merge_mapping(self, db, name, attr):
+        mapping = db.zodb.get_mapping(attr[0].zodb_mapping_name)
+        newitems = []
+        for item in attr:
+            if item.id not in mapping:
+                log.debug("  adding %s %s (%s)" % (item.zodb_mapping_name, item.id, str(item)))
+                mapping[item.id] = item
+            else:
+                log.debug("  found %s %s (%s)" % (item.zodb_mapping_name, item.id, str(item)))
+            newitems.append(mapping[item.id])
+        setattr(self, name, newitems)
     
     def lambdaify(self, criteria):
         if isinstance(criteria, collections.Callable):
@@ -607,7 +639,7 @@ class SeriesMetadata(BaseMetadata):
         self.companies = self.prune_companies(companies)
         
         if tvdb_obj and tvdb_obj.data['network']:
-            network = self.Company(None, None, tvdb_obj.data['network'])
+            network = Company(None, None, tvdb_obj.data['network'])
         else:
             distributors = self.get_obj(movie_obj, 'distributors')
             networks = self.prune_companies(distributors, 1)
@@ -805,5 +837,65 @@ class HomeTheaterMetadataLoader(MetadataLoader):
     def get_metadata(self, result):
         imdb_id = result.imdb_id
         return self.get_metadata_by_id(imdb_id)
+    
+    def get_fake_metadata(self, title_key, scans):
+        kind = title_key.subcategory
+        id = None
+        if kind == "movie":
+            metadata = FakeMovieMetadata(id, title_key, scans)
+        else:
+            metadata = FakeSeriesMetadata(id, title_key, scans)
+        return metadata
+    
+    def best_guess(self, title_key, scans):
+        kind = title_key.subcategory
+        log.debug("Guessing for: %s" % scans)
+        guesses = self.search(title_key)
+        if not guesses:
+            log.error("IMDb returned no guesses for %s???" % title_key.title)
+        total_runtime, num_episodes = scans.get_total_runtime()
+        avg_runtime = total_runtime / num_episodes
+        avg_scale = avg_runtime * 4 / 60 # +- 4 minutes per hour
+        with_commercials = avg_runtime * 30 / 22
+        commercial_scale = with_commercials * 4 / 60 # +- 4 minutes per hour
+        log.debug("runtime: %f (%f with commercials if applicable)" % (avg_runtime, with_commercials))
+        
+        def best_loop():
+            closest = 10000
+            best = None
+            for guess in guesses:
+                movie = self.get_metadata(guess)
+                for r in movie.runtimes:
+                    log.debug("runtime: %s %s" % (movie.title.encode('utf8'), r))
+                    if r == 0:
+                        continue
+                    if r - avg_scale < avg_runtime < r + avg_scale:
+                        return movie
+                    elif kind == "series":
+                        # IMDb runtimes are not very accurate for series, so
+                        # just accept the first match when it's a series
+                        return movie
+                    elif movie.is_tv() and (r - commercial_scale < with_commercials < r + commercial_scale):
+                        return movie
+                    else:
+                        log.debug("IMDb runtimes of %s = %s; avg/w comm/total runtime = %s, %s, %s.  Skipping" % (movie.title, str(movie.runtimes), avg_runtime, with_commercials, total_runtime))
+                if not best:
+                    best = movie
+                else:
+                    diff = abs(avg_runtime - movie.runtime)
+                    if diff < closest:
+                        closest = diff
+                        best = movie
+            return best
+        
+        if avg_runtime > 0:
+            best = best_loop()
+        else:
+            best = self.get_metadata(guesses[0])
+        if best:
+            log.info("best guess: %s, %s" % (best.title.encode('utf8'), best.runtimes))
+        else:
+            best = self.get_fake_metadata(title_key, scans)
+        return best
 
 MetadataLoader.register("video", HomeTheaterMetadataLoader)
