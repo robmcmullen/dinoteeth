@@ -80,10 +80,17 @@ class Atari8bitGame(GameMetadata):
             self.all_image_urls.append(url)
 
 class AtariMania_API(GameAPI):
-    API_KEY = 'a8b9f96dde091408a03cb4c78477bd14'
     base_url = "http://www.atarimania.com/"
     ignore_query_string_params = ['timestamp']
+    game_platform_map = {
+        "atari-8bit": '8',
+        "atari-st": 'S',
+        }
     image_sizes = {}
+    
+    def __init__(self, platform, settings):
+        self.platform = self.game_platform_map[platform]
+        GameAPI.__init__(self, settings)
     
     def get_cache_dir(self, settings):
         if hasattr(settings, "atarimania_cache_dir"):
@@ -112,10 +119,11 @@ class AtariMania_API(GameAPI):
         """Use atarimania autocomplete API to get a title
         
         Reverse engineered the URL from watching XMLHTTPRequests in Firebug.
-        The param "s" is the platform: '8' for 8-bit search, 'S' for ST search.
+        The param "s" is the platform and "t" is the type where "G" is for
+        games.
         """
         title = title.lower()
-        path = "search.php?q=%s&limit=10&timestamp=%d&s=8&t=G" % (title, int(time.time()))
+        path = "search.php?q=%s&limit=10&timestamp=%d&s=%s&t=G" % (title, int(time.time()), self.platform)
         page = self.load_rel_url(path)
         results = []
         for line in page.splitlines():
@@ -126,7 +134,7 @@ class AtariMania_API(GameAPI):
         return results
     
     def get_search_results(self, title):
-        path = "list_games_atari_search_%s._8_G.html" % self.encode_title(title)
+        path = "list_games_atari_search_%s._%s_G.html" % (self.encode_title(title), self.platform)
         soup = self.get_soup_from_path(path)
         return self.process_search(soup)
     
@@ -210,7 +218,8 @@ class Atari8BitScreenshot(Atari8BitTask):
 
 
 class AtariMania8bitLoader(GameMetadataLoader):
-    api_class = AtariMania_API
+    def init_proxies(self, settings):
+        self.api = AtariMania_API(Atari8bitGame.game_platform, settings)
     
     def fetch_posters(self, item):
         for i, rel_url in enumerate(item.all_image_urls):
@@ -221,4 +230,4 @@ class AtariMania8bitLoader(GameMetadataLoader):
             self.save_poster(item, url, data, suffix)
         return None
 
-MetadataLoader.register("game", "atari-8bit", AtariMania8bitLoader)
+MetadataLoader.register("game", Atari8bitGame.game_platform, AtariMania8bitLoader)

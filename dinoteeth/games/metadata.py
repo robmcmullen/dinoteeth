@@ -72,11 +72,6 @@ class GameMetadata(BaseMetadata):
 
 
 class GameMetadataLoader(MetadataLoader):
-    api_class = None
-    
-    def init_proxies(self, settings):
-        self.api = self.api_class(settings)
-
     def search(self, title_key):
         title = title_key.title
         results = []
