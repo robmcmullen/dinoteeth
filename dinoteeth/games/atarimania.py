@@ -211,5 +211,14 @@ class Atari8BitScreenshot(Atari8BitTask):
 
 class AtariMania8bitLoader(GameMetadataLoader):
     api_class = AtariMania_API
+    
+    def fetch_posters(self, item):
+        for i, rel_url in enumerate(item.all_image_urls):
+            url = self.api.get_rel_url(rel_url)
+            print("image %d url: %s" % (i, url))
+            data = self.api.load_url(url)
+            suffix = "-screenshot%02d" % i
+            self.save_poster(item, url, data, suffix)
+        return None
 
 MetadataLoader.register("game", "atari-8bit", AtariMania8bitLoader)

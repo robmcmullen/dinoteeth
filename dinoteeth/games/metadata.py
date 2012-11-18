@@ -51,7 +51,7 @@ class GameMetadata(BaseMetadata):
         return "%s (%s, %s, %s): %s, %s" % (self.title, self.year, self.publisher, self.country, self.url, self.default_image_url)
     
     def get_path_prefix(self):
-        return os.path.join(self.media_category, self.game_platform)
+        return os.path.join(self.media_category, self.game_platform, self.id)
     
     def update_with_media_files(self, media_files):
         pass
