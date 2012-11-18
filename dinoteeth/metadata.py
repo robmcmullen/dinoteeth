@@ -102,17 +102,19 @@ class MetadataLoader(object):
         """
         pass
     
-    def save_poster(self, metadata, url, data, season=None):
+    def save_poster(self, metadata, url, data, suffix=None):
         """Save posters for the metadata instance
 
+        @param suffix: text (if any) to be appended after the filename but
+        before the extension
         """
         metadata_root = "/tmp"
         path = os.path.join(metadata_root, metadata.get_path_prefix())
         dirname = os.path.dirname(path)
         if not os.path.exists(dirname):
             os.makedirs(dirname)
-        if season is not None:
-            path += "-s%02d" % season
+        if suffix is not None:
+            path += suffix
         filename, ext = os.path.splitext(url)
         path += ext
         print "Saving %d bytes from %s to %s" % (len(data), url, path)

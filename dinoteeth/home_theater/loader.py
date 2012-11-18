@@ -207,7 +207,8 @@ class HomeTheaterMetadataLoader(MetadataLoader):
             for season, url in season_map.iteritems():
                 log.debug("best season %d tvdb poster: %s" % (season, url))
                 data = self.proxies.tvdb_api.load_url(url)
-                self.save_poster(item, url, data, season=season)
+                suffix = "-s%02d" % season
+                self.save_poster(item, url, data, suffix=suffix)
         return main
 
 MetadataLoader.register("video", "*", HomeTheaterMetadataLoader)
