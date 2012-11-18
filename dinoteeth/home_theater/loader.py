@@ -9,7 +9,7 @@ from ..metadata import MetadataLoader
 from metadata import *
 from proxies import Proxies
 
-log = logging.getLogger("dinoteeth.metadata")
+log = logging.getLogger("dinoteeth.home_theater.loader")
 log.setLevel(logging.DEBUG)
 
 
@@ -140,5 +140,74 @@ class HomeTheaterMetadataLoader(MetadataLoader):
         else:
             best = self.get_fake_metadata(title_key, scans)
         return best
+    
+    def fetch_posters(self, item):
+        if item.id in self.ignored_imdb_ids:
+            return None
+        if item.media_category == 'series':
+            loaders = [self.fetch_poster_tvdb, self.fetch_poster_tmdb]
+        else:
+            loaders = [self.fetch_poster_tmdb, self.fetch_poster_tvdb]
+        
+        no_posters = 0
+        for loader in loaders:
+            try:
+                if loader(item):
+                    return
+                no_posters += 1
+#            except KeyError:
+#                no_posters += 1
+            except Exception, e:
+                import traceback
+                traceback.print_exc()
+                log.error("Error loading poster for %s: %s" % (item.id, e))
+                pass
+        if no_posters == len(loaders):
+            log.error("No poster for %s: skipping further attempts" % item.id)
+            self.ignored_imdb_ids.add(item.id)
+        return None
+    
+    # TMDb specific poster lookup
+    def tmdb_poster_info(self, poster):
+        urls = {}
+        for key, url in poster.items():
+            print "key: %s, url %s" % (key, url)
+            if url.startswith("http") and "/t/p/" in url:
+                _, imginfo = url.split("/t/p/")
+                size, filename = imginfo.split("/")
+                if size.startswith("w") or size == "original":
+                    urls[size] = url
+                log.debug("%s: %s" % (size, url))
+        return urls
+    
+    def fetch_poster_tmdb(self, item):
+        tfilm = self.proxies.tmdb_api.get_imdb_id(item.id)
+        if tfilm is None:
+            raise KeyError
+        tfilm.discover_images()
+        found = tfilm.get_best_poster_url('w342')
+        if found:
+            log.debug("best tmdb poster: %s" % found)
+            data = self.proxies.tmdb_api.load_url(found)
+            self.save_poster(item, found, data)
+            return True
+        else:
+            log.debug("No poster for %s" % unicode(tfilm).encode('utf8'))
+        return False
+
+    def fetch_poster_tvdb(self, item):
+        show = self.proxies.tvdb_api.get_imdb_id(item.id)
+        if not show:
+            raise KeyError
+        main, season_map = self.proxies.tvdb_api.fetch_poster_urls(show)
+        if main:
+            log.debug("best tvdb poster: %s" % main)
+            data = self.proxies.tvdb_api.load_url(main)
+            self.save_poster(item, main, data)
+            for season, url in season_map.iteritems():
+                log.debug("best season %d tvdb poster: %s" % (season, url))
+                data = self.proxies.tvdb_api.load_url(url)
+                self.save_poster(item, url, data, season=season)
+        return main
 
 MetadataLoader.register("video", "*", HomeTheaterMetadataLoader)

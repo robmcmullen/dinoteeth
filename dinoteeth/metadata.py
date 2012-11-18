@@ -1,6 +1,45 @@
 import os, sys
 
+from persistent import Persistent
+
 import settings
+
+
+
+class BaseMetadata(Persistent):
+    media_category = None
+
+    def __init__(self, id, title_key):
+        if type(id) == int:
+            self.id = "tt%07d" % id
+        elif isinstance(id, basestring) and not id.startswith("tt"):
+            self.id = "tt%s" % id
+        else:
+            self.id = id
+        if title_key is None:
+            self.title = ""
+            self.year = None
+            self.subcategory = None
+        else:
+            self.title = title_key.title
+            self.year = title_key.year
+            self.kind = title_key.subcategory
+        self.date_added = -1
+        self.starred = False
+    
+    def __cmp__(self, other):
+        return cmp(self.sort_key(), other.sort_key())
+    
+    def is_fake(self):
+        return False
+    
+    def get_path_prefix(self):
+        return os.path.join(self.media_category, self.id)
+    
+    def sort_key(self, credit=None):
+        t = self.title.lower()
+        return (t, self.year)
+
 
 class MetadataLoader(object):
     category_map = {}
@@ -56,3 +95,27 @@ class MetadataLoader(object):
         match the specified title key.
         """
         return []
+    
+    def fetch_posters(self, metadata):
+        """Load posters for the metadata instance
+
+        """
+        pass
+    
+    def save_poster(self, metadata, url, data, season=None):
+        """Save posters for the metadata instance
+
+        """
+        metadata_root = "/tmp"
+        path = os.path.join(metadata_root, metadata.get_path_prefix())
+        dirname = os.path.dirname(path)
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+        if season is not None:
+            path += "-s%02d" % season
+        filename, ext = os.path.splitext(url)
+        path += ext
+        print "Saving %d bytes from %s to %s" % (len(data), url, path)
+        with open(path, "wb") as fh:
+            fh.write(data)
+        

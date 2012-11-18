@@ -15,11 +15,16 @@ References:
 """
 import os, urllib
 
+try:
+    import simplejson
+except:
+    import json as simplejson
+
 from ..utils import HttpProxyBase
 
 class TMDb3_API(HttpProxyBase):
     API_KEY = 'a8b9f96dde091408a03cb4c78477bd14'
-    base_url = None
+    image_base_url = None
     ignore_query_string_params = ['api_key']
     image_sizes = {}
     
@@ -31,7 +36,7 @@ class TMDb3_API(HttpProxyBase):
         self.poster_size = poster_size
 
     def get_conf(self):
-        if self.__class__.base_url:
+        if self.__class__.image_base_url:
             return
         url = self.get_conf_url()
         page = self.load_url(url)
@@ -43,7 +48,7 @@ class TMDb3_API(HttpProxyBase):
     @classmethod
     def process_conf(cls, page):
         conf = cls.get_json(page)
-        cls.base_url = conf['images']['base_url']
+        cls.image_base_url = conf['images']['base_url']
         cls.image_sizes['backdrops'] = conf['images']['backdrop_sizes']
         cls.image_sizes['posters'] = conf['images']['poster_sizes']
 
@@ -64,6 +69,7 @@ class TMDb3_API(HttpProxyBase):
         return "http://api.themoviedb.org/3/movie/%s?api_key=%s" % (imdb_id, self.API_KEY)
 
     def get_imdb_id(self, imdb_id):
+        self.get_conf()
         url = self.get_imdb_id_url(imdb_id)
         page = self.load_url(url)
         return self.get_movie(page)
@@ -74,7 +80,7 @@ class TMDb3_API(HttpProxyBase):
             movie = self.get_json(page)
             print movie
             if 'id' in movie:
-                return Movie(movie, self.language, self.poster_size)
+                return Movie(self.http_cache_dir, movie, self.language, self.poster_size)
         except Exception, e:
             print "Failed loading tmdb info: %s" % str(e)
             import traceback
@@ -82,7 +88,8 @@ class TMDb3_API(HttpProxyBase):
         return None
 
 class Movie(TMDb3_API):
-    def __init__(self, json, language, poster_size):
+    def __init__(self, cache_dir, json, language, poster_size):
+        HttpProxyBase.__init__(self, cache_dir)
         self.movie = json
         self.language = language
         self.default_size = {
@@ -129,7 +136,7 @@ class Movie(TMDb3_API):
                 return
         url = "http://api.themoviedb.org/3/movie/%%s/images?api_key=%s" % (self.API_KEY)
         data = self.load_url(url % (self.tmdb_id))
-        self.process_images(self, data)
+        self.process_images(data)
         
     def process_images(self, data):
         all_images = self.get_json(data)
@@ -148,13 +155,14 @@ class Movie(TMDb3_API):
     def get_best_image(self, key, size=None):
         if self.image_language is None:
             return
+        print self.image_sizes
         if size == None:
             size = self.default_size[key]
         elif size not in self.image_sizes[key]:
             raise KeyError
         if self.images[key]:
             print simplejson.dumps(self.images[key][0], sort_keys=True, indent=4)
-            full_url = self.base_url + size + self.images[key][0]['file_path']
+            full_url = self.image_base_url + size + self.images[key][0]['file_path']
             return full_url
         return None
     
@@ -171,7 +179,7 @@ class Movie(TMDb3_API):
         elif size not in self.image_sizes[key]:
             raise KeyError
         for image in self.images[key]:
-            full_url = self.base_url + size + image['file_path']
+            full_url = self.image_base_url + size + image['file_path']
             thumbnails.append(full_url)
         return thumbnails
     

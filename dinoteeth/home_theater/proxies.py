@@ -9,6 +9,85 @@ from ..utils import FilePickleDict, HttpProxyBase
 log = logging.getLogger("dinoteeth.proxies")
 
 
+class TvdbPoster(object):
+    def __init__(self, info):
+        self.rating = float(info.get('rating','0'))
+        self.num_votes = int(info.get('ratingcount','0'))
+        self.url = info['_bannerpath']
+        
+    def __str__(self):
+        return "rating=%s (%s votes): %s" % (self.rating, self.num_votes, self.url)
+
+class TvdbPosterList(object):
+    def __init__(self, season=-1):
+        self.season = season
+        self.posters = []
+        self.num_with_votes = 0
+        self.sum_rating = 0.0
+        self.sum_votes = 0
+        self.sorted = False
+        
+    def append(self, poster):
+        self.posters.append(poster)
+        if poster.num_votes > 0:
+            self.num_with_votes += 1
+            self.sum_rating += poster.rating
+            self.sum_votes += poster.num_votes
+        self.sorted = False
+        
+    def sort(self):
+        """Sort using a bayesian average.
+        
+        Example from: http://www.thebroth.com/blog/118/bayesian-rating
+        """
+        if self.sorted:
+            return True
+        if self.num_with_votes == 0:
+            return
+        avg_num_votes = self.sum_votes / self.num_with_votes
+        avg_rating = self.sum_rating / self.num_with_votes
+        keylist = [(((avg_num_votes * avg_rating) + (p.num_votes * p.rating))/(avg_num_votes + p.num_votes), p) for p in self.posters]
+        keylist.sort()
+        keylist.reverse()
+        posters = []
+        for key, poster in keylist:
+            print poster
+            posters.append(poster)
+        self.posters = posters
+        self.sorted = True
+        
+    def best(self):
+        if self.posters:
+            self.sort()
+            return self.posters[0]
+
+class TvdbSeasonPosters(object):
+    def __init__(self):
+        self.seasons = {}
+        
+    def add(self, info):
+        poster = TvdbPoster(info)
+        s = int(info['season'])
+        if s not in self.seasons:
+            self.seasons[s] = TvdbPosterList(s)
+        self.seasons[s].append(poster)
+        
+    def sort(self):
+        seasons = self.seasons.keys()
+        seasons.sort()
+        for s in seasons:
+            print "Season %d" % s
+            self.seasons[s].sort()
+            
+    def best(self, season):
+        if season in self.seasons:
+            return self.seasons[season].best()
+    
+    def get_seasons(self):
+        s = self.seasons.keys()
+        s.sort()
+        return s
+
 class TvdbSelectByIMDb:
     """Non-interactive UI for Tvdb_api which selects the result based on IMDb ID
     
@@ -37,17 +116,14 @@ class TvdbSelectByIMDb:
                 return s
         return allSeries[0]
 
-class TVDbFileProxy(object):
-    def __init__(self, cache_dir=None):
-        self.cache_dir = cache_dir
-        if cache_dir:
-            self.use_cache = True
-        else:
-            self.use_cache = False
+class TVDbFileProxy(HttpProxyBase):
+    def __init__(self, cache_dir=None, language="en"):
+        HttpProxyBase.__init__(self, cache_dir)
+        self.language = language
         
     def search_movie(self, title):
         try:
-            t = tvdb_api.Tvdb(custom_ui=TvdbSelectByIMDb(imdb_id), cache=self.cache_dir, banners=True)
+            t = tvdb_api.Tvdb(custom_ui=TvdbSelectByIMDb(imdb_id), cache=self.http_cache_dir, banners=True)
             show = t[media.title]
         except tvdb_exceptions.tvdb_shownotfound:
             raise KeyError
@@ -55,12 +131,59 @@ class TVDbFileProxy(object):
         
     def get_imdb_id(self, imdb_id):
         try:
-            t = tvdb_api.Tvdb(cache=self.cache_dir, banners=True)
+            t = tvdb_api.Tvdb(cache=self.http_cache_dir, banners=True)
             show = t[imdb_id]
         except tvdb_exceptions.tvdb_shownotfound:
             raise KeyError
 
         return show
+        
+    # Tvdb specific poster lookup
+    # second level dictionary keys
+    fanart_key='fanart'
+    banner_key='series'
+    poster_key='poster'
+    season_key='season'
+    # third level dictionay keys for select graphics URL(s)
+    poster_series_key='680x1000'
+    poster_season_key='season'
+    fanart_hires_key='1920x1080'
+    fanart_lowres_key='1280x720'
+    banner_series_key='graphical'
+    banner_season_key='seasonwide'
+
+    def best_poster_url(self, show):
+        posters = show.data['_banners'][self.poster_key][self.poster_series_key]
+        series = TvdbPosterList()
+        for k,info in posters.iteritems():
+            if info['language'] != self.language:
+                continue
+            p = TvdbPoster(info)
+            series.append(p)
+        best = series.best()
+        if best:
+            return best.url
+        return None
+        
+    def best_season_poster_urls(self, show):
+        posters = show.data['_banners'][self.season_key][self.poster_season_key]
+        seasons = TvdbSeasonPosters()
+        for k,info in posters.iteritems():
+            if info['language'] != self.language:
+                continue
+            seasons.add(info)
+        seasons.sort()
+        url_map = {}
+        for i in seasons.get_seasons():
+            best = seasons.best(i)
+            log.debug("best poster for season #%d: %s" % (i, best))
+            url_map[i] = best.url
+        return url_map
+    
+    def fetch_poster_urls(self, show):
+        main = self.best_poster_url(show)
+        season_map = self.best_season_poster_urls(show)
+        return main, season_map
 
 class Proxies(object):
     def __init__(self, settings):
@@ -74,7 +197,7 @@ class Proxies(object):
             setattr(self, subdir, path)
         self.imdb_api = IMDbProxy(self.imdb_cache_dir, settings.imdb_language)
         self.tmdb_api = tmdb3.TMDb3_API(self.tmdb_cache_dir, settings.iso_639_1, settings.tmdb_poster_size)
-        self.tvdb_api = TVDbFileProxy(self.tvdb_cache_dir)
+        self.tvdb_api = TVDbFileProxy(self.tvdb_cache_dir, settings.iso_639_1)
 
 
 

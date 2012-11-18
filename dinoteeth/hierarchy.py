@@ -1,7 +1,7 @@
 import os, sys, glob, re, logging, time, calendar
 
 from model import MenuItem, MenuPopulator
-from metadata import settings
+import settings
 from photo import TopLevelPhoto
 from updates import UpdateManager
 

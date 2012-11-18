@@ -10,6 +10,7 @@ from persistent import Persistent
 
 from .. import utils
 from .. import settings
+from ..metadata import BaseMetadata
 
 log = logging.getLogger("dinoteeth.metadata")
 log.setLevel(logging.DEBUG)
@@ -93,7 +94,7 @@ class FilmSeries(Persistent):
         return u"%s" % self.name
 
 
-class BaseMetadata(Persistent):
+class HomeTheaterMetadata(BaseMetadata):
     imdb_country = None
     imdb_language = None
     iso_3166_1 = None
@@ -101,20 +102,9 @@ class BaseMetadata(Persistent):
     media_category = None
 
     def __init__(self, id, title_key):
-        self.id = id
-        self.title = title_key.title
-        self.year = title_key.year
-        self.kind = title_key.subcategory
+        BaseMetadata.__init__(self, id, title_key)
         self.title_index = ""
-        self.date_added = -1
-        self.starred = False
         self.runtimes = []
-    
-    def __cmp__(self, other):
-        return cmp(self.sort_key(), other.sort_key())
-    
-    def is_fake(self):
-        return False
     
     def sort_key(self, credit=None):
         if credit and hasattr(self, credit):
@@ -426,11 +416,11 @@ class BaseMetadata(Persistent):
         return text
 
 
-class FakeMetadata(BaseMetadata):
+class FakeMetadata(HomeTheaterMetadata):
     imdb_prefix = "tt"
 
     def __init__(self, id, title_key, scans):
-        BaseMetadata.__init__(self, id, title_key)
+        HomeTheaterMetadata.__init__(self, id, title_key)
     
     def __unicode__(self):
         lines = []
@@ -474,13 +464,13 @@ class FakeSeriesMetadata(FakeMetadata):
         return text
 
 
-class MovieMetadata(BaseMetadata):
+class MovieMetadata(HomeTheaterMetadata):
     media_category = "movies"
     imdb_prefix = "tt"
     
     def __init__(self, movie_obj, tmdb_obj):
         title_key = utils.TitleKey("video", movie_obj['kind'], self.get_title(movie_obj, settings.imdb_country, settings.imdb_language), movie_obj['year'])
-        BaseMetadata.__init__(self, movie_obj.imdb_id, title_key)
+        HomeTheaterMetadata.__init__(self, movie_obj.imdb_id, title_key)
         self.title_index = movie_obj.get('imdbIndex', "")
         if tmdb_obj:
             cert = self.get_tmdb_country_list(tmdb_obj, 'releases', 'certification', settings.iso_3166_1, if_empty="")
@@ -533,7 +523,7 @@ class MovieMetadata(BaseMetadata):
         self.date_added = -1
     
     def update_with_media_files(self, media_files):
-        BaseMetadata.update_with_media_files(self, media_files)
+        HomeTheaterMetadata.update_with_media_files(self, media_files)
         item = media_files.get_main_feature()
         if item is None:
             return
@@ -598,7 +588,7 @@ class MovieMetadata(BaseMetadata):
         return text
 
 
-class SeriesMetadata(BaseMetadata):
+class SeriesMetadata(HomeTheaterMetadata):
     media_category = "series"
     imdb_prefix = "tt"
     
@@ -606,7 +596,7 @@ class SeriesMetadata(BaseMetadata):
 #'title', 'akas', 'year', 'imdbIndex', 'certificates', 'director', 'writer', 'producer', 'cast', 'writer', 'creator', 'original music', 'plot outline', 'rating', 'votes', 'genres', 'number of seasons', 'number of episodes', 'series years', ]
 #['akas', u'art department', 'art direction', 'aspect ratio', 'assistant director', 'camera and electrical department', 'canonical title', 'cast', 'casting director', 'certificates', 'cinematographer', 'color info', u'costume department', 'costume designer', 'countries', 'cover url', 'director', u'distributors', 'editor', u'editorial department', 'full-size cover url', 'genres', 'kind', 'languages', 'long imdb canonical title', 'long imdb title', 'make up', 'miscellaneous companies', 'miscellaneous crew', u'music department', 'number of seasons', 'plot', 'plot outline', 'producer', u'production companies', 'production design', 'production manager', 'rating', 'runtimes', 'series years', 'smart canonical title', 'smart long imdb canonical title', 'sound crew', 'sound mix', 'title', 'votes', 'writer', 'year']
         title_key = utils.TitleKey("video", movie_obj['kind'], self.get_title(movie_obj, settings.imdb_country, settings.imdb_language), movie_obj['year'])
-        BaseMetadata.__init__(self, movie_obj.imdb_id, title_key)
+        HomeTheaterMetadata.__init__(self, movie_obj.imdb_id, title_key)
         self.title_index = movie_obj.get('imdbIndex', "")
         self.certificate = self.get_imdb_country_list(movie_obj, 'certificates', settings.imdb_country, if_empty="unrated")
         self.plot = movie_obj.get('plot outline', "")

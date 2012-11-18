@@ -12,6 +12,9 @@ if __name__ == "__main__":
     import dinoteeth.games.atarimania
     import dinoteeth.home_theater
     
+#    import logging
+#    logging.basicConfig(level=logging.DEBUG, format='%(name)s: %(message)s')
+    
     for filename in sys.argv[1:]:
         file = MediaFile(filename)
         print file
@@ -24,5 +27,7 @@ if __name__ == "__main__":
         if len(guesses) > 0:
             metadata = loader.get_metadata(guesses[0])
             print unicode(metadata).encode("utf-8")
+            
+            loader.fetch_posters(metadata)
         else:
             print "No search results for %s" % str(file.scan.title_key)

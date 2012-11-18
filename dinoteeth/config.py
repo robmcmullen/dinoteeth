@@ -6,7 +6,6 @@ except:
 from third_party.configobj import ConfigObj
 
 from view import *
-from metadata import Proxies
 from database import HomeTheaterDatabase
 from model import MenuItem
 from updates import UpdateManager, FileWatcher
@@ -219,7 +218,7 @@ class Config(object):
         return PosterFetcher(self.get_proxies(), self.get_artwork_loader().clone())
     
     def get_home_theater_database(self):
-        db = HomeTheaterDatabase(self.get_object_database(), self.proxies)
+        db = HomeTheaterDatabase(self.get_object_database())
         return db
     
     def start_update_monitor(self):

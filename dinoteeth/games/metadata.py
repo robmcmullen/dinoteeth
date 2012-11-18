@@ -10,7 +10,7 @@ from persistent import Persistent
 
 from .. import utils
 
-from ..metadata import MetadataLoader
+from ..metadata import BaseMetadata, MetadataLoader
 from .. import settings
 from api_base import GameAPI
 
@@ -25,14 +25,12 @@ def safestr(s):
 
 
 
-class GameMetadata(Persistent):
+class GameMetadata(BaseMetadata):
     media_category = "games"
     game_platform = None
 
-    def __init__(self, id, title):
-        self.id = id
-        self.title = title
-        self.year = None
+    def __init__(self, id, title_key):
+        BaseMetadata.__init__(self, id, title_key)
         self.imdb_id = None
         self.url = ""
         self.default_image_url = ""
@@ -52,8 +50,8 @@ class GameMetadata(Persistent):
     def __str__(self):
         return "%s (%s, %s, %s): %s, %s" % (self.title, self.year, self.publisher, self.country, self.url, self.default_image_url)
     
-    def get_path_prefix(self, metadata_root_dir):
-        return os.path.join(metadata_root_dir, self.media_category, self.game_platform)
+    def get_path_prefix(self):
+        return os.path.join(self.media_category, self.game_platform)
     
     def update_with_media_files(self, media_files):
         pass
