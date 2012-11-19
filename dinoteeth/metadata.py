@@ -36,6 +36,9 @@ class BaseMetadata(Persistent):
     def get_path_prefix(self):
         return os.path.join(self.media_category, self.id)
     
+    def get_primary_poster_suffix(self):
+        return ""
+    
     def sort_key(self, credit=None):
         t = self.title.lower()
         return (t, self.year)
@@ -78,8 +81,9 @@ class MetadataLoader(object):
 
     def __init__(self):
         self.init_proxies(settings)
+        self.metadata_root = settings.metadata_root
     
-    def init_proxies(self):
+    def init_proxies(self, settings):
         pass
     
     def search(self, title_key):
@@ -108,16 +112,37 @@ class MetadataLoader(object):
         @param suffix: text (if any) to be appended after the filename but
         before the extension
         """
-        metadata_root = "/tmp"
-        path = os.path.join(metadata_root, metadata.get_path_prefix())
+        path = os.path.join(self.metadata_root, metadata.get_path_prefix())
         dirname = os.path.dirname(path)
         if not os.path.exists(dirname):
             os.makedirs(dirname)
         if suffix is not None:
             path += suffix
         filename, ext = os.path.splitext(url)
-        path += ext
+        path += ext.lower()
         print "Saving %d bytes from %s to %s" % (len(data), url, path)
         with open(path, "wb") as fh:
             fh.write(data)
+    
+    def get_poster_filename(self, metadata, suffix=None):
+        """Check if poster exists
         
+        """
+        path = os.path.join(self.metadata_root, metadata.get_path_prefix())
+        if suffix is not None:
+            path += suffix
+        for ext in [".jpg", ".png", ".gif"]:
+            filename = path + ext
+            if os.path.exists(filename):
+                return filename
+        return None
+    
+    def has_poster(self, metadata, suffix=None):
+        """Check if poster exists
+        
+        """
+        if suffix is None:
+            suffix = metadata.get_primary_poster_suffix()
+        path = self.get_poster_filename(metadata, suffix)
+        return path is not None
+    

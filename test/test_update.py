@@ -14,8 +14,8 @@ if __name__ == "__main__":
     from dinoteeth.utils import DBFacade
     from dinoteeth.database import HomeTheaterDatabase
     
-    import logging
-    logging.basicConfig(level=logging.DEBUG, format='%(name)s: %(message)s')
+#    import logging
+#    logging.basicConfig(level=logging.DEBUG, format='%(name)s: %(message)s')
     
     zodb = DBFacade("Data.fs")
     db = HomeTheaterDatabase(zodb)
@@ -24,3 +24,4 @@ if __name__ == "__main__":
         db.add(filename)
 
     db.update_metadata()
+    db.update_posters()

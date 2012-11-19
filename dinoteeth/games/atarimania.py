@@ -25,6 +25,9 @@ class AtariManiaGame(GameMetadata):
         if div:
             self.parse_summary(div)
     
+    def get_primary_poster_suffix(self):
+        return "-screenshot00"
+    
     def parse_summary(self, div):
         for link in div.find_all('a'):
 #            print link

@@ -18,10 +18,10 @@ class HomeTheaterMetadataLoader(MetadataLoader):
     proxies = None
     
     def init_proxies(self, settings):
-        if self.proxies is not None:
+        self.ignored_imdb_ids = set()
+        if self.__class__.proxies is not None:
             return
         self.__class__.proxies = Proxies(settings)
-        self.ignored_imdb_ids = set()
 
     def search(self, title_key):
         title = title_key.title

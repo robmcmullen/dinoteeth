@@ -292,14 +292,11 @@ class HomeTheaterDatabase(object):
         for key in valid_keys:
             yield key, t[key]
 
-    def update_posters(self, poster_loader):
+    def update_posters(self):
         for title_key, metadata in self.title_keys_with_metadata():
-            imdb_id = metadata.id
-            if metadata.is_fake():
-                log.debug("Fake metadata for %s; not loading poster" % imdb_id)
-                continue
-            if not poster_loader.has_poster(imdb_id):
-                log.debug("Loading poster for %s" % imdb_id)
-                poster_loader.fetch_poster(imdb_id, metadata.media_category)
+            loader = MetadataLoader.get_loader(title_key)
+            if loader.has_poster(metadata):
+                log.debug("Have poster for %s" % metadata)
             else:
-                log.debug("Have poster for %s" % imdb_id)
+                log.debug("Loading poster for %s" % metadata)
+                loader.fetch_posters(metadata)
