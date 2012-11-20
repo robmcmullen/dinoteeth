@@ -16,9 +16,9 @@ log.setLevel(logging.DEBUG)
 class HomeTheaterMetadataLoader(MetadataLoader):
     imdb_allowed_kinds = ['movie', 'video movie', 'tv movie', 'series', 'tv series', 'tv mini series']
     proxies = None
+    ignored_imdb_ids = set()
     
     def init_proxies(self, settings):
-        self.ignored_imdb_ids = set()
         if self.__class__.proxies is not None:
             return
         self.__class__.proxies = Proxies(settings)
@@ -143,6 +143,7 @@ class HomeTheaterMetadataLoader(MetadataLoader):
     
     def fetch_posters(self, item):
         if item.id in self.ignored_imdb_ids:
+            log.debug("%s ignored; not attempting to load posters" % item.id)
             return None
         if item.media_category == 'series':
             loaders = [self.fetch_poster_tvdb, self.fetch_poster_tmdb]
@@ -155,8 +156,8 @@ class HomeTheaterMetadataLoader(MetadataLoader):
                 if loader(item):
                     return
                 no_posters += 1
-#            except KeyError:
-#                no_posters += 1
+            except KeyError:
+                no_posters += 1
             except Exception, e:
                 import traceback
                 traceback.print_exc()

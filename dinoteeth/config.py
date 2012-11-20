@@ -12,11 +12,12 @@ from updates import UpdateManager, FileWatcher
 from mplayer import MPlayerClient
 from utils import DBFacade, decode_title_text
 from image import ArtworkLoader, ScaledArtworkLoader
-from posters import PosterFetcher
 from thumbnail import ThumbnailFactory
 from hierarchy import RootMenu
 from photo import PhotoDB
 import settings
+import games
+import home_theater
 import i18n
 
 logging.basicConfig(level=logging.WARNING)
@@ -214,15 +215,12 @@ class Config(object):
                 db.add_path(path)
         return db
     
-    def get_poster_fetcher(self):
-        return PosterFetcher(self.get_proxies(), self.get_artwork_loader().clone())
-    
     def get_home_theater_database(self):
         db = HomeTheaterDatabase(self.get_object_database())
         return db
     
     def start_update_monitor(self):
-        watcher = FileWatcher(self.db, self.get_poster_fetcher())
+        watcher = FileWatcher(self.db)
         for path, flags in self.ini["media_paths"].iteritems():
             if self.options.media_root and not os.path.isabs(path):
                 path = os.path.join(self.options.media_root, path)

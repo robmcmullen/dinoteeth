@@ -76,10 +76,9 @@ class UpdateManager(object):
 
 
 class FileWatcher(pyinotify.ProcessEvent):
-    def __init__(self, db, poster_loader, pevent=None, **kwargs):
+    def __init__(self, db, pevent=None, **kwargs):
         pyinotify.ProcessEvent.__init__(self, pevent=pevent, **kwargs)
         self.db = db
-        self.poster_loader = poster_loader
         self.media_path_dict = {}
         self.wm = pyinotify.WatchManager() # Watch Manager
         self.added = set()
@@ -89,8 +88,8 @@ class FileWatcher(pyinotify.ProcessEvent):
         self.media_path_dict[path] = flags
     
     def watch(self):
-        self.db.update_metadata(self.media_path_dict)
-        self.db.update_posters(self.poster_loader)
+        self.db.scan_and_update(self.media_path_dict)
+        self.db.update_posters()
         mask = pyinotify.IN_DELETE | pyinotify.IN_CLOSE_WRITE | pyinotify.IN_MODIFY | pyinotify.IN_MOVED_TO | pyinotify.IN_MOVED_FROM | pyinotify.IN_CREATE
         notifier = pyinotify.Notifier(self.wm, self, timeout=5000)
         for path in self.media_path_dict.keys():
@@ -107,7 +106,7 @@ class FileWatcher(pyinotify.ProcessEvent):
                 self.removed = set()
             else:
                 print "no changes"
-            self.db.update_posters(self.poster_loader)
+            self.db.update_posters()
 
     def process_IN_CLOSE_WRITE(self, event):
 #        print "Modified (closed):", event.pathname

@@ -130,6 +130,8 @@ class TVDbFileProxy(HttpProxyBase):
         return results
         
     def get_imdb_id(self, imdb_id):
+        if imdb_id is None:
+            raise KeyError
         try:
             t = tvdb_api.Tvdb(cache=self.http_cache_dir, banners=True)
             show = t[imdb_id]

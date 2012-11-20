@@ -431,6 +431,9 @@ class FakeMetadata(HomeTheaterMetadata):
 
 class FakeMovieMetadata(FakeMetadata):
     media_category = "movies"
+    
+    def get_path_prefix(self):
+        return os.path.join(self.media_category, "missing_metadata")
         
     def get_markup(self, media_file=None):
         title = self.title
@@ -447,6 +450,9 @@ class FakeMovieMetadata(FakeMetadata):
 
 class FakeSeriesMetadata(FakeMetadata):
     media_category = "series"
+    
+    def get_path_prefix(self):
+        return os.path.join(self.media_category, "missing_metadata")
         
     def get_markup(self, media_file=None):
         title = self.title

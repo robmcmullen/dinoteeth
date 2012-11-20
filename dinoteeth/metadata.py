@@ -27,6 +27,9 @@ class BaseMetadata(Persistent):
         self.date_added = -1
         self.starred = False
     
+    def __str__(self):
+        return "%s '%s', id=%s" % (self.__class__.__name__, self.title, self.id)
+    
     def __cmp__(self, other):
         return cmp(self.sort_key(), other.sort_key())
     
