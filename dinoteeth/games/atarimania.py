@@ -18,7 +18,7 @@ from ..metadata import MetadataLoader
 
 
 class AtariManiaGame(GameMetadata):
-    game_platform = None
+    media_subcategory = None
     
     def __init__(self, div=None):
         GameMetadata.__init__(self, None, None)
@@ -82,10 +82,10 @@ class AtariManiaGame(GameMetadata):
             self.all_image_urls.append(url)
 
 class Atari8bitGame(AtariManiaGame):
-    game_platform = "atari-8bit"
+    media_subcategory = "atari-8bit"
 
 class AtariSTGame(AtariManiaGame):
-    game_platform = "atari-st"
+    media_subcategory = "atari-st"
 
 
 class AtariMania_API(GameAPI):
@@ -99,7 +99,7 @@ class AtariMania_API(GameAPI):
     
     def __init__(self, game_class, settings):
         self.game_class = game_class
-        self.platform = self.game_platform_map[game_class.game_platform]
+        self.platform = self.game_platform_map[game_class.media_subcategory]
         GameAPI.__init__(self, settings)
     
     def get_cache_dir(self, settings):
@@ -184,5 +184,5 @@ class AtariManiaSTLoader(AtariManiaLoader):
     def init_proxies(self, settings):
         self.api = AtariMania_API(AtariSTGame, settings)
 
-MetadataLoader.register("game", Atari8bitGame.game_platform, AtariMania8bitLoader)
-MetadataLoader.register("game", AtariSTGame.game_platform, AtariManiaSTLoader)
+MetadataLoader.register("game", Atari8bitGame.media_subcategory, AtariMania8bitLoader)
+MetadataLoader.register("game", AtariSTGame.media_subcategory, AtariManiaSTLoader)

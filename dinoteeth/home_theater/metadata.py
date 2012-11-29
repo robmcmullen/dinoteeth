@@ -99,7 +99,8 @@ class HomeTheaterMetadata(BaseMetadata):
     imdb_language = None
     iso_3166_1 = None
     ignore_leading_articles = ["a", "an", "the"]
-    media_category = None
+    media_category = "video"
+    media_subcategory = None
 
     def __init__(self, id, title_key):
         BaseMetadata.__init__(self, id, title_key)
@@ -277,6 +278,8 @@ class HomeTheaterMetadata(BaseMetadata):
         
         Persistent objects may be in any list in the instance.
         """
+        if self.id is None:
+            self.id = "fake%d" % db.zodb.get_unique_id()
         for name in dir(self):
             attr = getattr(self, name)
             if isinstance(attr, list):
@@ -430,11 +433,8 @@ class FakeMetadata(HomeTheaterMetadata):
         return True
 
 class FakeMovieMetadata(FakeMetadata):
-    media_category = "movies"
+    media_subcategory = "movies"
     
-    def get_path_prefix(self):
-        return os.path.join(self.media_category, "missing_metadata")
-        
     def get_markup(self, media_file=None):
         title = self.title
         if self.year:
@@ -449,11 +449,8 @@ class FakeMovieMetadata(FakeMetadata):
         return text
 
 class FakeSeriesMetadata(FakeMetadata):
-    media_category = "series"
+    media_subcategory = "series"
     
-    def get_path_prefix(self):
-        return os.path.join(self.media_category, "missing_metadata")
-        
     def get_markup(self, media_file=None):
         title = self.title
         if self.year:
@@ -471,7 +468,7 @@ class FakeSeriesMetadata(FakeMetadata):
 
 
 class MovieMetadata(HomeTheaterMetadata):
-    media_category = "movies"
+    media_subcategory = "movies"
     imdb_prefix = "tt"
     
     def __init__(self, movie_obj, tmdb_obj):
@@ -595,7 +592,7 @@ class MovieMetadata(HomeTheaterMetadata):
 
 
 class SeriesMetadata(HomeTheaterMetadata):
-    media_category = "series"
+    media_subcategory = "series"
     imdb_prefix = "tt"
     
     def __init__(self, movie_obj, tvdb_obj):

@@ -4,6 +4,7 @@ from model import MenuItem, MenuPopulator
 import settings
 from photo import TopLevelPhoto
 from updates import UpdateManager
+from metadata import MetadataLoader
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -19,7 +20,8 @@ class MMDBPopulator(MenuPopulator):
         
     def iter_image_path(self, artwork_loader):
         for metadata in self.get_sorted_metadata():
-            imgpath = artwork_loader.get_poster_filename(metadata.id)
+            loader = MetadataLoader.get_loader(metadata)
+            imgpath = loader.get_poster_filename(metadata)
             if imgpath is not None:
                 yield imgpath
 
@@ -38,12 +40,12 @@ class MetadataLookup(MMDBPopulator):
     def iter_create(self):
         metadata = self.get_sorted_metadata()
         for m in metadata:
-            if m.media_category == "series":
+            if m.media_subcategory == "series":
                 if m.is_mini_series():
                     yield unicode(m.title), SeriesEpisodes(self, self.config, m.id)
                 else:
                     yield unicode(m.title), SeriesTopLevel(self, self.config, m.id)
-            elif m.media_category == "movies":
+            elif m.media_subcategory == "movies":
                 yield unicode(m.title), MovieTopLevel(self, self.config, m.id)
     
     def get_metadata(self):
@@ -329,7 +331,7 @@ class ExpandedLookup(MetadataLookup):
         metadata, scans_in_each = self.get_sorted_metadata_plus_scans()
         for m in metadata:
             media_files = scans_in_each[m]
-            if m.media_category == "series":
+            if m.media_subcategory == "series":
                 if m.is_mini_series():
                     yield unicode(m.title), None
                     yield unicode(m.title), SeriesEpisodes(self, self.config, m.id)
@@ -340,7 +342,7 @@ class ExpandedLookup(MetadataLookup):
                         episodes = media_files.get_episodes(s)
                         for ms in episodes:
                             yield "  Resume %s (Paused at %s)" % (unicode(ms.display_title), ms.paused_at_text()), MediaPlay(self.config, m.id, ms, resume=True)
-            elif m.media_category == "movies":
+            elif m.media_subcategory == "movies":
                 yield unicode(m.title), None
                 media_files.sort()
                 bonus = media_files.get_bonus()

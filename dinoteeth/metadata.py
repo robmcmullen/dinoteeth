@@ -8,6 +8,7 @@ import settings
 
 class BaseMetadata(Persistent):
     media_category = None
+    media_subcategory = None
 
     def __init__(self, id, title_key):
         if type(id) == int:
@@ -37,7 +38,7 @@ class BaseMetadata(Persistent):
         return False
     
     def get_path_prefix(self):
-        return os.path.join(self.media_category, self.id)
+        return os.path.join(self.media_category, self.media_subcategory, self.id)
     
     def get_primary_poster_suffix(self):
         return ""
@@ -51,35 +52,39 @@ class MetadataLoader(object):
     category_map = {}
     
     @classmethod
-    def get_class(cls, title_key):
+    def get_class(cls, cat, subcat):
         try:
-            subcat_map = cls.category_map[title_key.category]
+            subcat_map = cls.category_map[cat]
         except KeyError:
-            raise RuntimeError("Metadata category %s not known" % title_key.category)
-        subcat = title_key.subcategory
+            raise RuntimeError("Metadata category %s not known" % cat)
         if subcat not in subcat_map:
             subcat = "*"
         try:
             baseclass = subcat_map[subcat]
         except KeyError:
-            raise RuntimeError("Metadata category %s/%s not known" % (title_key.category, title_key.subcategory))
+            raise RuntimeError("Metadata category %s/%s not known" % (cat, subcat))
         return baseclass
 
     @classmethod
-    def register(cls, category, subcategory, baseclass):
-        if category not in cls.category_map:
-            cls.category_map[category] = {}
-        if subcategory is None:
-            subcategory = "*"
-        cls.category_map[category][subcategory] = baseclass
+    def register(cls, cat, subcat, baseclass):
+        if cat not in cls.category_map:
+            cls.category_map[cat] = {}
+        if subcat is None:
+            subcat = "*"
+        cls.category_map[cat][subcat] = baseclass
 
     @classmethod
-    def get_loader(cls, media_file_or_title_key):
-        if hasattr(media_file_or_title_key, "scan") and media_file_or_title_key.scan is not None:
-            title_key = media_file_or_title_key.scan.title_key
+    def get_loader(cls, obj):
+        if hasattr(obj, "scan") and obj.scan is not None:
+            cat = obj.scan.title_key.category
+            subcat = obj.scan.title_key.subcategory
+        elif hasattr(obj, "media_category") and obj.media_category is not None:
+            cat = obj.media_category
+            subcat = obj.media_subcategory
         else:
-            title_key = media_file_or_title_key
-        baseclass = cls.get_class(title_key)
+            cat = obj.category
+            subcat = obj.subcategory
+        baseclass = cls.get_class(cat, subcat)
         return baseclass()
 
     def __init__(self):

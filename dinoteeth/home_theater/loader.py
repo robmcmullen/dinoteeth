@@ -74,7 +74,7 @@ class HomeTheaterMetadataLoader(MetadataLoader):
             # It's a video game or something else; skip it
             log.error("Unhandled IMDb type '%s' for %s" % (imdb_obj['kind'], imdb_id))
             return
-        print (u"%s: %s -> %s" % (imdb_obj['title'], imdb_obj['kind'], metadata.media_category)).encode('utf8')
+        print (u"%s: %s -> %s" % (imdb_obj['title'], imdb_obj['kind'], metadata.media_subcategory)).encode('utf8')
         return metadata
     
     def get_metadata(self, result):
@@ -145,7 +145,7 @@ class HomeTheaterMetadataLoader(MetadataLoader):
         if item.id in self.ignored_imdb_ids:
             log.debug("%s ignored; not attempting to load posters" % item.id)
             return None
-        if item.media_category == 'series':
+        if item.media_subcategory == 'series':
             loaders = [self.fetch_poster_tvdb, self.fetch_poster_tmdb]
         else:
             loaders = [self.fetch_poster_tmdb, self.fetch_poster_tvdb]

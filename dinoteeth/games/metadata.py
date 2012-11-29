@@ -26,8 +26,8 @@ def safestr(s):
 
 
 class GameMetadata(BaseMetadata):
-    media_category = "games"
-    game_platform = None
+    media_category = "game"
+    media_subcategory = None
 
     def __init__(self, id, title_key):
         BaseMetadata.__init__(self, id, title_key)
@@ -49,9 +49,6 @@ class GameMetadata(BaseMetadata):
     
     def __str__(self):
         return "%s (%s, %s, %s): %s, %s" % (self.title, self.year, self.publisher, self.country, self.url, self.default_image_url)
-    
-    def get_path_prefix(self):
-        return os.path.join(self.media_category, self.game_platform, self.id)
     
     def update_with_media_files(self, media_files):
         pass
