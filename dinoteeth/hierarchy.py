@@ -42,11 +42,11 @@ class MetadataLookup(MMDBPopulator):
         for m in metadata:
             if m.media_subcategory == "series":
                 if m.is_mini_series():
-                    yield unicode(m.title), SeriesEpisodes(self, self.config, m.id)
+                    yield unicode(m.title), SeriesEpisodes(self, self.config, m)
                 else:
-                    yield unicode(m.title), SeriesTopLevel(self, self.config, m.id)
+                    yield unicode(m.title), SeriesTopLevel(self, self.config, m)
             elif m.media_subcategory == "movies":
-                yield unicode(m.title), MovieTopLevel(self, self.config, m.id)
+                yield unicode(m.title), MovieTopLevel(self, self.config, m)
     
     def get_metadata(self):
         return {
@@ -170,9 +170,9 @@ class CreditLookup(MetadataLookup):
 
 
 class PlayableEntries(MetadataLookup):
-    def __init__(self, parent, config, imdb_id):
-        self.imdb_id = imdb_id
-        MetadataLookup.__init__(self, parent, config, filter=lambda f: f.metadata.id == imdb_id)
+    def __init__(self, parent, config, metadata):
+        self.metadata = metadata
+        MetadataLookup.__init__(self, parent, config, filter=lambda f: f.metadata.id == self.metadata.id)
     
     def __call__(self, parent):
         items = []
@@ -185,7 +185,7 @@ class PlayableEntries(MetadataLookup):
             yield item
     
     def get_resume_entry(self, media_file, season=None):
-        return "  Resume (Paused at %s)" % media_file.scan.paused_at_text(), MediaPlay(self.config, self.imdb_id, media_file, season=season, resume=True)
+        return "  Resume (Paused at %s)" % media_file.scan.paused_at_text(), MediaPlay(self.config, self.metadata, media_file, season=season, resume=True)
 
 
 class MovieTopLevel(PlayableEntries):
@@ -196,41 +196,41 @@ class MovieTopLevel(PlayableEntries):
         found_bonus = False
         for f in media_files:
             if not found_bonus and f.scan.is_bonus and len(bonus) > 1:
-                yield "Play All Bonus Features", MediaPlayMultiple(self.config, self.imdb_id, bonus)
+                yield "Play All Bonus Features", MediaPlayMultiple(self.config, self.metadata, bonus)
                 found_bonus = True
-            yield unicode(f.scan.display_title), MediaPlay(self.config, self.imdb_id, f)
+            yield unicode(f.scan.display_title), MediaPlay(self.config, self.metadata, f)
             if f.scan.is_paused():
                 yield self.get_resume_entry(f)
                 
     
     def get_metadata(self):
         return {
-            'mmdb': self.config.db.get_metadata(self.imdb_id),
-            'edit': ChangeImdbRoot(self, self.config, self.imdb_id),
+            'mmdb': self.metadata,
+            'edit': ChangeImdbRoot(self, self.config, self.metadata),
             }
 
 
 class SeriesTopLevel(MetadataLookup):
-    def __init__(self, parent, config, imdb_id):
-        self.imdb_id = imdb_id
-        MetadataLookup.__init__(self, parent, config, filter=lambda f: f.metadata.id == imdb_id)
+    def __init__(self, parent, config, metadata):
+        self.metadata = metadata
+        MetadataLookup.__init__(self, parent, config, filter=lambda f: f.metadata.id == self.metadata.id)
         
     def iter_create(self):
         media_files = self.get_media()
         seasons = media_files.get_seasons()
         for s in seasons:
-            yield u"Season %d" % s, SeriesEpisodes(self, self.config, self.imdb_id, s)
+            yield u"Season %d" % s, SeriesEpisodes(self, self.config, self.metadata, s)
     
     def get_metadata(self):
         return {
-            'mmdb': self.config.db.get_metadata(self.imdb_id),
-            'edit': ChangeImdbRoot(self, self.config, self.imdb_id),
+            'mmdb': self.metadata,
+            'edit': ChangeImdbRoot(self, self.config, self.metadata),
             }
 
 
 class SeriesEpisodes(PlayableEntries):
-    def __init__(self, parent, config, imdb_id, season=0):
-        PlayableEntries.__init__(self, parent, config, imdb_id)
+    def __init__(self, parent, config, metadata, season=0):
+        PlayableEntries.__init__(self, parent, config, metadata)
         self.season = season
         
     def iter_create(self):
@@ -240,24 +240,24 @@ class SeriesEpisodes(PlayableEntries):
         found_bonus = False
         for f in episodes:
             if not found_bonus and f.scan.is_bonus and len(bonus) > 1:
-                yield "Play All Bonus Features", MediaPlayMultiple(self.config, self.imdb_id, bonus)
+                yield "Play All Bonus Features", MediaPlayMultiple(self.config, self.metadata, bonus)
                 found_bonus = True
-            yield unicode(f.scan.display_title), MediaPlay(self.config, self.imdb_id, m, season=self.season)
+            yield unicode(f.scan.display_title), MediaPlay(self.config, self.metadata, f, season=self.season)
             if f.scan.is_paused():
-                yield self.get_resume_entry(m, self.season)
+                yield self.get_resume_entry(f, self.season)
 
     def get_metadata(self):
         return {
-            'mmdb': self.config.db.get_metadata(self.imdb_id),
+            'mmdb': self.metadata,
             'season': self.season,
-            'edit': ChangeImdbRoot(self, self.config, self.imdb_id),
+            'edit': ChangeImdbRoot(self, self.config, self.metadata),
             }
 
 
 class MediaPlay(MMDBPopulator):
-    def __init__(self, config, imdb_id, media_file, season=None, resume=False):
+    def __init__(self, config, metadata, media_file, season=None, resume=False):
         MMDBPopulator.__init__(self, config)
-        self.imdb_id = imdb_id
+        self.metadata = metadata
         self.media_file = media_file
         self.season = season
         self.resume = resume
@@ -275,15 +275,15 @@ class MediaPlay(MMDBPopulator):
     
     def get_metadata(self):
         return {
-            'mmdb': self.config.db.get_metadata(self.imdb_id),
+            'mmdb': self.metadata,
             'media_file': self.media_file,
             'season': self.season,
             }
 
 class MediaPlayMultiple(MMDBPopulator):
-    def __init__(self, config, imdb_id, media_files, season=None, resume=False):
+    def __init__(self, config, metadata, media_files, season=None, resume=False):
         MMDBPopulator.__init__(self, config)
-        self.imdb_id = imdb_id
+        self.metadata = metadata
         self.media_files = media_files
         self.season = season
         self.resume = resume
@@ -305,7 +305,7 @@ class MediaPlayMultiple(MMDBPopulator):
     
     def get_metadata(self):
         return {
-            'mmdb': self.config.db.get_metadata(self.imdb_id),
+            'mmdb': self.metadata,
             'season': self.season,
             }
 
@@ -351,9 +351,9 @@ class ExpandedLookup(MetadataLookup):
 
 
 class ChangeImdbRoot(MetadataLookup):
-    def __init__(self, parent, config, imdb_id):
-        MetadataLookup.__init__(self, parent, config, filter=lambda f: f.metadata.id == imdb_id)
-        self.imdb_id = imdb_id
+    def __init__(self, parent, config, metadata):
+        MetadataLookup.__init__(self, parent, config, filter=lambda f: f.metadata.id == metadata)
+        self.metadata = metadata
         self.root_title = "Change Title Lookup"
         
     def iter_create(self):

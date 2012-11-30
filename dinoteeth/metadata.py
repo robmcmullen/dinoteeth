@@ -145,6 +145,14 @@ class MetadataLoader(object):
                 return filename
         return None
     
+    def get_poster_suffix(self, **kwargs):
+        """Loader-specific suffix generator.
+        
+        Given a keyword (e.g.  "season"), return a suffix that will identify
+        the image associated with that keyword.
+        """
+        return ""
+    
     def has_poster(self, metadata, suffix=None):
         """Check if poster exists
         

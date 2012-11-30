@@ -208,8 +208,13 @@ class HomeTheaterMetadataLoader(MetadataLoader):
             for season, url in season_map.iteritems():
                 log.debug("best season %d tvdb poster: %s" % (season, url))
                 data = self.proxies.tvdb_api.load_url(url)
-                suffix = "-s%02d" % season
+                suffix = self.get_poster_suffix(season=season)
                 self.save_poster(item, url, data, suffix=suffix)
         return main
+    
+    def get_poster_suffix(self, **kwargs):
+        if 'season' in kwargs and kwargs['season'] is not None:
+            return "-s%02d" % kwargs['season']
+        return ""
 
 MetadataLoader.register("video", "*", HomeTheaterMetadataLoader)
