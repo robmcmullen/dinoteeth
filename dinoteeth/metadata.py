@@ -1,6 +1,7 @@
 import os, sys
 
 from persistent import Persistent
+from PIL import Image
 
 import settings
 
@@ -90,6 +91,7 @@ class MetadataLoader(object):
     def __init__(self):
         self.init_proxies(settings)
         self.metadata_root = settings.metadata_root
+        self.poster_width = settings.poster_width
     
     def init_proxies(self, settings):
         pass
@@ -131,6 +133,7 @@ class MetadataLoader(object):
         print "Saving %d bytes from %s to %s" % (len(data), url, path)
         with open(path, "wb") as fh:
             fh.write(data)
+        self.scale_poster(path)
     
     def get_poster_filename(self, metadata, suffix=None):
         """Check if poster exists
@@ -162,3 +165,13 @@ class MetadataLoader(object):
         path = self.get_poster_filename(metadata, suffix)
         return path is not None
     
+    def scale_poster(self, filename):
+        img = Image.open(filename)
+        if img.size[0] < self.poster_width:
+            return
+        height = img.size[1] * img.size[0] / self.poster_width
+        size = (self.poster_width, height)
+        img.thumbnail(size, Image.ANTIALIAS)
+        img.save(filename, "JPEG", quality=90)
+        print("Created scaled poster: %s" % (filename))
+

@@ -1,5 +1,7 @@
 metadata_root = "/tmp"
 
+poster_width = 342
+
 subtitle_file_extensions = []
 
 # IMDb settings
