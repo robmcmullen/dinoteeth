@@ -55,6 +55,9 @@ class GameScanBase(Persistent):
     def calc_title(self, file, info):
         return os.path.basename(file.pathname)
     
+    def set_last_position(self, data):
+        pass
+    
     def has_saved_games(self):
         return False
     
