@@ -1,14 +1,19 @@
 import os, sys, time, subprocess
 
-from mplayerlib import MPlayer
-import utils
+from loader import Client
 
-class MPlayerClient(object):
-    def __init__(self, config):
-        self.config = config
-        
+from mplayerlib import MPlayer
+from .. import utils
+
+class MPlayerClient(Client):
+    def get_mplayer_opts(self, path):
+        opts = self.settings.mplayer_opts.split()
+        root, ext = os.path.splitext(path)
+        # do something with path if desired
+        return opts
+    
     def play(self, media_file, resume_at=0.0, **kwargs):
-        opts = self.config.get_mplayer_opts(media_file.pathname)
+        opts = self.get_mplayer_opts(media_file.pathname)
         self.audio_opts(opts, media_file.scan.selected_audio_id)
         self.subtitle_opts(opts, media_file.scan.selected_subtitle_id, media_file)
         if resume_at > 0:
@@ -17,7 +22,7 @@ class MPlayerClient(object):
         return last_pos
     
     def play_file(self, pathname):
-        opts = self.config.get_mplayer_opts(pathname)
+        opts = self.get_mplayer_opts(pathname)
         last_pos = self.play_slave(pathname, opts)
         return last_pos
     
@@ -63,3 +68,5 @@ class MPlayerClient(object):
         finally:
             mp.quit()
         return last_pos
+
+Client.register("video", "*", MPlayerClient)

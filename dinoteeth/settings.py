@@ -37,3 +37,8 @@ credit_map = [
     ("By Number of Seasons", "num_seasons", "series", None, False),
     ("By Rating", "certificate", None, None, False),
     ]
+
+# Clients
+
+# For mplayer, use SSA/ASS rendering to enable italics, bold, etc
+mplayer_opts = "-novm -fs -utf8 -ass -ass-color ffffff00 -ass-font-scale 1.4"

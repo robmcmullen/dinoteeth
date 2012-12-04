@@ -9,7 +9,6 @@ from view import *
 from database import HomeTheaterDatabase
 from model import MenuItem
 from updates import UpdateManager, FileWatcher
-from mplayer import MPlayerClient
 from utils import DBFacade, decode_title_text
 from image import ArtworkLoader, ScaledArtworkLoader
 from thumbnail import ThumbnailFactory
@@ -18,6 +17,7 @@ from photo import PhotoDB
 import settings
 import games
 import home_theater
+from clients import Client
 import i18n
 
 logging.basicConfig(level=logging.WARNING)
@@ -38,9 +38,6 @@ class Config(object):
         self.main_window = None
         self.root = None
         self.default_poster = None
-        self.default_mplayer_opts = ["-novm", "-fs", "-utf8"]
-        # Use SSA/ASS rendering to enable italics, bold, etc
-        self.default_mplayer_opts.extend(["-ass", "-ass-color", "ffffff00", "-ass-font-scale", "1.4"])
         if parser is None:
             parser = self.get_arg_parser()
         self.parse_args(args, parser)
@@ -270,14 +267,8 @@ class Config(object):
         return thumbnail_factory
     
     def get_media_client(self, media_file):
-        if media_file.scan.category == "video":
-            return MPlayerClient(self)
-    
-    def get_mplayer_opts(self, path):
-        opts = self.default_mplayer_opts[:]
-        root, ext = os.path.splitext(path)
-        # do something with path if desired
-        return opts
+        client = Client.get_loader(media_file)
+        return client(settings)
     
     def get_leading_articles(self):
         return ["a", "an", "the"]
