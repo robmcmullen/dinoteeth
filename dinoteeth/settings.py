@@ -45,3 +45,6 @@ mplayer_opts = "-novm -fs -utf8 -ass -ass-color ffffff00 -ass-font-scale 1.4"
 
 atari800_prog = "atari800"
 atari800_opts = ""
+
+hatari_prog = "hatari"
+hatari_opts = ""
