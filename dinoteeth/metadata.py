@@ -39,7 +39,8 @@ class BaseMetadata(Persistent):
         return False
     
     def get_path_prefix(self):
-        return os.path.join(self.media_category, self.media_subcategory, self.id)
+        # convert to utf-8 because metadata ID may be unicode
+        return os.path.join(self.media_category, self.media_subcategory, self.id).encode('utf-8')
     
     def get_primary_poster_suffix(self):
         return ""
@@ -156,13 +157,22 @@ class MetadataLoader(object):
         """
         return ""
     
-    def has_poster(self, metadata, suffix=None):
+    def get_poster(self, metadata, **kwargs):
         """Check if poster exists
         
         """
-        if suffix is None:
+        suffix = self.get_poster_suffix(**kwargs)
+        if not suffix:
             suffix = metadata.get_primary_poster_suffix()
         path = self.get_poster_filename(metadata, suffix)
+        print "get_poster: %s" % path
+        return path
+    
+    def has_poster(self, metadata, **kwargs):
+        """Check if poster exists
+        
+        """
+        path = self.get_poster(metadata, **kwargs)
         return path is not None
     
     def scale_poster(self, filename):

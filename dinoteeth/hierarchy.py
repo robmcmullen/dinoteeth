@@ -21,7 +21,7 @@ class MMDBPopulator(MenuPopulator):
     def iter_image_path(self, artwork_loader):
         for metadata in self.get_sorted_metadata():
             loader = MetadataLoader.get_loader(metadata)
-            imgpath = loader.get_poster_filename(metadata)
+            imgpath = loader.get_poster(metadata)
             if imgpath is not None:
                 yield imgpath
 
@@ -40,13 +40,16 @@ class MetadataLookup(MMDBPopulator):
     def iter_create(self):
         metadata = self.get_sorted_metadata()
         for m in metadata:
-            if m.media_subcategory == "series":
-                if m.is_mini_series():
-                    yield unicode(m.title), SeriesEpisodes(self, self.config, m)
-                else:
-                    yield unicode(m.title), SeriesTopLevel(self, self.config, m)
-            elif m.media_subcategory == "movies":
-                yield unicode(m.title), MovieTopLevel(self, self.config, m)
+            if m.media_category == "video":
+                if m.media_subcategory == "series":
+                    if m.is_mini_series():
+                        yield unicode(m.title), SeriesEpisodes(self, self.config, m)
+                    else:
+                        yield unicode(m.title), SeriesTopLevel(self, self.config, m)
+                elif m.media_subcategory == "movies":
+                    yield unicode(m.title), MovieTopLevel(self, self.config, m)
+            elif m.media_category == "game":
+                yield unicode(m.title), GameDetails(self, self.config, m)
     
     def get_metadata(self):
         return {
@@ -254,22 +257,47 @@ class SeriesEpisodes(PlayableEntries):
             }
 
 
+class GameDetails(PlayableEntries):
+    def __init__(self, parent, config, metadata, season=0):
+        PlayableEntries.__init__(self, parent, config, metadata)
+        self.season = season
+        
+    def iter_create(self):
+        media_files = self.get_media()
+        media_files.sort()
+        for f in media_files:
+            yield unicode(self.metadata.title), MediaPlay(self.config, self.metadata, f)
+            if f.scan.has_saved_games():
+                for saved in f.get_saved_games():
+                    yield self.get_saved_game_entry(f, saved)
+    
+    def get_saved_game_entry(self, media_file, saved):
+        return "  Resume (Paused at %s)" % media_file.scan.paused_at_text(), MediaPlay(self.config, self.metadata, media_file, resume=True, resume_data=saved)
+
+    def get_metadata(self):
+        return {
+            'mmdb': self.metadata,
+            'edit': ChangeImdbRoot(self, self.config, self.metadata),
+            }
+
+
 class MediaPlay(MMDBPopulator):
-    def __init__(self, config, metadata, media_file, season=None, resume=False):
+    def __init__(self, config, metadata, media_file, season=None, resume=False, resume_data=None):
         MMDBPopulator.__init__(self, config)
         self.metadata = metadata
         self.media_file = media_file
         self.season = season
         self.resume = resume
+        self.resume_data = resume_data
         
     def play(self, config=None):
         self.config.prepare_for_external_app()
-        client = self.config.get_media_client()
+        client = self.config.get_media_client(self.media_file)
         if self.resume:
             resume_at = self.media_file.scan.get_last_position()
         else:
             resume_at = 0.0
-        last_pos = client.play(self.media_file, resume_at=resume_at)
+        last_pos = client.play(self.media_file, resume_at=resume_at, resume_data=self.resume_data)
         self.media_file.scan.set_last_position(last_pos)
         self.config.restore_after_external_app()
     
@@ -290,7 +318,7 @@ class MediaPlayMultiple(MMDBPopulator):
         
     def play(self, config=None):
         self.config.prepare_for_external_app()
-        client = self.config.get_media_client()
+        client = self.config.get_media_client(self.media_file)
         for f in self.media_files:
             if self.resume:
                 resume_at = f.scan.get_last_position()

@@ -54,6 +54,12 @@ class GameScanBase(Persistent):
     
     def calc_title(self, file, info):
         return os.path.basename(file.pathname)
+    
+    def has_saved_games(self):
+        return False
+    
+    def get_saved_games(self):
+        return []
 
 class Atari8bitScan(GameScanBase):
     category = "game"

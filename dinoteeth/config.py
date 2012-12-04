@@ -269,8 +269,9 @@ class Config(object):
         thumbnail_factory = ThumbnailFactory(self.options.thumbnail_dir, self.get_metadata_pathname(self.options.image_dir))
         return thumbnail_factory
     
-    def get_media_client(self):
-        return MPlayerClient(self)
+    def get_media_client(self, media_file):
+        if media_file.scan.category == "video":
+            return MPlayerClient(self)
     
     def get_mplayer_opts(self, path):
         opts = self.default_mplayer_opts[:]

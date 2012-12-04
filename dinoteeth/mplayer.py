@@ -7,7 +7,7 @@ class MPlayerClient(object):
     def __init__(self, config):
         self.config = config
         
-    def play(self, media_file, resume_at=0.0):
+    def play(self, media_file, resume_at=0.0, **kwargs):
         opts = self.config.get_mplayer_opts(media_file.pathname)
         self.audio_opts(opts, media_file.scan.selected_audio_id)
         self.subtitle_opts(opts, media_file.scan.selected_subtitle_id, media_file)

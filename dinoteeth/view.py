@@ -231,8 +231,8 @@ class DetailRenderer(Renderer):
         metadata = m['mmdb']
         season = m.get('season', None)
         loader = MetadataLoader.get_loader(metadata)
-        suffix = loader.get_poster_suffix(season=season)
-        imgpath = loader.get_poster_filename(metadata, suffix)
+        imgpath = loader.get_poster(metadata, season=season)
+        print "draw_mmdb: %s, type=%s" % (imgpath, type(imgpath))
         image = self.window.get_image(imgpath)
         self.window.blit(image, self.x, self.h - image.height, 0)
         
