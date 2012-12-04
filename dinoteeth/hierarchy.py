@@ -340,14 +340,14 @@ class ExpandedLookup(MetadataLookup):
                     for s in seasons:
                         yield u"%s - Season %d" % (unicode(m.title), s), None
                         episodes = media_files.get_episodes(s)
-                        for ms in episodes:
-                            yield "  Resume %s (Paused at %s)" % (unicode(ms.display_title), ms.paused_at_text()), MediaPlay(self.config, m.id, ms, resume=True)
+                        for f in episodes:
+                            yield "  Resume %s (Paused at %s)" % (unicode(f.scan.display_title), f.scan.paused_at_text()), MediaPlay(self.config, m, f, resume=True)
             elif m.media_subcategory == "movies":
                 yield unicode(m.title), None
                 media_files.sort()
                 bonus = media_files.get_bonus()
                 for f in media_files:
-                    yield "  Resume %s (Paused at %s)" % (unicode(f.scan.display_title), f.scan.paused_at_text()), MediaPlay(self.config, m.id, f, resume=True)
+                    yield "  Resume %s (Paused at %s)" % (unicode(f.scan.display_title), f.scan.paused_at_text()), MediaPlay(self.config, m, f, resume=True)
 
 
 class ChangeImdbRoot(MetadataLookup):
