@@ -144,7 +144,7 @@ class MenuRenderer(Renderer):
 class VerticalMenuRenderer(MenuRenderer):
     def compute_params(self, conf):
         self.center = self.y + self.h/2
-        self.items_in_half = (self.center - (1.5 * self.window.selected_font.height)) / self.window.font.height
+        self.items_in_half = int((self.center - (1.5 * self.window.selected_font.height)) / self.window.font.height)
     
     def get_page_scroll_unit(self):
         return self.items_in_half
