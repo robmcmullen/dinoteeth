@@ -17,6 +17,7 @@ class Task(object):
     def __init__(self):
         self.parent = None
         self.children_running = 0
+        self.children_scheduled = []
         self.error = None
         self.exception = None
     
@@ -35,7 +36,7 @@ class Task(object):
     def get_name(self):
         return self.__class__.__name__
         
-    def _start(self, processor):
+    def _start(self, dispatcher):
         raise RuntimeError("Abstract method")
     
     def _success_message(self):
@@ -50,8 +51,55 @@ class Task(object):
         else:
             return self._failed_message()
     
-    def post_process(self):
+    def success_callback(self):
+        """Called in main thread if task completes successfully.
+        
+        This method's primary use is to start any subtasks that depend on this
+        task.  Note that since it occurs in the main thread, GUI methods may
+        be safely called.
+        
+        The task is not returned by TaskManager.get_finished until all subtasks
+        are complete.
+        
+        @returns: list of sub-tasks to process
+        """
         return []
+    
+    def failure_callback(self):
+        """Called in main thread if task fails during the thread processing.
+        
+        This method's primary use is to start any subtasks that might work
+        around the error encountered during this task.  Note that since it
+        occurs in the main thread, GUI methods may be safely called.
+        
+        The task is not returned by TaskManager.get_finished until all subtasks
+        are complete.
+        
+        @returns: list of sub-tasks to process
+        """
+        return []
+    
+    def subtasks_complete_callback(self):
+        """Called in main thread when all subtasks have completed.
+        
+        Since it occurs in the main thread, GUI methods may be safely called.
+        
+        This method is called when all subtasks have been completed,
+        successfully or not.  It is called iff some subtasks were
+        created in either success_callback or failure_callback.
+        """
+        pass
+    
+    def root_task_complete_callback(self):
+        """Called in main thread when a directly-added task completes.
+        
+        Since it occurs in the main thread, GUI methods may be safely called.
+        
+        This method is called when a root task is marked as completed by
+        TaskManager.get_finished.  This method will not be called on subtasks
+        added by success_callback or failure_callback.
+        """
+        pass
 
 class ThreadTask(Task):
     pass
@@ -69,7 +117,7 @@ class TestSleepTask(ThreadTask):
     def get_name(self):
         return "thread sleep task #%d, delay=%ss" % (self.num, self.sleep)
         
-    def _start(self, processor):
+    def _start(self, dispatcher):
         log.debug("%s starting!" % self.get_name())
         time.sleep(self.sleep)
 
@@ -82,7 +130,7 @@ class TestProcessSleepTask(ProcessTask):
     def get_name(self):
         return "process sleep task #%d, delay=%ss" % (self.num, self.sleep)
         
-    def _start(self, processor):
+    def _start(self, dispatcher):
         log.debug("%s starting!" % self.get_name())
         time.sleep(self.sleep)
 
@@ -244,7 +292,7 @@ class TaskManager(object):
         log = logging.getLogger(self.__class__.__name__)
         self.event_callback = event_callback
         self._finished = Queue.Queue()
-        self.processors = []
+        self.dispatchers = []
         self.timer = Timer(event_callback)
     
     def start_ticks(self, resolution, expire_time):
@@ -253,25 +301,26 @@ class TaskManager(object):
     def stop_ticks(self):
         self.timer.stop_ticks()
 
-    def find_processor(self, task):
-        for processor in self.processors:
-            if processor.can_handle(task):
-                return processor
+    def find_dispatcher(self, task):
+        for dispatcher in self.dispatchers:
+            if dispatcher.can_handle(task):
+                return dispatcher
         return None
             
-    def start_processor(self, processor):
-        log.debug("Adding processor %s" % str(processor))
-        processor.set_manager(self)
-        processor.start_processing()
-        self.processors.append(processor)
+    def start_dispatcher(self, dispatcher):
+        log.debug("Adding dispatcher %s" % str(dispatcher))
+        dispatcher.set_manager(self)
+        dispatcher.start_processing()
+        self.dispatchers.append(dispatcher)
             
     def add_task(self, task):
-        processor = self.find_processor(task)
-        if processor is not None:
-            log.debug("Adding task %s to %s" % (str(task), str(processor)))
-            processor.add_task(task)
+        dispatcher = self.find_dispatcher(task)
+        if dispatcher is not None:
+            log.debug("Adding task %s to %s" % (str(task), str(dispatcher)))
+            dispatcher.add_task(task)
         else:
-            log.debug("No processor for task %s" % str(task))
+            log.debug("No dispatcher for task %s" % str(task))
+        return dispatcher is not None
     
     def _task_done(self, task):
         """Called from threads to report completed tasks
@@ -303,31 +352,43 @@ class TaskManager(object):
                 continue
             if task.parent is not None:
                 log.debug("  subtask of %s" % str(task.parent))
-            sub_tasks = task.post_process()
+            if task.success():
+                sub_tasks = task.success_callback()
+            else:
+                sub_tasks = task.failure_callback()
             if sub_tasks:
                 for sub_task in sub_tasks:
                     sub_task.parent = task
-                    task.children_running += 1
-                    self.add_task(sub_task)
+                    scheduled = self.add_task(sub_task)
+                    if scheduled:
+                        task.children_running += 1
+                        task.children_scheduled.append(task)
+                    else:
+                        # remove parent if task wasn't scheduled.  Can't simply
+                        # add parent after add_task because the task may have
+                        # already been started by the thread
+                        sub_task.parent = None
             else:
                 t = task
                 while t.parent is not None:
                     t.parent.children_running -= 1
                     if t.parent.children_running == 0:
+                        t.parent.subtasks_complete_callback()
                         t = t.parent
                     else:
                         break
                 if t.parent is None and t.children_running == 0:
                     log.debug("marking root task %s completed" % str(t))
+                    t.root_task_complete_callback()
                     root_tasks_done.add(t)
         return root_tasks_done
     
     def shutdown(self):
-        for processor in self.processors:
-            processor.abort()
+        for dispatcher in self.dispatchers:
+            dispatcher.abort()
         self.timer.abort()
-        for processor in self.processors:
-            processor.join()
+        for dispatcher in self.dispatchers:
+            dispatcher.join()
         self.timer.join()
 
 
@@ -343,15 +404,15 @@ if __name__ == '__main__':
     
     callback = get_event_callback("on_status_change")
     manager = TaskManager(callback)
-    processor1 = ThreadTaskDispatcher()
-    manager.start_processor(processor1)
-    processor2 = ThreadTaskDispatcher(processor1)
-    manager.start_processor(processor2)
-    processor3 = ProcessTaskDispatcher()
-    manager.start_processor(processor3)
+    dispatcher1 = ThreadTaskDispatcher()
+    manager.start_dispatcher(dispatcher1)
+    dispatcher2 = ThreadTaskDispatcher(dispatcher1)
+    manager.start_dispatcher(dispatcher2)
+    dispatcher3 = ProcessTaskDispatcher()
+    manager.start_dispatcher(dispatcher3)
     for i in range(3):
-        processor_i = ProcessTaskDispatcher(processor3)
-        manager.start_processor(processor_i)
+        dispatcher_i = ProcessTaskDispatcher(dispatcher3)
+        manager.start_dispatcher(dispatcher_i)
     
     manager.add_task(TestSleepTask(1, 1))
     manager.add_task(TestSleepTask(2, 1))

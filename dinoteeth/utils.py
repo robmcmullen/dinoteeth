@@ -1,7 +1,232 @@
-import os, sys, glob, logging, re
+import os, sys, time, glob, logging, re
 from datetime import datetime, timedelta
 
+from persistent import Persistent
+
 log = logging.getLogger("dinoteeth.utils")
+
+from ZEO import ClientStorage
+from ZODB import DB, FileStorage
+import transaction
+from persistent.mapping import PersistentMapping
+
+
+class DBFacade(object):
+    def __init__(self, path, host=""):
+        if host:
+            addr = host.split(":")
+            addr = addr[0], int(addr[1])
+            self.storage = ClientStorage.ClientStorage(addr, wait=False)
+        else:
+            self.storage = FileStorage.FileStorage(path)
+        try:
+            self.db = DB(self.storage)
+            self.connection = self.db.open()
+            self.dbroot = self.connection.root()
+        except Exception, e:
+            raise RuntimeError("Error connecting to dinoteeth database at %s" % str(addr))
+    
+    def get_unique_id(self):
+        id = self.get_value("unique_counter", 0)
+        id -= 1
+        self.set_value("unique_counter", id)
+        return id
+    
+    def add(self, name, obj):
+        self.dbroot[name] = obj
+    
+    def get_mapping(self, name, clear=False):
+        if name not in self.dbroot:
+            self.dbroot[name] = PersistentMapping()
+        if clear:
+            self.dbroot[name].clear()
+        return self.dbroot[name]
+    
+    def get_value(self, name, initial):
+        if name not in self.dbroot:
+            self.dbroot[name] = initial
+        return self.dbroot[name]
+    
+    def set_value(self, name, value):
+        self.dbroot[name] = value
+    
+    def add(self, name, obj):
+        self.dbroot[name] = obj
+    
+    callbacks = []
+    @classmethod
+    def add_commit_callback(cls, callback):
+        cls.callbacks.append(callback)
+        
+    @classmethod
+    def commit(cls):
+        transaction.commit()
+        for callback in cls.callbacks:
+            callback()
+    
+    def rollback(self):
+        transaction.rollback()
+    
+    def abort(self):
+        transaction.abort()
+    
+    def get_last_modified(self):
+        return self.get_value("last_modified", -1)
+    
+    def set_last_modified(self):
+        self.set_value("last_modified", time.time())
+    
+    def sync(self):
+        self.connection.sync()
+    
+    def pack(self):
+        self.db.pack()
+
+    def close(self):
+        self.connection.close()
+        self.db.close()
+        self.storage.close()
+
+
+class FilePickleDict(object):
+    """Emulated dictionary that stores items on the filesystem as pickles
+    
+    """
+    def __init__(self, pathname, prefix="x", non_empty_to_save=True):
+        self.root = pathname
+        self.prefix = prefix
+        self.non_empty_to_save = non_empty_to_save
+        if not os.path.exists(self.root):
+            os.mkdir(self.root)
+        elif os.path.exists(self.root) and not os.path.isdir(self.root):
+            raise RuntimeError("%s is not a directory" % self.root)
+
+    def __getitem__(self, key):
+        import cPickle as pickle
+
+        filename = self.pathname_from_key(key)
+        if os.path.exists(filename):
+            with open(filename, "rb") as fh:
+                bytes = fh.read()
+                try:
+                    data = pickle.loads(bytes)
+                except ImportError:
+                    data = pickle_loads_renamed(bytes)
+            return data
+
+    def __setitem__(self, key, value):
+        import cPickle as pickle
+
+        if self.non_empty_to_save and not bool(value):
+            # Don't save empty values if requested not to
+            return
+        filename = self.pathname_from_key(key)
+        bytes = pickle.dumps(value)
+        with open(filename, "wb") as fh:
+            fh.write(bytes)
+    
+    def __contains__(self, key):
+        filename = self.pathname_from_key(key)
+        return os.path.exists(filename)
+    
+    def filename_from_key(self, key):
+        """Method to generate a filesystem-safe name representing the key
+        
+        Default mapping uses url encoding
+        """
+        import urllib
+        return self.prefix + urllib.quote_plus(unicode(key).encode('utf8'))
+    
+    def pathname_from_key(self, key):
+        return os.path.join(self.root, self.filename_from_key(key))
+
+
+class HttpProxyBase(object):
+    base_url = None
+    ignore_query_string_params = []
+    
+    def __init__(self, cache_dir):
+        self.http_cache_dir = cache_dir
+
+    def get_cache_path(self, url):
+        path_part = url.split("//", 1)[1]
+        
+        # remove query string params listed in ignore_query_string_params.
+        # This is used to remove timestamps or other volatile parts of the
+        # URL that don't change the content of the request
+        if "?" in path_part:
+            path_part, query_string = path_part.split("?", 1)
+            params = []
+            for param in query_string.split("&"):
+                if "=" in param:
+                    field, value = param.split("=", 1)
+                else:
+                    field = param
+                if field in self.ignore_query_string_params:
+                    continue
+                params.append(param)
+            query_string = "&".join(params)
+            if query_string:
+                path_part += "?" + query_string
+        full_path = os.path.join(self.http_cache_dir, path_part)
+        dir_part = os.path.dirname(full_path)
+        if not os.path.exists(dir_part):
+            os.makedirs(dir_part)
+        return full_path
+
+    @classmethod
+    def get_json(cls, page):
+        try:
+            import simplejson
+        except:
+            import json as simplejson
+        try:
+            return simplejson.loads(page)
+        except:
+            return simplejson.loads(page.decode('utf-8'))
+    
+    @classmethod
+    def get_soup(cls, page):
+        import bs4
+        return bs4.BeautifulSoup(page)
+    
+    def load_url(self, url, use_cache=True):
+        if use_cache:
+            cached = self.get_cache_path(url)
+            if os.path.exists(cached):
+                page = open(cached).read()
+                return page
+        import requests
+        page = requests.get(url).content
+        if use_cache:
+            fh = open(cached, "wb")
+            fh.write(page)
+            fh.close()
+        return page
+    
+    def get_rel_url(self, rel_url):
+        return self.base_url + rel_url
+    
+    def load_rel_url(self, rel_url, use_cache=True):
+        url = self.get_rel_url(rel_url)
+        return self.load_url(url, use_cache)
+
+
+class TitleKey(Persistent):
+    def __init__(self, category, subcategory, title, year):
+        self.category = category
+        self.subcategory = subcategory
+        self.title = title
+        self.year = year
+
+    def __str__(self):
+        return str(self.__dict__)
+
+    def __hash__(self): 
+        return hash((self.category, self.subcategory, self.title, self.year))
+
+    def __eq__(self, other): 
+        return self.__dict__ == other.__dict__
 
 def decode_title_text(text):
     return text.replace('_n_',' & ').replace('-s_','\'s ').replace('-t_','\'t ').replace('-m_','\'m ').replace('.._',': ').replace('.,_','; ').replace('_',' ')

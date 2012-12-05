@@ -1,6 +1,7 @@
 import os, sys, glob, time, random, Queue
 
 from controller import *
+from metadata import MetadataLoader
 
 class MenuEmptyError(RuntimeError):
     pass
@@ -227,14 +228,15 @@ class DetailRenderer(Renderer):
         image_generator(self.window, self.artwork_loader, self.x, self.y, self.w, self.h)
     
     def draw_mmdb(self, item, m):
-        imdb_id = m['mmdb'].id
+        metadata = m['mmdb']
         season = m.get('season', None)
-        key = (imdb_id, season)
-        imgpath = self.artwork_loader.get_poster(imdb_id, season)
+        loader = MetadataLoader.get_loader(metadata)
+        imgpath = loader.get_poster(metadata, season=season)
+        print "draw_mmdb: %s, type=%s" % (imgpath, type(imgpath))
         image = self.window.get_image(imgpath)
         self.window.blit(image, self.x, self.h - image.height, 0)
         
-        self.window.draw_markup(m['mmdb'].get_markup(m.get('media_scan', None)),
+        self.window.draw_markup(metadata.get_markup(m.get('media_file', None)),
                                 self.window.detail_font,
                                 x=self.x + image.width + 10, y=self.h,
                                 anchor_x='left', anchor_y='top',

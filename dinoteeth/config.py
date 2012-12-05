@@ -6,18 +6,18 @@ except:
 from third_party.configobj import ConfigObj
 
 from view import *
-from proxies import Proxies
-from database import DBFacade, HomeTheaterDatabase
+from database import HomeTheaterDatabase
+from model import MenuItem
 from updates import UpdateManager, FileWatcher
-from mplayer import MPlayerClient
-from utils import decode_title_text
+from utils import DBFacade, decode_title_text
 from image import ArtworkLoader, ScaledArtworkLoader
-from posters import PosterFetcher
 from thumbnail import ThumbnailFactory
 from hierarchy import RootMenu
 from photo import PhotoDB
-from media import enzyme_extensions, MediaScan
-from metadata import BaseMetadata
+import settings
+import games
+import home_theater
+from clients import Client
 import i18n
 
 logging.basicConfig(level=logging.WARNING)
@@ -38,9 +38,6 @@ class Config(object):
         self.main_window = None
         self.root = None
         self.default_poster = None
-        self.default_mplayer_opts = ["-novm", "-fs", "-utf8"]
-        # Use SSA/ASS rendering to enable italics, bold, etc
-        self.default_mplayer_opts.extend(["-ass", "-ass-color", "ffffff00", "-ass-font-scale", "1.4"])
         if parser is None:
             parser = self.get_arg_parser()
         self.parse_args(args, parser)
@@ -57,9 +54,6 @@ class Config(object):
                           help="Default metadata/database root directory for those databases and the image directories that don't specify a full path")
         parser.add_argument("--db", action="store", dest="database", default="dinoteeth.zodb")
         parser.add_argument("--db-host", action="store", dest="db_host", default="")
-        parser.add_argument("--imdb-cache-dir", action="store", default="imdb-cache")
-        parser.add_argument("--tmdb-cache-dir", action="store", default="tmdb-cache")
-        parser.add_argument("--tvdb-cache-dir", action="store", default="tvdb-cache")
         parser.add_argument("--thumbnail-dir", action="store", default="")
         parser.add_argument("-i", "--image-dir", action="store", dest="image_dir", default="graphics")
         parser.add_argument("--poster-width", action="store", type=int, default=-1, help="Maximum displayed poster width")
@@ -79,7 +73,7 @@ class Config(object):
         parser.add_argument("--font-size-detail", action="store", type=int, default=12)
         parser.add_argument("--font-size-selected", action="store", type=int, default=24)
         
-        parser.add_argument("--imdb-country-code", action="store", default="USA")
+        parser.add_argument("--imdb-country", action="store", default="USA")
         parser.add_argument("--imdb-language", action="store", default="English")
         parser.add_argument("--country-code", action="store", default="US")
         parser.add_argument("--test-threads", action="store_true", default=False)
@@ -119,7 +113,6 @@ class Config(object):
         
         self.set_class_defaults()
         
-        self.proxies = self.get_proxies()
         self.db = self.get_home_theater_database()
         if self.args:
             for path in self.args:
@@ -155,10 +148,11 @@ class Config(object):
             log.error("Can't save configuration file %s: %s" % (name, e))
     
     def set_class_defaults(self):
-        BaseMetadata.imdb_country = self.options.imdb_country_code
-        BaseMetadata.imdb_language = self.options.imdb_language
-        BaseMetadata.iso_3166_1 = self.options.country_code
-        MediaScan.subtitle_file_extensions = self.get_subtitle_extensions()
+        settings.metadata_root = self.options.metadata_root
+        settings.imdb_country = self.options.imdb_country
+        settings.imdb_language = self.options.imdb_language
+        settings.iso_3166_1 = self.options.country_code
+        settings.subtitle_file_extensions = self.get_subtitle_extensions()
     
     def get_main_window_class(self):
         if self.options.ui == "sdl":
@@ -208,6 +202,7 @@ class Config(object):
     def get_object_database(self):
         if not hasattr(self, 'zodb'):
             self.zodb = DBFacade(self.get_metadata_pathname(self.options.database), self.options.db_host)
+            self.zodb.add_commit_callback(MenuItem.needs_refresh)
         return self.zodb
     
     def get_photo_database(self):
@@ -217,33 +212,17 @@ class Config(object):
                 db.add_path(path)
         return db
     
-    def get_proxies(self):
-        proxies = Proxies(
-            imdb_cache_dir=self.get_metadata_pathname(self.options.imdb_cache_dir),
-            tmdb_cache_dir=self.get_metadata_pathname(self.options.tmdb_cache_dir),
-            tvdb_cache_dir=self.get_metadata_pathname(self.options.tvdb_cache_dir),
-            language=self.options.language)
-        return proxies
-    
-    def get_poster_fetcher(self):
-        return PosterFetcher(self.get_proxies(), self.get_artwork_loader().clone())
-    
     def get_home_theater_database(self):
-        db = HomeTheaterDatabase(self.get_object_database(), self.proxies)
+        db = HomeTheaterDatabase(self.get_object_database())
         return db
     
     def start_update_monitor(self):
-        valid = self.get_video_extensions()
-        watcher = FileWatcher(self.db, self.get_video_extensions(), self.get_poster_fetcher())
+        watcher = FileWatcher(self.db)
         for path, flags in self.ini["media_paths"].iteritems():
             if self.options.media_root and not os.path.isabs(path):
                 path = os.path.join(self.options.media_root, path)
             watcher.add_path(path, flags)
         watcher.watch()
-    
-    def get_video_extensions(self):
-        """Get list of known video extensions from enzyme"""
-        return enzyme_extensions()
     
     def get_subtitle_extensions(self):
         return [".srt", ".ssa", ".ass"]
@@ -287,14 +266,9 @@ class Config(object):
         thumbnail_factory = ThumbnailFactory(self.options.thumbnail_dir, self.get_metadata_pathname(self.options.image_dir))
         return thumbnail_factory
     
-    def get_media_client(self):
-        return MPlayerClient(self)
-    
-    def get_mplayer_opts(self, path):
-        opts = self.default_mplayer_opts[:]
-        root, ext = os.path.splitext(path)
-        # do something with path if desired
-        return opts
+    def get_media_client(self, media_file):
+        client = Client.get_loader(media_file)
+        return client(settings)
     
     def get_leading_articles(self):
         return ["a", "an", "the"]

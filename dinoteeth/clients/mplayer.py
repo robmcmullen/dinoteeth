@@ -1,23 +1,28 @@
 import os, sys, time, subprocess
 
-from mplayerlib import MPlayer
-import utils
+from loader import Client
 
-class MPlayerClient(object):
-    def __init__(self, config):
-        self.config = config
-        
-    def play(self, media_scan, resume_at=0.0):
-        opts = self.config.get_mplayer_opts(media_scan.pathname)
-        self.audio_opts(opts, media_scan.selected_audio_id)
-        self.subtitle_opts(opts, media_scan.selected_subtitle_id, media_scan)
+from mplayerlib import MPlayer
+from .. import utils
+
+class MPlayerClient(Client):
+    def get_mplayer_opts(self, path):
+        opts = self.settings.mplayer_opts.split()
+        root, ext = os.path.splitext(path)
+        # do something with path if desired
+        return opts
+    
+    def play(self, media_file, resume_at=0.0, **kwargs):
+        opts = self.get_mplayer_opts(media_file.pathname)
+        self.audio_opts(opts, media_file.scan.selected_audio_id)
+        self.subtitle_opts(opts, media_file.scan.selected_subtitle_id, media_file)
         if resume_at > 0:
             self.resume_opts(opts, resume_at)
-        last_pos = self.play_slave(media_scan.pathname, opts)
+        last_pos = self.play_slave(media_file.pathname, opts)
         return last_pos
     
     def play_file(self, pathname):
-        opts = self.config.get_mplayer_opts(pathname)
+        opts = self.get_mplayer_opts(pathname)
         last_pos = self.play_slave(pathname, opts)
         return last_pos
     
@@ -25,14 +30,14 @@ class MPlayerClient(object):
         if id is not None:
             opts.extend(["-aid", str(id)])
     
-    def subtitle_opts(self, opts, id, media_scan):
+    def subtitle_opts(self, opts, id, media_file):
         print "Subtitles: %s" % id
         if id is not None:
             if id < 0:
                 opts.extend(["-noautosub", "-nosub"])
             else:
-                if media_scan.is_subtitle_external(id):
-                    path = media_scan.get_subtitle_path(id)
+                if media_file.scan.is_subtitle_external(id):
+                    path = media_file.scan.get_subtitle_path(id, media_file.pathname)
                     if path is not None:
                         opts.extend(["-sub", path])
                 else:
@@ -63,3 +68,5 @@ class MPlayerClient(object):
         finally:
             mp.quit()
         return last_pos
+
+Client.register("video", "*", MPlayerClient)

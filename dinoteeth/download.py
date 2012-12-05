@@ -15,7 +15,7 @@ class HttpClient(asyncore.dispatcher):
         self.log = logging.getLogger(self.url)
         self.parsed_url = urlparse.urlparse(url)
         asyncore.dispatcher.__init__(self)
-        self.write_buffer = 'GET %s HTTP/1.0\r\n\r\n' % self.url
+        self.write_buffer = 'GET %s HTTP/1.0\r\nAccept:*/*;q=0.8\r\n\r\n' % self.url
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         address = (self.parsed_url.netloc, 80)
         self.log.debug('connecting to %s', address)
@@ -69,13 +69,17 @@ class PrintConsumer(Consumer):
         self.size += len(data)
 
 class FileConsumer(Consumer):
-    def __init__(self, path):
+    def __init__(self, *args, **kwargs):
         Consumer.__init__(self)
-        self.path = path
-        self.temp_path = path + ".part"
-        self.fh = open(self.temp_path, "wb")
+        self.get_file(*args)
+        self.include_header = kwargs.get('include_header', False)
         self.header = ""
         self.header_complete = False
+    
+    def get_file(self, *args):
+        self.path = args[0]
+        self.temp_path = self.path + ".part"
+        self.fh = open(self.temp_path, "wb")
         
     def write(self, data):
         self.log.debug('saving %d bytes', len(data))
@@ -85,39 +89,63 @@ class FileConsumer(Consumer):
             if i < 0:
                 return
             data = self.header[i+4:]
-            self.header = self.header[:i+2]
+            self.header = self.header[:i+4]
             self.header_complete = True
+            if self.include_header:
+                self.fh.write(self.header)
         self.fh.write(data)
         self.size += len(data)
     
     def close(self):
-        self.log.debug('saved %d bytes to %s', self.size, self.path)
+        self.log.debug('saved %d bytes to %s', self.size, self.temp_path)
         self.fh.close()
         if os.path.exists(self.path):
             os.remove(self.path)
         os.rename(self.temp_path, self.path)
 
+class MemoryConsumer(FileConsumer):
+    def get_file(self, *args):
+        self.fh = StringIO()
+    
+    def close(self):
+        self.log.debug('saved %d bytes to StringIO object', self.size)
+        self.data = self.fh.getvalue()
+        self.fh.close()
+
 
 class DownloadTask(Task):
-    def __init__(self, url, path, overwrite=False):
+    def __init__(self, url, path=None, overwrite=False, **kwargs):
         Task.__init__(self)
         self.url = url
         self.path = path
         self.overwrite = overwrite
+        self.kwargs = kwargs
         self.size = 0
     
-    def _start(self, processor):
-        if os.path.exists(self.path) and not self.overwrite:
-            self.size = os.path.getsize(self.path)
-            processor._finished.put(self)
-        else:
-            consumer = FileConsumer(self.path)
-            client = HttpClient(self.url, consumer, self._finished_callback, processor)
+    def _get_consumer(self):
+        if self.path is None:
+            return MemoryConsumer(**self.kwargs)
+        return FileConsumer(self.path, **self.kwargs)
     
-    def _finished_callback(self, client, processor):
+    def _is_cached(self):
+        if self.path is not None and os.path.exists(self.path) and not self.overwrite:
+            self.size = os.path.getsize(self.path)
+            return True
+        return False
+    
+    def _start(self, dispatcher):
+        found = self._is_cached()
+        if found:
+            dispatcher._manager._task_done(self)
+        else:
+            consumer = self._get_consumer()
+            client = HttpClient(self.url, consumer, self._finished_callback, dispatcher)
+    
+    def _finished_callback(self, client, dispatcher):
         self.size = client.consumer.size
-        processor._finished.put(self)
-
+        if self.path is None:
+            self.data = client.consumer.data
+        dispatcher._manager._task_done(self)
 
 class BackgroundHttpDownloader(ThreadTaskDispatcher):
     def __init__(self):
@@ -168,7 +196,7 @@ if __name__ == '__main__':
 
     manager = TaskManager()
     downloader = BackgroundHttpDownloader()
-    manager.start_processor(downloader)
+    manager.start_dispatcher(downloader)
     manager.add_task(DownloadTask('http://www.python.org/', "python.html", overwrite=True))
     manager.add_task(DownloadTask('http://www.doughellmann.com/PyMOTW/contents.html',"pymotw.html"))
     manager.add_task(DownloadTask('http://docs.python.org/release/2.6.8/_static/py.png', "py.png"))

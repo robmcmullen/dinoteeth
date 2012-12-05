@@ -16,7 +16,7 @@ class ThumbnailLoadTask(ProcessTask):
     def __str__(self):
         return "%s: thumbnail=%s" % (self.__class__.__name__, self.imgpath)
     
-    def _start(self, processor):
+    def _start(self, dispatcher):
         self.thumbnail_loader.get_thumbnail_file(self.imgpath, True)
     
     def _success_message(self):
@@ -36,12 +36,12 @@ class UpdateManager(object):
         cls.db = db
         cls.thumbnails = thumbnail_loader
         cls.task_manager = TaskManager(event_callback)
-        processor1 = ThreadTaskDispatcher()
-        cls.task_manager.start_processor(processor1)
-        processor2 = ThreadTaskDispatcher(processor1)
-        cls.task_manager.start_processor(processor2)
-        processor3 = ProcessTaskDispatcher()
-        cls.task_manager.start_processor(processor3)
+        dispatcher1 = ThreadTaskDispatcher()
+        cls.task_manager.start_dispatcher(dispatcher1)
+        dispatcher2 = ThreadTaskDispatcher(dispatcher1)
+        cls.task_manager.start_dispatcher(dispatcher2)
+        dispatcher3 = ProcessTaskDispatcher()
+        cls.task_manager.start_dispatcher(dispatcher3)
     
     @classmethod
     def process_tasks(cls):
@@ -76,11 +76,9 @@ class UpdateManager(object):
 
 
 class FileWatcher(pyinotify.ProcessEvent):
-    def __init__(self, db, valid_extensions, poster_loader, pevent=None, **kwargs):
+    def __init__(self, db, pevent=None, **kwargs):
         pyinotify.ProcessEvent.__init__(self, pevent=pevent, **kwargs)
         self.db = db
-        self.extensions = valid_extensions
-        self.poster_loader = poster_loader
         self.media_path_dict = {}
         self.wm = pyinotify.WatchManager() # Watch Manager
         self.added = set()
@@ -90,10 +88,10 @@ class FileWatcher(pyinotify.ProcessEvent):
         self.media_path_dict[path] = flags
     
     def watch(self):
-        self.db.update_metadata(self.media_path_dict, self.extensions)
-        self.db.update_posters(self.poster_loader)
+        self.db.scan_and_update(self.media_path_dict)
+        self.db.update_posters()
         mask = pyinotify.IN_DELETE | pyinotify.IN_CLOSE_WRITE | pyinotify.IN_MODIFY | pyinotify.IN_MOVED_TO | pyinotify.IN_MOVED_FROM | pyinotify.IN_CREATE
-        notifier = pyinotify.Notifier(self.wm, self, timeout=1000)
+        notifier = pyinotify.Notifier(self.wm, self, timeout=5000)
         for path in self.media_path_dict.keys():
             self.wm.add_watch(path, mask, rec=True)
         while True:
@@ -103,12 +101,12 @@ class FileWatcher(pyinotify.ProcessEvent):
                 notifier.process_events()
             if len(self.added) + len(self.removed) > 0:
                 print "Found %d files added, %d removed" % (len(self.added), len(self.removed))
-                self.db.update_metadata(self.media_path_dict, self.extensions)
+                self.db.scan_and_update(self.media_path_dict)
                 self.added = set()
                 self.removed = set()
             else:
                 print "no changes"
-            self.db.update_posters(self.poster_loader)
+            self.db.update_posters()
 
     def process_IN_CLOSE_WRITE(self, event):
 #        print "Modified (closed):", event.pathname
