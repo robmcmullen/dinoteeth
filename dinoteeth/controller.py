@@ -6,6 +6,9 @@ class VerticalMenuController(object):
     def __init__(self, layout, config):
         self.layout = layout
         self.config = config
+    
+    def get_markup(self):
+        return u"<b>\u21e7</b> Up    <b>\u21e9</b> Down    <b>\u21e8</b> Select    <b>\u21e6</b> Previous Menu    <span color='red'><b>\u25cf</b></span> Audio Select    <span color='green'><b>\u25cf</b></span> Subtitle Select    <span color='yellow'><b>\u25cf</b></span> Mark as Favorite"
 
     def process_key_press(self, keycode, modifiers):
         # First, check arrow keys for menu motion
@@ -35,13 +38,13 @@ class VerticalMenuController(object):
             self.process_quit()
         elif keycode == k.E:
             self.process_edit()
-        elif keycode == k.A:
+        elif keycode == k.F1:
             self.process_audio()
-        elif keycode == k.S:
+        elif keycode == k.F2:
             self.process_subtitle()
         elif keycode == k.R:
             self.layout.window.refresh()
-        elif keycode == k.K8 and modifiers & k.MOD_SHIFT:
+        elif (keycode == k.K8 and modifiers & k.MOD_SHIFT) or keycode == k.F3:
             self.process_star()
     
     def process_select(self):

@@ -20,6 +20,7 @@ class AbstractLayout(object):
         """Compute layout size
         
         Margins are in css order (top, right, bottom, left)
+        Box is (x,y,w,h) where the origin is the lower left corner
         """
         self.width, self.height = self.window.get_size()
         self.box = (margins[3], margins[2],
@@ -83,19 +84,28 @@ class MenuDetail2ColumnLayout(AbstractLayout):
         self.menu_renderer = config.get_menu_renderer(window, self.menu_box)
         self.detail_renderer = config.get_detail_renderer(window, self.detail_box)
         self.status_renderer = SimpleStatusRenderer(window, self.status_box, config)
+        self.footer_renderer = FooterRenderer(window, self.footer_box, config)
     
     def compute_layout(self):
-        self.title_height = self.window.font.height + 10
-        self.menu_width = self.box[2]/3
-        self.center = (self.box[3] - self.title_height)/2
-        self.items_in_half = (self.center - self.window.selected_font.height) / self.window.font.height
-        self.title_box = (self.box[0], self.box[3] - self.title_height + 1, self.box[2], self.title_height)
-        self.menu_box = (self.box[0], self.box[1], self.menu_width, self.box[3] - self.title_height)
-        self.detail_box = (self.menu_width, self.box[1], self.box[2] - self.menu_width, self.box[3] - self.title_height)
-        self.status_box = (self.menu_width + 10, self.box[1] + 10, self.box[2] - self.menu_width - 20, self.title_height + 20)
+        x = self.box[0]
+        y = self.box[1]
+        w = self.box[2]
+        h = self.box[3]
+        title_h = self.window.font.height + 10
+        menu_w = w/3
+        footer_h = self.window.font.height + 10
+        self.title_box = (x, h - title_h + 1, w, title_h)
+        
+        main_y = y + footer_h
+        main_h = h - footer_h - title_h
+        self.menu_box = (x, main_y, menu_w, main_h)
+        self.detail_box = (menu_w, main_y, w - menu_w, main_h)
+        self.status_box = (menu_w + 10, main_y + 10, w - menu_w - 20, title_h + 20)
+        self.footer_box = (x, y, w, footer_h)
     
     def draw(self):
         self.title_renderer.draw(self.hierarchy)
+        self.footer_renderer.draw(self.controller)
         while True:
             try:
                 menu = self.get_menu()
@@ -134,7 +144,7 @@ class MenuRenderer(Renderer):
 class VerticalMenuRenderer(MenuRenderer):
     def compute_params(self, conf):
         self.center = self.y + self.h/2
-        self.items_in_half = (self.center - self.window.selected_font.height) / self.window.font.height
+        self.items_in_half = (self.center - (1.5 * self.window.selected_font.height)) / self.window.font.height
     
     def get_page_scroll_unit(self):
         return self.items_in_half
@@ -308,3 +318,14 @@ class SimpleStatusRenderer(StatusRenderer):
                                   bold=False, italic=True, color=(0,0,255,128),
                                   x=self.x + 10, y=self.y + (self.h / 2),
                                   anchor_x='left', anchor_y='center')
+
+class FooterRenderer(Renderer):
+    def draw(self, controller):
+        text = controller.get_markup()
+        self.window.draw_box(self.x - 1, self.y - 1, self.w + 2, self.h + 1,
+                             (0,0,0,0), (255, 255, 255, 255))
+        if not text:
+            return
+        self.window.draw_markup(text, self.window.font,
+                                x=self.x + 10, y=self.y + (self.h / 2),
+                                anchor_x='left', anchor_y='center')
