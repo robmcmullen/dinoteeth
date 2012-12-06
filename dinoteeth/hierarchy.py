@@ -12,6 +12,9 @@ log = logging.getLogger("dinoteeth.hierarchy")
 log.setLevel(logging.DEBUG)
 
 class MMDBPopulator(MenuPopulator):
+    def get_search_populator(self, text):
+        return SearchPopulator(self, self.config, text)
+    
     def get_sorted_metadata(self):
         unique, scans_in_each = self.media.get_unique_metadata()
         metadata = list(unique)
@@ -55,6 +58,18 @@ class MetadataLookup(MMDBPopulator):
         return {
             'imagegen': self.thumbnail_mosaic,
             }
+
+
+class SearchPopulator(MetadataLookup):
+    def __init__(self, parent, config, initial_text=""):
+        MetadataLookup.__init__(self, parent, config)
+        self.set_search_text(initial_text)
+        
+    def set_search_text(self, text):
+        self.root_title = "Search: %s_" % text
+        text = text.lower()
+        print "search text: -->%s<--" % text
+        self.filter = lambda f: text in f.metadata.title.lower()
 
 
 def only_paused(item):
