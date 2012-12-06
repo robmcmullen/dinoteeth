@@ -52,6 +52,8 @@ class Config(object):
         parser.add_argument("--ui", action="store", default="sdl")
         parser.add_argument("--metadata-root", action="store", default="",
                           help="Default metadata/database root directory for those databases and the image directories that don't specify a full path")
+        parser.add_argument("--cache-root", action="store", default="",
+                          help="Default root directory for cached downloads")
         parser.add_argument("--db", action="store", dest="database", default="dinoteeth.zodb")
         parser.add_argument("--db-host", action="store", dest="db_host", default="")
         parser.add_argument("--thumbnail-dir", action="store", default="")
@@ -149,6 +151,7 @@ class Config(object):
     
     def set_class_defaults(self):
         settings.metadata_root = self.options.metadata_root
+        settings.cache_root = self.options.cache_root
         settings.imdb_country = self.options.imdb_country
         settings.imdb_language = self.options.imdb_language
         settings.iso_3166_1 = self.options.country_code

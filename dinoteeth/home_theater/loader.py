@@ -58,7 +58,7 @@ class HomeTheaterMetadataLoader(MetadataLoader):
                 log.debug("Skipping %s (%s) because %s != %s" % (unicode(result['title']).encode("utf8"), result.get('year','<????>'), unicode(result['kind']).encode("utf8"), subcat))
                 continue
             
-            log.debug("Using %s (%s) because %s could match %s" % (unicode(result['title']).encode("utf8"), result['year'], unicode(result['kind']).encode("utf8"), subcat))
+            log.debug("Using %s (%s) because %s could match %s" % (unicode(result['title']).encode("utf8"), result.get('year', None), unicode(result['kind']).encode("utf8"), subcat))
             found.append(result)
         return found
     
@@ -90,6 +90,61 @@ class HomeTheaterMetadataLoader(MetadataLoader):
             metadata = FakeSeriesMetadata(id, title_key, scans)
         return metadata
     
+    def best_loop(self, guesses, kind, total_runtime, avg_runtime):
+        avg_scale = avg_runtime * 4 / 60 # +- 4 minutes per hour
+        with_commercials = avg_runtime * 30 / 22
+        commercial_scale = with_commercials * 4 / 60 # +- 4 minutes per hour
+        log.debug("runtime: %f (%f with commercials if applicable)" % (avg_runtime, with_commercials))
+
+        closest = 10000
+        best = None
+        for guess in guesses[:5]: # Only check the first few guesses
+            log.debug(">>>>> checking: %s" % guess.imdb_id)
+            summary = self.proxies.tmdb_api.get_imdb_id(guess.imdb_id)
+            if summary is not None and summary["runtime"] > 0:
+                title = summary["title"]
+                runtimes = [summary["runtime"]]
+                movie = None
+                print "using tmdb: %s" % runtimes
+            else:
+                print "using imdb: %s"
+                try:
+                    movie = self.get_metadata(guess)
+                except:
+                    print "failed loading imdb; probably in production or rumored movie"
+                    continue
+                runtimes = movie.runtimes
+                print "using imdb: %s" % runtimes
+            if not runtimes:
+                # No valid runtimes probably means it's an in-production movie
+                continue
+            
+            for r in runtimes:
+                log.debug("runtime: %s %s" % (title.encode('utf8'), r))
+                if r == 0:
+                    continue
+                if r - avg_scale < avg_runtime < r + avg_scale:
+                    break
+                elif kind == "series":
+                    # IMDb runtimes are not very accurate for series, so
+                    # just accept the first match when it's a series
+                    return movie
+                elif movie is not None and movie.is_tv() and (r - commercial_scale < with_commercials < r + commercial_scale):
+                    break
+                else:
+                    log.debug("IMDb runtimes of %s = %s; avg/w comm/total runtime = %s, %s, %s.  Skipping" % (title, str(runtimes), avg_runtime, with_commercials, total_runtime))
+            if not best:
+                best = guess.imdb_id
+                closest = abs(avg_runtime - runtimes[0])
+            else:
+                diff = abs(avg_runtime - runtimes[0])
+                if diff < closest:
+                    closest = diff
+                    best = guess.imdb_id
+        if best is not None:
+            best = self.get_metadata_by_id(best)
+        return best
+        
     def best_guess(self, title_key, scans):
         kind = title_key.subcategory
         log.debug("Guessing for: %s" % scans)
@@ -98,45 +153,13 @@ class HomeTheaterMetadataLoader(MetadataLoader):
             log.error("IMDb returned no guesses for %s???" % title_key.title)
         total_runtime, num_episodes = scans.get_total_runtime()
         avg_runtime = total_runtime / num_episodes
-        avg_scale = avg_runtime * 4 / 60 # +- 4 minutes per hour
-        with_commercials = avg_runtime * 30 / 22
-        commercial_scale = with_commercials * 4 / 60 # +- 4 minutes per hour
-        log.debug("runtime: %f (%f with commercials if applicable)" % (avg_runtime, with_commercials))
-        
-        def best_loop():
-            closest = 10000
-            best = None
-            for guess in guesses:
-                movie = self.get_metadata(guess)
-                for r in movie.runtimes:
-                    log.debug("runtime: %s %s" % (movie.title.encode('utf8'), r))
-                    if r == 0:
-                        continue
-                    if r - avg_scale < avg_runtime < r + avg_scale:
-                        return movie
-                    elif kind == "series":
-                        # IMDb runtimes are not very accurate for series, so
-                        # just accept the first match when it's a series
-                        return movie
-                    elif movie.is_tv() and (r - commercial_scale < with_commercials < r + commercial_scale):
-                        return movie
-                    else:
-                        log.debug("IMDb runtimes of %s = %s; avg/w comm/total runtime = %s, %s, %s.  Skipping" % (movie.title, str(movie.runtimes), avg_runtime, with_commercials, total_runtime))
-                if not best:
-                    best = movie
-                else:
-                    diff = abs(avg_runtime - movie.runtime)
-                    if diff < closest:
-                        closest = diff
-                        best = movie
-            return best
         
         if avg_runtime > 0:
-            best = best_loop()
-        else:
+            best = self.best_loop(guesses, kind, total_runtime, avg_runtime)
+        elif len(guesses) > 0:
             best = self.get_metadata(guesses[0])
         if best:
-            log.info("best guess: %s, %s" % (best.title.encode('utf8'), best.runtimes))
+            log.debug("best guess: %s, %s" % (best.title.encode('utf8'), best.runtimes))
         else:
             best = self.get_fake_metadata(title_key, scans)
         return best

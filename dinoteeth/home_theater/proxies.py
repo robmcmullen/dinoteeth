@@ -7,6 +7,7 @@ from ..third_party.tvdb_api import tvdb_api, tvdb_exceptions
 from ..utils import FilePickleDict, HttpProxyBase
 
 log = logging.getLogger("dinoteeth.proxies")
+log.setLevel(logging.DEBUG)
 
 
 class TvdbPoster(object):
@@ -189,7 +190,7 @@ class TVDbFileProxy(HttpProxyBase):
 
 class Proxies(object):
     def __init__(self, settings):
-        base_dir = settings.metadata_root
+        base_dir = settings.cache_root
         for subdir in ["imdb_cache_dir", "tmdb_cache_dir", "tvdb_cache_dir"]:
             path = getattr(settings, subdir)
             if not path:
@@ -210,13 +211,12 @@ import types
 from imdb import Movie
 
 def replaced_retrieve(self, url, size=-1, _noCookies=False):
-    print url
+    log.debug("imdb search URL: %s" % url)
     return url
 
 class IMDbProxy(HttpProxyBase):
     def __init__(self, imdb_cache_dir, language="en"):
         HttpProxyBase.__init__(self, imdb_cache_dir)
-        self.search_cache = FilePickleDict(imdb_cache_dir, "s")
         self.movie_obj_cache = FilePickleDict(imdb_cache_dir, "")
         self.api = imdb.IMDb(accessSystem='http', adultSearch=1)
         self.api._retrieve = types.MethodType(replaced_retrieve, self.api)
@@ -235,22 +235,15 @@ class IMDbProxy(HttpProxyBase):
     
     def process_search(self, data, title, num_results):
         results = self.search_results_from_data(data, num_results)
-        log.debug("*** STORING %s in search cache: " % title)
         for result in results:
             result.imdb_id = "tt" + result.movieID
             print result.imdb_id, result
-        self.search_cache[title] = results
         return results
     
     def search_movie(self, title, num_results=20):
-        if title in self.search_cache:
-            log.debug("*** FOUND %s in search cache: " % title)
-            results = self.search_cache[title]
-        else:
-            log.debug("*** NOT FOUND in search cache: %s" % title)
-            url = self.search_url(title, num_results)
-            data = self.load_url(url)
-            results = self.process_search(data, title, num_results)
+        url = self.search_url(title, num_results)
+        data = self.load_url(url)
+        results = self.process_search(data, title, num_results)
         return results
     
     def get_movie(self, imdb_id):
@@ -269,6 +262,16 @@ class IMDbProxy(HttpProxyBase):
                 self.movie_obj_cache[imdb_id] = movie_obj
             except imdb.IMDbDataAccessError:
                 movie_obj = None
+        return movie_obj
+    
+    def get_movie_tech(self, imdb_id):
+        if type(imdb_id) == int:
+            imdb_id = "tt%07d" % imdb_id
+        try:
+            movie_obj = self.http_api.get_movie_technical(imdb_id[2:])
+            log.debug("*** STORING %s in movie cache: " % imdb_id)
+        except imdb.IMDbDataAccessError:
+            movie_obj = None
         return movie_obj
 
     def get_movie_main_url(self, movie_id):
@@ -329,19 +332,12 @@ class IMDbSearchTask(DownloadTask):
         DownloadTask.__init__(self, url, self.path, include_header=False)
     
     def _is_cached(self):
-        return self.title in self.api.search_cache or os.path.exists(self.path)
+        return os.path.exists(self.path)
         
     def success_callback(self):
-        if self.title in self.api.search_cache:
-            log.debug("*** FOUND %s in search cache: " % self.title)
-            results = self.api.search_cache[self.title]
-        else:
-            log.debug("*** NOT FOUND in search cache: %s" % self.title)
-            if os.path.exists(self.path):
-                self.data = open(self.path).read()
-            results = self.api.search_results_from_data(self.data, self.num_results)
-            log.debug("*** STORING %s in search cache: " % self.title)
-            self.api.search_cache[self.title] = results
+        if os.path.exists(self.path):
+            self.data = open(self.path).read()
+        results = self.api.search_results_from_data(self.data, self.num_results)
         for result in results:
             result.imdb_id = "tt" + result.movieID
             print result.imdb_id, result

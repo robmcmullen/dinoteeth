@@ -1,4 +1,5 @@
 metadata_root = "/tmp"
+cache_root = "/tmp"
 
 poster_width = 342
 
