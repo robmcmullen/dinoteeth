@@ -74,6 +74,10 @@ class MenuItem(object):
     def do_populate(self):
         if self.populated < self.__class__.refresh_time:
             if self.populate_children:
+                # root title may have changed
+                if hasattr(self.populate_children, "root_title"):
+                    self.title = self.populate_children.root_title
+                
                 data = self.get_cursor_match_data()
                 self.children = []
                 print "populating children!"
