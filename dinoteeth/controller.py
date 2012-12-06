@@ -117,6 +117,7 @@ class VerticalMenuController(object):
         '7': "pqrs7",
         '8': "tuv8",
         '9': "wxyz9",
+        '0': " 0",
         }
     
     def process_search(self, keycode):
@@ -126,11 +127,9 @@ class VerticalMenuController(object):
             return
         
         rotate = False
-        if keycode == k.K0:
-            keycode = ord(' ')
-        elif keycode == k.K1:
+        if keycode == k.K1:
             keycode = ord('1')
-        elif keycode >= k.K2 and keycode <= k.K9:
+        elif (keycode >= k.K2 and keycode <= k.K9) or keycode == k.K0:
             keycode = keycode - k.K0 + ord('0')
             rotate = True
         elif keycode < k.SPACE or keycode > 255:
