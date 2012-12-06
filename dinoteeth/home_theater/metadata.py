@@ -210,7 +210,9 @@ class HomeTheaterMetadata(BaseMetadata):
     skip_title_parts = ["promotional title", "poster title", "IMAX", "DVD title", "complete title", "original title", "short title", "restored version"]
     skip_title_re = re.compile("|".join(skip_title_parts))
     
-    def get_title(self, imdb_obj, country, language):
+    def get_title(self, tmdb_obj, imdb_obj, country, language):
+        if tmdb_obj:
+            return tmdb_obj['title']
         best = None
         if imdb_obj.has_key('akas'):
             possibilities = []
@@ -472,7 +474,7 @@ class MovieMetadata(HomeTheaterMetadata):
     imdb_prefix = "tt"
     
     def __init__(self, movie_obj, tmdb_obj):
-        title_key = utils.TitleKey("video", movie_obj['kind'], self.get_title(movie_obj, settings.imdb_country, settings.imdb_language), movie_obj['year'])
+        title_key = utils.TitleKey("video", movie_obj['kind'], self.get_title(tmdb_obj, movie_obj, settings.imdb_country, settings.imdb_language), movie_obj['year'])
         HomeTheaterMetadata.__init__(self, movie_obj.imdb_id, title_key)
         self.title_index = movie_obj.get('imdbIndex', "")
         if tmdb_obj:
