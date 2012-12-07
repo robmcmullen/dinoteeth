@@ -600,7 +600,7 @@ class SeriesMetadata(HomeTheaterMetadata):
     def __init__(self, movie_obj, tvdb_obj):
 #'title', 'akas', 'year', 'imdbIndex', 'certificates', 'director', 'writer', 'producer', 'cast', 'writer', 'creator', 'original music', 'plot outline', 'rating', 'votes', 'genres', 'number of seasons', 'number of episodes', 'series years', ]
 #['akas', u'art department', 'art direction', 'aspect ratio', 'assistant director', 'camera and electrical department', 'canonical title', 'cast', 'casting director', 'certificates', 'cinematographer', 'color info', u'costume department', 'costume designer', 'countries', 'cover url', 'director', u'distributors', 'editor', u'editorial department', 'full-size cover url', 'genres', 'kind', 'languages', 'long imdb canonical title', 'long imdb title', 'make up', 'miscellaneous companies', 'miscellaneous crew', u'music department', 'number of seasons', 'plot', 'plot outline', 'producer', u'production companies', 'production design', 'production manager', 'rating', 'runtimes', 'series years', 'smart canonical title', 'smart long imdb canonical title', 'sound crew', 'sound mix', 'title', 'votes', 'writer', 'year']
-        title_key = utils.TitleKey("video", movie_obj['kind'], self.get_title(movie_obj, settings.imdb_country, settings.imdb_language), movie_obj['year'])
+        title_key = utils.TitleKey("video", movie_obj['kind'], self.get_title(None, movie_obj, settings.imdb_country, settings.imdb_language), movie_obj['year'])
         HomeTheaterMetadata.__init__(self, movie_obj.imdb_id, title_key)
         self.title_index = movie_obj.get('imdbIndex', "")
         self.certificate = self.get_imdb_country_list(movie_obj, 'certificates', settings.imdb_country, if_empty="unrated")
