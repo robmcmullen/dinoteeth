@@ -32,6 +32,9 @@ class BaseMetadata(Persistent):
     def __str__(self):
         return "%s '%s', id=%s" % (self.__class__.__name__, self.title, self.id)
     
+    def __unicode__(self):
+        return u"%s '%s', id=%s" % (self.__class__.__name__, self.title, self.id)
+    
     def __cmp__(self, other):
         return cmp(self.sort_key(), other.sort_key())
     

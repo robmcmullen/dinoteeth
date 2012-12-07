@@ -296,7 +296,7 @@ class HomeTheaterDatabase(object):
         for title_key, metadata in self.title_keys_with_metadata():
             loader = MetadataLoader.get_loader(title_key)
             if loader.has_poster(metadata):
-                log.debug("Have poster for %s" % str(metadata))
+                log.debug("Have poster for %s" % unicode(metadata).encode('utf-8'))
             else:
-                log.debug("Loading poster for %s" % str(metadata))
+                log.debug("Loading poster for %s" % unicode(metadata).encode('utf-8'))
                 loader.fetch_posters(metadata)

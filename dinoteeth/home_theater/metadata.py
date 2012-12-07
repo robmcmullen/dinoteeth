@@ -427,10 +427,6 @@ class FakeMetadata(HomeTheaterMetadata):
     def __init__(self, id, title_key, scans):
         HomeTheaterMetadata.__init__(self, id, title_key)
     
-    def __unicode__(self):
-        lines = []
-        lines.append(u"%s %s (%s)" % (self.id, self.title, self.year))
-    
     def is_fake(self):
         return True
 
@@ -535,27 +531,6 @@ class MovieMetadata(HomeTheaterMetadata):
         log.debug((u"update_with_media_files: %s: %s" % (self.title, item)).encode('utf8'))
         self.film_number = item.scan.film_number
     
-    def __unicode__(self):
-        lines = []
-        lines.append(u"%s %s (%s) %s" % (self.id, self.title, self.year, self.title_index))
-        if not self.certificate:
-            cert = "unrated"
-        else:
-            cert = self.certificate
-        lines.append(u"  %s %smin rating=%s, %s votes" % (cert, self.runtime, self.rating, self.votes))
-        lines.append(u"  %s" % (", ".join(self.genres)))
-        lines.append(u"  %s" % self.plot)
-        lines.append(u"  Directed by: %s" % ", ".join([unicode(d) for d in self.directors]))
-        lines.append(u"  Screenplay by: %s" % ", ".join([unicode(d) for d in self.screenplay_writers]))
-        lines.append(u"  Story by: %s" % ", ".join([unicode(d) for d in self.story_writers]))
-        lines.append(u"  Novel by: %s" % ", ".join([unicode(d) for d in self.novel_writers]))
-        lines.append(u"  Writers: %s" % ", ".join([unicode(d) for d in self.writers]))
-        lines.append(u"  Music by: %s" % ", ".join([unicode(d) for d in self.music]))
-        lines.append(u"  Executive Producers: %s" % ", ".join([unicode(d) for d in self.executive_producers]))
-        lines.append(u"  Producers: %s" % ", ".join([unicode(d) for d in self.producers]))
-        lines.append(u"  Cast: %s" % ", ".join([unicode(d) for d in self.cast]))
-        return "\n".join(lines)
-
     def get_markup(self, media_file=None):
         genres = u", ".join([unicode(i) for i in self.genres])
         directors = u", ".join([unicode(i) for i in self.directors])
@@ -643,24 +618,6 @@ class SeriesMetadata(HomeTheaterMetadata):
         self.date_added = -1
         
         self.parse_tvdb_obj(tvdb_obj)
-    
-    def __unicode__(self):
-        lines = []
-        lines.append(u"%s %s (%s) %s" % (self.id, self.title, self.series_years, self.title_index))
-        if not self.certificate:
-            cert = "unrated"
-        else:
-            cert = self.certificate
-        lines.append(u"  %s %s rating=%s, %s votes" % (cert, self.network, self.rating, self.votes))
-        lines.append(u"  %s" % (", ".join(self.genres)))
-        lines.append(u"  %s" % self.plot)
-        lines.append(u"  Executive Producers: %s" % ", ".join([unicode(d) for d in self.executive_producers]))
-        lines.append(u"  Directed by: %s" % ", ".join([unicode(d) for d in self.directors]))
-        lines.append(u"  Writers: %s" % ", ".join([unicode(d) for d in self.writers]))
-        lines.append(u"  Music by: %s" % ", ".join([unicode(d) for d in self.music]))
-        lines.append(u"  Cast: %s" % ", ".join([unicode(d) for d in self.cast]))
-        lines.append(u"  Production Companies: %s" % ", ".join([unicode(d) for d in self.companies]))
-        return "\n".join(lines)
     
     def parse_tvdb_obj(self, show):
         self.seasons = dict()
