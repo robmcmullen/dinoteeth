@@ -14,6 +14,7 @@ class MenuItem(object):
         self.enabled = enabled
         self.action = action
         self.populate_children = populate_children
+        self.on_selected_item = None
         self.media = media
         self.parent = None
         self.metadata = metadata
@@ -41,6 +42,11 @@ class MenuItem(object):
         print "%s%s" % (level, self.title)
         for child in self.children:
             child.pprint(level + "  ")
+    
+    def do_on_selected_item(self, **kwargs):
+        if self.on_selected_item:
+            print "on_selected_item!"
+            self.on_selected_item(**kwargs)
     
     def do_action(self, **kwargs):
         if self.enabled:
@@ -280,6 +286,8 @@ class MenuPopulator(object):
                 item.action=populator.play
             if hasattr(populator, 'get_metadata'):
                 item.metadata = populator.get_metadata()
+            if hasattr(populator, 'on_selected_item'):
+                item.on_selected_item = populator.on_selected_item
             yield item
     
     def iter_create(self):
