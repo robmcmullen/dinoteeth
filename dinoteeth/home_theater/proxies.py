@@ -471,18 +471,14 @@ class TMDbMovieDetailTask(TMDbMovieDetailDownloadTask):
         TMDbMovieDetailDownloadTask.__init__(self, api, imdb_id, "main")
     
     def _is_cached(self):
-        return self.imdb_id in self.api.movie_obj_cache or os.path.exists(self.path)
+        return os.path.exists(self.path)
         
     def success_callback(self):
-        if self.imdb_id not in self.api.movie_obj_cache:
-            log.debug("*** NOT FOUND in movie cache: %s" % self.imdb_id)
-            if os.path.exists(self.path):
-                self.data = open(self.path).read()
-                self.movie = self.api.get_movie(self.data)
-                tasks = [TMDbMovieDetailSubTask(self.api, self.movie, "release_info"), TMDbMovieDetailSubTask(self.api, self.movie, "images")]
-                return tasks
-        else:
-            self.movie = self.api.movie_obj_cache[self.imdb_id]
+        if os.path.exists(self.path):
+            self.data = open(self.path).read()
+            self.movie = self.api.get_movie(self.data)
+            tasks = [TMDbMovieDetailSubTask(self.api, self.movie, "release_info"), TMDbMovieDetailSubTask(self.api, self.movie, "images")]
+            return tasks
     
     def root_task_complete_callback(self):
         print self.movie
@@ -501,3 +497,58 @@ class TMDbMovieBestPosterTask(DownloadTask):
     def success_callback(self):
         print "downloaded poster %s: %s" % (self.movie.movie['title'], os.path.getsize(self.path))
 
+class TMDbMovieDetailAndPosterSubTask(TMDbMovieDetailSubTask):
+    def success_callback(self):
+        if os.path.exists(self.path):
+            self.data = open(self.path).read()
+            self.movie.process_from_task(self)
+            tasks = [TMDbMovieBestPosterTask(self.api, self.movie)]
+            return tasks
+
+class TMDbMovieBestPosterFromIdSubTask(TMDbMovieDetailDownloadTask):
+    def __init__(self, api, metadata):
+        TMDbMovieDetailDownloadTask.__init__(self, api, metadata.id, "main")
+    
+    def _is_cached(self):
+        return os.path.exists(self.path)
+        
+    def success_callback(self):
+        if os.path.exists(self.path):
+            self.data = open(self.path).read()
+            self.movie = self.api.get_movie(self.data)
+            if self.movie is not None:
+                tasks = [TMDbMovieDetailSubTask(self.api, self.movie, "release_info"), TMDbMovieDetailAndPosterSubTask(self.api, self.movie, "images")]
+                return tasks
+
+class TMDbMovieBestPosterFromIdTask(TMDbAPITask):
+    def __init__(self, api, metadata, loader):
+        TMDbAPITask.__init__(self, api)
+        self.metadata = metadata
+        self.loader = loader
+        self.best_task = None
+    
+    def _is_cached(self):
+        return os.path.exists(self.path)
+        
+    def success_callback(self):
+        TMDbAPITask.success_callback(self)
+        self.best_task = TMDbMovieBestPosterFromIdSubTask(self.api, self.metadata)
+        tasks = [self.best_task]
+        return tasks
+    
+    def root_task_complete_callback(self):
+        movie = self.best_task.movie
+        if movie is not None:
+            url = movie.get_best_poster_url()
+            print "movie %s: url=%s" % (self.metadata.id, url)
+            path = self.api.get_cache_path(url)
+            print "movie %s: cached poster=%s" % (self.metadata.id, path)
+            poster = self.loader.get_poster(self.metadata)
+            if poster is None:
+                print "movie %s: saving poster %s" % (self.metadata.id, poster)
+                data = open(path).read()
+                self.loader.save_poster(self.metadata, url, data)
+            else:
+                print "movie %s: poster exists: %s" % (self.metadata.id, poster)
+        else:
+            print "movie %s didn't have a poster" % self.metadata.id

@@ -31,7 +31,6 @@ class TMDb3_API(HttpProxyBase):
     def __init__(self, cache_dir, language, poster_size):
         HttpProxyBase.__init__(self, cache_dir)
         self.cache_dir = cache_dir
-        self.movie_obj_cache = {}
         self.language = language
         self.poster_size = poster_size
 

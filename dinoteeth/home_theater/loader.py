@@ -7,7 +7,7 @@ import os, re, time, collections, logging
 
 from ..metadata import MetadataLoader
 from metadata import *
-from proxies import Proxies
+from proxies import Proxies, TMDbMovieBestPosterFromIdTask
 
 log = logging.getLogger("dinoteeth.home_theater.loader")
 log.setLevel(logging.DEBUG)
@@ -112,6 +112,18 @@ class HomeTheaterMetadataLoader(MetadataLoader):
             metadata = FakeMovieMetadata(id, title_key, scans)
         else:
             metadata = FakeSeriesMetadata(id, title_key, scans)
+        return metadata
+    
+    def get_basic_metadata(self, title_key, result):
+        id = result.imdb_id
+        if result['kind'] in ['movie', 'video movie', 'tv movie']:
+            metadata = FakeMovieMetadata(id, title_key, None)
+        elif result['kind'] in ['series', 'tv series', 'tv mini series']:
+            metadata = FakeSeriesMetadata(id, title_key, None)
+        else:
+            # It's a video game or something else; skip it
+            log.error("Unhandled IMDb type '%s' for %s" % (result['kind'], imdb_id))
+            metadata = FakeMovieMetadata(id, title_key)
         return metadata
     
     def best_loop(self, guesses, kind, total_runtime, avg_runtime):
@@ -265,5 +277,9 @@ class HomeTheaterMetadataLoader(MetadataLoader):
         if 'season' in kwargs and kwargs['season'] is not None:
             return "-s%02d" % kwargs['season']
         return ""
+    
+    def get_poster_background_task(self, metadata):
+        task = TMDbMovieBestPosterFromIdTask(self.proxies.tmdb_api, metadata, self)
+        return task
 
 MetadataLoader.register("video", "*", HomeTheaterMetadataLoader)

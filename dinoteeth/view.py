@@ -179,6 +179,7 @@ class VerticalMenuRenderer(MenuRenderer):
         except IndexError:
             raise MenuEmptyError
         self.draw_item(item, self.center, True)
+        item.do_on_selected_item()
         
         y = self.center + self.window.selected_font.height
         i = menu.cursor - 1
@@ -255,8 +256,9 @@ class DetailRenderer(Renderer):
     def draw_imdb_search_result(self, item, m):
         result = m['imdb_search_result']
         print result
-        imdb_id = result.imdb_id
-        imgpath = self.artwork_loader.get_poster(imdb_id, None)
+        metadata = m['metadata']
+        loader = MetadataLoader.get_loader(metadata)
+        imgpath = loader.get_poster(metadata)
         image = self.window.get_image(imgpath)
         self.window.blit(image, self.x, self.h - image.height, 0)
         
@@ -268,7 +270,7 @@ class DetailRenderer(Renderer):
 
 <b>Also known as:</b>
 %s
-""" % (result['title'], imdb_id, result['year'], result['kind'], akas)
+""" % (result['title'], metadata.id, result['year'], result['kind'], akas)
 
         self.window.draw_markup(text, self.window.detail_font,
                                 x=self.x + image.width + 10, y=self.h,

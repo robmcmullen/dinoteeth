@@ -4,6 +4,7 @@ from persistent import Persistent
 from PIL import Image
 
 import settings
+from updates import UpdateManager
 
 
 
@@ -108,6 +109,16 @@ class MetadataLoader(object):
         """
         return []
     
+    def get_basic_metadata(self, search_result):
+        """Return a basic metadata instance from a search result
+        """
+        raise NotImplementedError()
+    
+    def get_metadata_by_id(self, imdb_id):
+        """Return a metadata instance given a known valid id
+        """
+        raise NotImplementedError()
+    
     def best_guess(self, title_key, scans):
         """Return best guess for metadata given the list of MediaFiles that
         match the specified title key.
@@ -171,6 +182,14 @@ class MetadataLoader(object):
         print "get_poster: %s" % path
         return path
     
+    def get_poster_background(self, metadata):
+        task = self.get_poster_background_task(metadata)
+        print "starting task %s" % task
+        UpdateManager.start_task(task)
+    
+    def get_poster_background_task(self, metadata):
+        return None
+    
     def has_poster(self, metadata, **kwargs):
         """Check if poster exists
         
@@ -180,7 +199,7 @@ class MetadataLoader(object):
     
     def scale_poster(self, filename):
         img = Image.open(filename)
-        if img.size[0] < self.poster_width:
+        if img.size[0] <= self.poster_width:
             return
         height = img.size[1] * img.size[0] / self.poster_width
         size = (self.poster_width, height)

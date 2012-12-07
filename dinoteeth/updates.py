@@ -3,6 +3,7 @@ import os, time, logging
 import pyinotify
 
 from task import Task, ProcessTask, TaskManager, ThreadTaskDispatcher, ProcessTaskDispatcher
+from download import BackgroundHttpDownloader
 
 log = logging.getLogger("dinoteeth.updates")
 
@@ -42,6 +43,8 @@ class UpdateManager(object):
         cls.task_manager.start_dispatcher(dispatcher2)
         dispatcher3 = ProcessTaskDispatcher()
         cls.task_manager.start_dispatcher(dispatcher3)
+        downloader = BackgroundHttpDownloader()
+        cls.task_manager.start_dispatcher(downloader)
     
     @classmethod
     def process_tasks(cls):
@@ -68,6 +71,10 @@ class UpdateManager(object):
     @classmethod
     def stop_ticks(cls):
         cls.task_manager.stop_ticks()
+    
+    @classmethod
+    def start_task(cls, task):
+        cls.task_manager.add_task(task)
     
     @classmethod
     def stop_all(cls):

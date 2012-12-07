@@ -291,6 +291,7 @@ class HomeTheaterMetadata(BaseMetadata):
                     continue
                 if hasattr(obj, "zodb_mapping_name"):
                     self.merge_mapping(db, name, attr)
+        db.metadata[self.id] = self
     
     def merge_mapping(self, db, name, attr):
         mapping = db.zodb.get_mapping(attr[0].zodb_mapping_name)

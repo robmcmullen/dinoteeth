@@ -3,8 +3,8 @@ import os, sys, glob, re, logging, time, calendar
 from model import MenuItem, MenuPopulator
 import settings
 from photo import TopLevelPhoto
-from updates import UpdateManager
-from metadata import MetadataLoader
+from metadata import MetadataLoader, BaseMetadata
+from utils import TitleKey
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -395,7 +395,7 @@ class ExpandedLookup(MetadataLookup):
 
 class ChangeImdbRoot(MetadataLookup):
     def __init__(self, parent, config, metadata):
-        MetadataLookup.__init__(self, parent, config, filter=lambda f: f.metadata.id == metadata)
+        MetadataLookup.__init__(self, parent, config, filter=lambda f: f.metadata.id == metadata.id)
         self.metadata = metadata
         self.root_title = "Change Title Lookup"
         
@@ -403,25 +403,44 @@ class ChangeImdbRoot(MetadataLookup):
         media_files = list(self.get_media())
         if len(media_files) > 0:
             title_key = media_files[0].scan.title_key
-            imdb_guesses = self.config.db.metadata_lookup.guess(title_key.title, year=title_key.year, find=title_key.subcategory)
-            for result in imdb_guesses:
-                yield result['title'], ChangeImdb(self, self.config, result)
+            loader = MetadataLoader.get_loader(self.metadata)
+            guesses = loader.search(title_key)
+            for result in guesses:
+                yield result['title'], ChangeImdb(self, self.config, result, title_key)
+#                print result
+#                print dir(result)
+#                print result.summary().encode('utf-8')
 
 class ChangeImdb(MMDBPopulator):
-    def __init__(self, parent, config, imdb_search_result):
+    def __init__(self, parent, config, result, orig_title_key):
         MMDBPopulator.__init__(self, config)
         self.parent = parent
-        self.imdb_search_result = imdb_search_result
+        self.result = result
+        self.title_key = TitleKey(orig_title_key.category, orig_title_key.subcategory, result['title'], result['year'])
+        self.loader = MetadataLoader.get_loader(self.title_key)
+        self.metadata = self.loader.get_basic_metadata(self.title_key, self.result)
+        self.first_time = True
+    
+    def on_selected_item(self):
+        """Callback to trigger something when the cursor is on the menu item"""
+        print "Drawing %s: %s" % (self.result.imdb_id, self.result['title'].encode('utf-8'))
+        if self.first_time:
+            self.loader.get_poster_background(self.metadata)
+            self.first_time = False
         
     def play(self, config=None):
-        status = "Selected %s" % self.imdb_search_result['smart long imdb canonical title']
+        status = "Selected %s" % self.result['smart long imdb canonical title'].encode('utf-8')
+        metadata = self.loader.get_metadata_by_id(self.result.imdb_id)
+        metadata.merge_database_objects(self.config.db)
+        self.config.db.zodb.commit()
         media_files = self.parent.get_media()
-        self.config.db.change_metadata(media_files, self.imdb_search_result.imdb_id)
+        self.config.db.change_metadata(media_files, metadata.id)
         self.config.show_status(status)
     
     def get_metadata(self):
         return {
-            'imdb_search_result': self.imdb_search_result
+            'imdb_search_result': self.result,
+            'metadata': self.metadata,
             }
 
 
