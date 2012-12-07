@@ -58,9 +58,25 @@ class HomeTheaterMetadataLoader(MetadataLoader):
                 log.debug("Skipping %s (%s) because %s != %s" % (unicode(result['title']).encode("utf8"), result.get('year','<????>'), unicode(result['kind']).encode("utf8"), subcat))
                 continue
             
-            log.debug("Using %s (%s) because %s could match %s" % (unicode(result['title']).encode("utf8"), result.get('year', None), unicode(result['kind']).encode("utf8"), subcat))
+#            log.debug("Using %s (%s) because %s could match %s" % (unicode(result['title']).encode("utf8"), result.get('year', None), unicode(result['kind']).encode("utf8"), subcat))
             found.append(result)
-        return found
+        guesses = self.prioritize_search(title_key, found)
+        for result in guesses:
+            log.debug("Using %s (%s) because %s could match %s" % (unicode(result['title']).encode("utf8"), result.get('year', None), unicode(result['kind']).encode("utf8"), subcat))
+        return guesses
+    
+    def prioritize_search(self, title_key, guesses):
+        title = title_key.title.lower()
+        exact_matches = []
+        others = []
+        for result in guesses:
+            t = unicode(result['title']).encode("utf8").lower()
+            if t == title:
+                exact_matches.append(result)
+            else:
+                others.append(result)
+        exact_matches.extend(others)
+        return exact_matches
     
     def get_metadata_by_id(self, imdb_id):
         imdb_obj = self.proxies.imdb_api.get_movie(imdb_id)
@@ -107,12 +123,13 @@ class HomeTheaterMetadataLoader(MetadataLoader):
                 movie = None
                 print "using tmdb: %s" % runtimes
             else:
-                print "using imdb: %s"
                 try:
                     movie = self.get_metadata(guess)
                 except:
                     print "failed loading imdb; probably in production or rumored movie"
+                if movie is None or kind != movie.media_subcategory:
                     continue
+                title = movie.title
                 runtimes = movie.runtimes
                 print "using imdb: %s" % runtimes
             if not runtimes:
@@ -123,12 +140,12 @@ class HomeTheaterMetadataLoader(MetadataLoader):
                 log.debug("runtime: %s %s" % (title.encode('utf8'), r))
                 if r == 0:
                     continue
-                if r - avg_scale < avg_runtime < r + avg_scale:
-                    break
-                elif kind == "series":
+                if kind == "series":
                     # IMDb runtimes are not very accurate for series, so
                     # just accept the first match when it's a series
                     return movie
+                elif r - avg_scale < avg_runtime < r + avg_scale:
+                    break
                 elif movie is not None and movie.is_tv() and (r - commercial_scale < with_commercials < r + commercial_scale):
                     break
                 else:
@@ -154,6 +171,7 @@ class HomeTheaterMetadataLoader(MetadataLoader):
         total_runtime, num_episodes = scans.get_total_runtime()
         avg_runtime = total_runtime / num_episodes
         
+        log.debug("%d guesses for '%s' %s" % (len(guesses), kind, title_key.title))
         if avg_runtime > 0:
             best = self.best_loop(guesses, kind, total_runtime, avg_runtime)
         elif len(guesses) > 0:
