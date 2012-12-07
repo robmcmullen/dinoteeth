@@ -73,8 +73,16 @@ class HomeTheaterMetadataLoader(MetadataLoader):
             t = unicode(result['title']).encode("utf8").lower()
             if t == title:
                 exact_matches.append(result)
-            else:
-                others.append(result)
+                continue
+            elif t.endswith(")"):
+                # Handle titles with imdbIndex at the end, e.g. "Ghost Town (I)"
+                match = re.match("(.+?)( *\([ivx]+\))", t)
+                if match:
+                    t = match.group(1)
+                    if t == title:
+                        exact_matches.append(result)
+                        continue
+            others.append(result)
         exact_matches.extend(others)
         return exact_matches
     
