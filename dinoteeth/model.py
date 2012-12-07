@@ -59,7 +59,7 @@ class MenuItem(object):
         print "subtitle!"
         if self.metadata and self.metadata['media_file']:
             media_file = self.metadata['media_file']
-            media_file.scan.next_subtitle()
+            media_file.scan.next_subtitle(media_file.pathname)
     
     def do_star(self, **kwargs):
         if self.metadata and 'mmdb' in self.metadata:

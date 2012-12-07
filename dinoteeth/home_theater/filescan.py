@@ -193,8 +193,8 @@ class AVScanBase(Persistent):
         self.selected_subtitle_id = id
         print "FIXME: subtitle index = %s" % self.selected_subtitle_id
     
-    def next_subtitle(self):
-        self.selected_subtitle_id = self.next_option(self.get_subtitle_options())
+    def next_subtitle(self, pathname):
+        self.selected_subtitle_id = self.next_option(self.get_subtitle_options(pathname))
     
     def get_runtime(self):
         return utils.time_format(self.length)
