@@ -43,8 +43,8 @@ class VerticalMenuController(object):
             self.process_backspace()
         elif keycode == k.ESCAPE:
             self.process_quit()
-        elif keycode == k.F10:
-            self.process_edit()
+        elif keycode == k.F11:
+            self.process_edit('edit_metadata')
         elif keycode == k.F1:
             self.process_audio()
         elif keycode == k.F2:
@@ -68,10 +68,10 @@ class VerticalMenuController(object):
                 self.layout.pop_root()
                 self.layout.refresh()
     
-    def process_edit(self):
+    def process_edit(self, edit_type):
         menu = self.layout.get_menu()
         selected = menu.get_selected_item()
-        new_root = selected.do_create_edit_menu(config=self.config)
+        new_root = selected.do_create_edit_menu(config=self.config, edit_type=edit_type)
         if new_root is not None:
             self.layout.push_root(new_root)
     

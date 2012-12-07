@@ -134,10 +134,11 @@ class MenuItem(object):
             self.set_cursor_from_match_data(data)
 
     def do_create_edit_menu(self, **kwargs):
-        if self.enabled:
-            print "edit!"
-            if self.metadata and 'edit' in self.metadata:
-                populator = self.metadata['edit']
+        if self.enabled and 'edit_type' in kwargs:
+            edit_type = kwargs['edit_type']
+            print "edit type: %s" % edit_type
+            if self.metadata and edit_type in self.metadata:
+                populator = self.metadata[edit_type]
                 new_root = self.create_root(populator)
                 return new_root
     

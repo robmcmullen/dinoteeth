@@ -100,7 +100,7 @@ class TopLevelLookup(MetadataLookup):
     def get_metadata(self):
         return {
             'imagegen': self.thumbnail_mosaic,
-            'edit': EditTestRoot(self.config),
+            'edit_metadata': EditTestRoot(self.config),
             }
 
 
@@ -224,7 +224,7 @@ class MovieTopLevel(PlayableEntries):
     def get_metadata(self):
         return {
             'mmdb': self.metadata,
-            'edit': ChangeImdbRoot(self, self.config, self.metadata),
+            'edit_metadata': ChangeImdbRoot(self, self.config, self.metadata),
             }
 
 
@@ -242,7 +242,7 @@ class SeriesTopLevel(MetadataLookup):
     def get_metadata(self):
         return {
             'mmdb': self.metadata,
-            'edit': ChangeImdbRoot(self, self.config, self.metadata),
+            'edit_metadata': ChangeImdbRoot(self, self.config, self.metadata),
             }
 
 
@@ -268,7 +268,7 @@ class SeriesEpisodes(PlayableEntries):
         return {
             'mmdb': self.metadata,
             'season': self.season,
-            'edit': ChangeImdbRoot(self, self.config, self.metadata),
+            'edit_metadata': ChangeImdbRoot(self, self.config, self.metadata),
             }
 
 
@@ -292,7 +292,7 @@ class GameDetails(PlayableEntries):
     def get_metadata(self):
         return {
             'mmdb': self.metadata,
-            'edit': ChangeImdbRoot(self, self.config, self.metadata),
+            'edit_metadata': ChangeImdbRoot(self, self.config, self.metadata),
             }
 
 
