@@ -439,8 +439,8 @@ class FakeMovieMetadata(FakeMetadata):
             title += u" (%s)" % self.year
         text = u"<b>%s</b>\n" % _(title)
         if media_file:
-            text += self.get_audio_markup(media_file.scan)
-            text += self.get_last_played_markup(media_file.scan)
+            text += self.get_audio_markup(media_file)
+            text += self.get_last_played_markup(media_file)
             text += self.get_file_info_markup(media_file)
         else:
             text += u"\nMetadata not found in IMDb or TMDB"
@@ -457,8 +457,8 @@ class FakeSeriesMetadata(FakeMetadata):
         
         if media_file:
             text += "\n<b>Episode:</b> %s" % (_(media_file.scan.episode))
-            text += self.get_audio_markup(media_file.scan)
-            text += self.get_last_played_markup(media_file.scan)
+            text += self.get_audio_markup(media_file)
+            text += self.get_last_played_markup(media_file)
             text += self.get_file_info_markup(media_file)
         else:
             text += u"\nMetadata not found in IMDb or TMDB"
