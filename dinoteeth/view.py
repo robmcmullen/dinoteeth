@@ -94,14 +94,14 @@ class MenuDetail2ColumnLayout(AbstractLayout):
         title_h = self.window.font.height + 10
         menu_w = w/3
         footer_h = self.window.font.height + 10
-        self.title_box = (x, h - title_h + 1, w, title_h)
         
         main_y = y + footer_h
         main_h = h - footer_h - title_h
+        self.title_box = (x, y + h - title_h + 1, w, title_h)
         self.menu_box = (x, main_y, menu_w, main_h)
         self.detail_box = (menu_w, main_y, w - menu_w, main_h)
         self.status_box = (menu_w + 10, main_y + 10, w - menu_w - 20, title_h + 20)
-        self.footer_box = (x, y, w, footer_h)
+        self.footer_box = (-1, -1, self.width + 2, footer_h + y)
     
     def draw(self):
         self.title_renderer.draw(self.hierarchy)
@@ -144,7 +144,7 @@ class MenuRenderer(Renderer):
 class VerticalMenuRenderer(MenuRenderer):
     def compute_params(self, conf):
         self.center = self.y + self.h/2
-        self.items_in_half = int((self.center - (1.5 * self.window.selected_font.height)) / self.window.font.height)
+        self.items_in_half = int((self.h - (1.5 * self.window.selected_font.height)) / self.window.font.height / 2)
     
     def get_page_scroll_unit(self):
         return self.items_in_half
@@ -244,11 +244,11 @@ class DetailRenderer(Renderer):
         imgpath = loader.get_poster(metadata, season=season)
         print "draw_mmdb: %s, type=%s" % (imgpath, type(imgpath))
         image = self.window.get_image(imgpath)
-        self.window.blit(image, self.x, self.h - image.height, 0)
+        self.window.blit(image, self.x, self.y + self.h - image.height, 0)
         
         self.window.draw_markup(metadata.get_markup(m.get('media_file', None)),
                                 self.window.detail_font,
-                                x=self.x + image.width + 10, y=self.h,
+                                x=self.x + image.width + 10, y=self.y + self.h,
                                 anchor_x='left', anchor_y='top',
                                 width=self.w - image.width - 10)
 
@@ -322,10 +322,10 @@ class SimpleStatusRenderer(StatusRenderer):
 class FooterRenderer(Renderer):
     def draw(self, controller):
         text = controller.get_markup()
-        self.window.draw_box(self.x - 1, self.y - 1, self.w + 2, self.h + 1,
+        self.window.draw_box(self.x, self.y, self.w, self.h,
                              (0,0,0,0), (255, 255, 255, 255))
         if not text:
             return
         self.window.draw_markup(text, self.window.font,
-                                x=self.x + 10, y=self.y + (self.h / 2),
+                                x=self.x + 10, y=self.y + self.h - 10 - self.window.font.height / 2,
                                 anchor_x='left', anchor_y='center')

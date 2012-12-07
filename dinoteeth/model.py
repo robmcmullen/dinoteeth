@@ -302,11 +302,11 @@ class MenuPopulator(object):
         return 100, 140
 
     def thumbnail_mosaic(self, window, artwork_loader, x, y, w, h):
+        nominal_x, nominal_y = self.get_mosaic_size()
         min_x = x
         max_x = x + w
-        min_y = y
+        min_y = y + nominal_y - 1
         y = y + h
-        nominal_x, nominal_y = self.get_mosaic_size()
         for imgpath in self.iter_image_path(artwork_loader):
             thumb_image = self.get_thumbnail(window, imgpath)
             if thumb_image is None:
