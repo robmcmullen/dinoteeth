@@ -110,6 +110,8 @@ class MenuItem(object):
             self.cursor = current_cursor
             if self.cursor >= len(self.children):
                 self.cursor = len(self.children) - 1
+            if self.cursor < 0:
+                self.cursor = 0
     
     def do_repopulate(self):
         """Refresh this menu and attempt to keep the cursor on the same item
