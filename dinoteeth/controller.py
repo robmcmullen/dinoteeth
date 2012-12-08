@@ -45,6 +45,8 @@ class VerticalMenuController(object):
             self.process_quit()
         elif keycode == k.F11:
             self.process_edit('edit_metadata')
+        elif keycode == k.F12:
+            self.process_edit('edit_poster')
         elif keycode == k.F1:
             self.process_audio()
         elif keycode == k.F2:

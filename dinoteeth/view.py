@@ -229,6 +229,8 @@ class DetailRenderer(Renderer):
             self.draw_mmdb(item, m)
         elif 'imdb_search_result' in m:
             self.draw_imdb_search_result(item, m)
+        elif 'poster_path' in m:
+            self.draw_poster(item, m)
     
     def draw_image(self, item, m):
         image = self.window.get_image(m['image'])
@@ -276,6 +278,12 @@ class DetailRenderer(Renderer):
                                 x=self.x + image.width + 10, y=self.h,
                                 anchor_x='left', anchor_y='top',
                                 width=self.w - image.width - 10)
+    
+    def draw_poster(self, item, m):
+        imgpath = m['poster_path']
+        image = self.window.get_image(imgpath)
+        self.window.blit(image, self.x, self.y + self.h - image.height, 0)
+
 
 class StatusRenderer(Renderer):
     def draw(self):

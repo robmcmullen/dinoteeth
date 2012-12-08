@@ -25,9 +25,6 @@ class AtariManiaGame(GameMetadata):
         if div:
             self.parse_summary(div)
     
-    def get_primary_poster_suffix(self):
-        return "-screenshot00"
-    
     def parse_summary(self, div):
         for link in div.find_all('a'):
 #            print link
@@ -172,9 +169,20 @@ class AtariManiaLoader(GameMetadataLoader):
             url = self.api.get_rel_url(rel_url)
             print("image %d url: %s" % (i, url))
             data = self.api.load_url(url)
-            suffix = "-screenshot%02d" % i
-            self.save_poster(item, url, data, suffix)
+            if i == 0:
+                self.save_poster(item, url, data)
         return None
+    
+    def get_known_posters(self, metadata, **kwargs):
+        """Get all the known posters for the given metadata
+        
+        """
+        posters = []
+        for rel_url in metadata.all_image_urls:
+            url = self.api.get_rel_url(rel_url)
+            path = self.api.get_cache_path(url)
+            posters.append((url, path))
+        return posters
 
 class AtariMania8bitLoader(AtariManiaLoader):
     def init_proxies(self, settings):

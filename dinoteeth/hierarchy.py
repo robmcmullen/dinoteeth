@@ -225,6 +225,7 @@ class MovieTopLevel(PlayableEntries):
         return {
             'mmdb': self.metadata,
             'edit_metadata': ChangeImdbRoot(self, self.config, self.metadata),
+            'edit_poster': ChangePosterRoot(self, self.config, self.metadata),
             }
 
 
@@ -243,6 +244,7 @@ class SeriesTopLevel(MetadataLookup):
         return {
             'mmdb': self.metadata,
             'edit_metadata': ChangeImdbRoot(self, self.config, self.metadata),
+            'edit_poster': ChangePosterRoot(self, self.config, self.metadata),
             }
 
 
@@ -269,6 +271,7 @@ class SeriesEpisodes(PlayableEntries):
             'mmdb': self.metadata,
             'season': self.season,
             'edit_metadata': ChangeImdbRoot(self, self.config, self.metadata),
+            'edit_poster': ChangePosterRoot(self, self.config, self.metadata, season=self.season),
             }
 
 
@@ -293,6 +296,7 @@ class GameDetails(PlayableEntries):
         return {
             'mmdb': self.metadata,
             'edit_metadata': ChangeImdbRoot(self, self.config, self.metadata),
+            'edit_poster': ChangePosterRoot(self, self.config, self.metadata),
             }
 
 
@@ -441,6 +445,52 @@ class ChangeImdb(MMDBPopulator):
         return {
             'imdb_search_result': self.result,
             'metadata': self.metadata,
+            }
+
+
+class ChangePosterRoot(MetadataLookup):
+    def __init__(self, parent, config, metadata):
+        MetadataLookup.__init__(self, parent, config, filter=lambda f: f.metadata.id == metadata.id)
+        self.metadata = metadata
+        self.root_title = "Change Poster"
+        
+    def iter_create(self):
+        loader = MetadataLoader.get_loader(self.metadata)
+        posters = loader.get_known_posters(self.metadata)
+        if len(posters) > 0:
+            for url, path in posters:
+                yield os.path.basename(path), ChangePoster(self, self.config, self.metadata, url, path)
+#                print result
+#                print dir(result)
+#                print result.summary().encode('utf-8')
+
+class ChangePoster(MMDBPopulator):
+    def __init__(self, parent, config, metadata, url, path):
+        MMDBPopulator.__init__(self, config)
+        self.url = url
+        self.path = path
+        self.metadata = metadata
+        self.first_time = True
+    
+    def on_selected_item(self):
+        """Callback to trigger something when the cursor is on the menu item"""
+        print "Drawing %s: %s" % (self.metadata.id, self.path)
+        if self.first_time:
+            #self.loader.get_poster_background(self.metadata)
+            self.first_time = False
+        
+    def play(self, config=None):
+        status = "Selected %s" % self.path
+        loader = MetadataLoader.get_loader(self.metadata)
+        with open(self.path) as fh:
+            data = fh.read()
+        loader.save_poster(self.metadata, self.url, data)
+        self.config.show_status(status)
+    
+    def get_metadata(self):
+        return {
+            'metadata': self.metadata,
+            'poster_path': self.path,
             }
 
 

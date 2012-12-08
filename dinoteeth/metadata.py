@@ -46,9 +46,6 @@ class BaseMetadata(Persistent):
         # convert to utf-8 because metadata ID may be unicode
         return os.path.join(self.media_category, self.media_subcategory, self.id).encode('utf-8')
     
-    def get_primary_poster_suffix(self):
-        return ""
-    
     def sort_key(self, credit=None):
         t = self.title.lower()
         return (t, self.year)
@@ -137,6 +134,18 @@ class MetadataLoader(object):
         @param suffix: text (if any) to be appended after the filename but
         before the extension
         """
+        path = self.get_poster_filename_from_url(metadata, url, suffix)
+        print "Saving %d bytes from %s to %s" % (len(data), url, path)
+        with open(path, "wb") as fh:
+            fh.write(data)
+        self.scale_poster(path)
+    
+    def get_poster_filename_from_url(self, metadata, url, suffix=None):
+        """Save posters for the metadata instance
+
+        @param suffix: text (if any) to be appended after the filename but
+        before the extension
+        """
         path = os.path.join(self.metadata_root, metadata.get_path_prefix())
         dirname = os.path.dirname(path)
         if not os.path.exists(dirname):
@@ -145,11 +154,8 @@ class MetadataLoader(object):
             path += suffix
         filename, ext = os.path.splitext(url)
         path += ext.lower()
-        print "Saving %d bytes from %s to %s" % (len(data), url, path)
-        with open(path, "wb") as fh:
-            fh.write(data)
-        self.scale_poster(path)
-    
+        return path
+
     def get_poster_filename(self, metadata, suffix=None):
         """Check if poster exists
         
@@ -176,8 +182,6 @@ class MetadataLoader(object):
         
         """
         suffix = self.get_poster_suffix(**kwargs)
-        if not suffix:
-            suffix = metadata.get_primary_poster_suffix()
         path = self.get_poster_filename(metadata, suffix)
         print "get_poster: %s" % path
         return path
@@ -206,4 +210,12 @@ class MetadataLoader(object):
         img.thumbnail(size, Image.ANTIALIAS)
         img.save(filename, "JPEG", quality=90)
         print("Created scaled poster: %s" % (filename))
+    
+    def get_known_posters(self, metadata, **kwargs):
+        """Get all the known posters for the given metadata
+        
+        Return a list of tuples, where each tuple is a url and a path that will
+        be used to cache that url
+        """
+        return []
 
