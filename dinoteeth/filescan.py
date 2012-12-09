@@ -45,10 +45,13 @@ class MediaFile(Persistent):
         metadata.
         """
         if self.scan is not None and hasattr(self.scan, "sort_key"):
-            return self.scan.sort_key()
-        if self.metadata is not None and hasattr(self.metadata, "sort_key"):
-            return self.metadata.sort_key()
-        return self.pathname
+            key = self.scan.sort_key()
+        elif self.metadata is not None and hasattr(self.metadata, "sort_key"):
+            key = self.metadata.sort_key()
+        else:
+            key = self.pathname
+        print key
+        return key
 
     def reset(self):
         # Rather than saving a copy of the entire metadata scan, just save the

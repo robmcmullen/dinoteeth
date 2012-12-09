@@ -242,10 +242,10 @@ class MovieScan(AVScanBase):
     def sort_key(self):
         """Return a 5-tuple:
         
-        name
         season
         episode number
         bonus number
+        name
         bonus title
         """
         t = self.title.lower()
@@ -254,7 +254,8 @@ class MovieScan(AVScanBase):
             if t.startswith(a):
                 t = t[len(a):] + ", %s" % t[0:len(article)]
                 break
-        return (t, 0, 9999, self.bonus_number, self.bonus_title)
+        key = (0, 9999, self.bonus_number, t, self.bonus_title)
+        return key
 
     def calc_film_number(self, file, info, guess):
         return guess.get('filmNumber', 1)
@@ -274,10 +275,10 @@ class SeriesScan(AVScanBase):
     def sort_key(self):
         """Return a 5-tuple:
         
-        name
         season
         episode number
         bonus number
+        name
         bonus title
         """
         t = self.title.lower()
@@ -286,7 +287,7 @@ class SeriesScan(AVScanBase):
             if t.startswith(a):
                 t = t[len(a):] + ", %s" % t[0:len(article)]
                 break
-        return (t, self.season, self.episode, self.bonus_number, self.bonus_title)
+        return (self.season, self.episode, self.bonus_number, t, self.bonus_title)
 
     def calc_title(self, file, info, guess):
         if 'series' in guess:

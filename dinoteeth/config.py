@@ -79,6 +79,7 @@ class Config(object):
         parser.add_argument("--imdb-language", action="store", default="English")
         parser.add_argument("--country-code", action="store", default="US")
         parser.add_argument("--test-threads", action="store_true", default=False)
+        parser.add_argument("--test-menu", action="store", default="")
         return parser
     
     def parse_args(self, args, parser):

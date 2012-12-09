@@ -208,8 +208,10 @@ class PlayableEntries(MetadataLookup):
 
 class MovieTopLevel(PlayableEntries):
     def iter_create(self):
-        media_files = self.get_media()
+        media_files = self.get_media().static_list()
         media_files.sort()
+        print media_files
+        
         bonus = media_files.get_bonus()
         found_bonus = False
         for f in media_files:
@@ -538,5 +540,38 @@ class RootPopulator(MMDBPopulator):
             'image': 'background-merged.jpg',
             }
 
+class TestMenuPopulator(MetadataLookup):
+    def __init__(self, config, match):
+        MetadataLookup.__init__(self, self, config, lambda f: match in f.metadata.title)
+        self.root_title = "Dinoteeth Testing: match %s" % match
+        
+    def get_media(self):
+        stuff = self.config.db.get_all("all").filter(self.filter)
+        print stuff
+        return stuff
+    
+    media = property(get_media)
+    
+    def iter_create(self):
+        media_files = self.get_media()
+        metadata = list(set([f.metadata for f in media_files]))
+        for m in metadata:
+            if m.media_category == "video":
+                if m.media_subcategory == "series":
+                    if m.is_mini_series():
+                        pop = SeriesEpisodes(self, self.config, m)
+                    else:
+                        pop = SeriesTopLevel(self, self.config, m)
+                elif m.media_subcategory == "movies":
+                    pop = MovieTopLevel(self, self.config, m)
+            elif m.media_category == "game":
+                pop = GameDetails(self, self.config, m)
+            
+            for item in pop.iter_create():
+                yield item
+
 def RootMenu(config):
-    return MenuItem.create_root(RootPopulator(config))
+    if config.options.test_menu:
+        return MenuItem.create_root(TestMenuPopulator(config, config.options.test_menu))
+    else:
+        return MenuItem.create_root(RootPopulator(config))

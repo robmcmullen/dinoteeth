@@ -10,14 +10,7 @@ log = logging.getLogger("dinoteeth.database")
 log.setLevel(logging.DEBUG)
 
 
-class HomeTheaterFileList(list):
-    def __init__(self, parent=None, filter_callable=None, *args, **kwargs):
-        list.__init__(self, *args, **kwargs)
-        self.parent = parent
-        if filter_callable is None:
-            filter_callable = lambda x: True
-        self.filter_callable = filter_callable
-        
+class StaticFileList(list):
     def __str__(self):
         lines = []
         for item in self:
@@ -93,7 +86,7 @@ class HomeTheaterFileList(list):
         for item in self:
             s.add(item.metadata)
             if item.metadata not in scans_in_each:
-                scans_in_each[item.metadata] = HomeTheaterFileList()
+                scans_in_each[item.metadata] = FilteredFileList()
             scans_in_each[item.metadata].append(item)
         return s, scans_in_each
     
@@ -105,13 +98,27 @@ class HomeTheaterFileList(list):
             if item.metadata not in s or value > s[item.metadata]:
                 s[item.metadata] = value
             if item.metadata not in scans_in_each:
-                scans_in_each[item.metadata] = HomeTheaterFileList()
+                scans_in_each[item.metadata] = FilteredFileList()
             scans_in_each[item.metadata].append(item)
         return s, scans_in_each
     
+class FilteredFileList(StaticFileList):
+    def __init__(self, parent=None, filter_callable=None, *args, **kwargs):
+        list.__init__(self, *args, **kwargs)
+        self.parent = parent
+        if filter_callable is None:
+            filter_callable = lambda x: True
+        self.filter_callable = filter_callable
+        
     def filter(self, criteria):
-        filtered = HomeTheaterFileList(parent=self, filter_callable=criteria)
+        filtered = FilteredFileList(parent=self, filter_callable=criteria)
         return filtered
+    
+    def static_list(self):
+        slist = StaticFileList()
+        for item in self:
+            slist.append(item)
+        return slist
     
     def __iter__(self):
         if self.parent is None:
@@ -152,7 +159,7 @@ class HomeTheaterDatabase(object):
     
     def get_all(self, category):
         self.zodb.sync()
-        media_files = HomeTheaterFileList()
+        media_files = FilteredFileList()
         for media_file in self.scans.itervalues():
             scan = media_file.scan
             if scan is not None and (category == "all" or scan.category == category):
@@ -184,7 +191,7 @@ class HomeTheaterDatabase(object):
         # Reset title key lookup to use new metadata
         for title_key in title_keys:
             self.title_key_to_metadata[title_key] = metadata
-            scans = HomeTheaterFileList(self.title_key_map[title_key])
+            scans = FilteredFileList(self.title_key_map[title_key])
             for item in scans:
                 log.debug("Changing metadata for %s" % item.pathname)
                 item.metadata = metadata
@@ -252,7 +259,7 @@ class HomeTheaterDatabase(object):
     
     def iter_title_key_map(self):
         for t, scans in self.title_key_map.iteritems():
-            scans = HomeTheaterFileList(scans)
+            scans = FilteredFileList(scans)
             yield t, scans
     
     def update_metadata_map(self):
