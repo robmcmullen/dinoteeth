@@ -85,7 +85,7 @@ class StaticFileList(list):
         for item in self:
             s.add(item.metadata)
             if item.metadata not in scans_in_each:
-                scans_in_each[item.metadata] = FilteredFileList()
+                scans_in_each[item.metadata] = StaticFileList()
             scans_in_each[item.metadata].append(item)
         return s, scans_in_each
     
@@ -97,9 +97,16 @@ class StaticFileList(list):
             if item.metadata not in s or value > s[item.metadata]:
                 s[item.metadata] = value
             if item.metadata not in scans_in_each:
-                scans_in_each[item.metadata] = FilteredFileList()
+                scans_in_each[item.metadata] = StaticFileList()
             scans_in_each[item.metadata].append(item)
         return s, scans_in_each
+        
+    def filter(self, criteria):
+        if criteria is None:
+            filtered = StaticFileList(self)
+        else:
+            filtered = StaticFileList([item for item in self if criteria(item)])
+        print "Filtering done!"
     
 class FilteredFileList(StaticFileList):
     def __init__(self, parent=None, filter_callable=None, *args, **kwargs):
@@ -157,7 +164,7 @@ class HomeTheaterDatabase(object):
         self.zodb.pack()
     
     def get_all(self, category):
-        self.zodb.sync()
+#        self.zodb.sync() # This is the major slowdown!
         media_files = FilteredFileList()
         for media_file in self.scans.itervalues():
             scan = media_file.scan
@@ -190,7 +197,7 @@ class HomeTheaterDatabase(object):
         # Reset title key lookup to use new metadata
         for title_key in title_keys:
             self.title_key_to_metadata[title_key] = metadata
-            scans = FilteredFileList(self.title_key_map[title_key])
+            scans = StaticFileList(self.title_key_map[title_key])
             for item in scans:
                 log.debug("Changing metadata for %s" % item.pathname)
                 item.metadata = metadata
@@ -258,7 +265,7 @@ class HomeTheaterDatabase(object):
     
     def iter_title_key_map(self):
         for t, scans in self.title_key_map.iteritems():
-            scans = FilteredFileList(scans)
+            scans = StaticFileList(scans)
             yield t, scans
     
     def update_metadata_map(self):
