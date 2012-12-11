@@ -9,7 +9,6 @@ from dinoteeth.metadata import *
 if __name__ == "__main__":
     import sys
     import dinoteeth.games
-    import dinoteeth.games.atarimania
     import dinoteeth.home_theater
     
 #    import logging

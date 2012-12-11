@@ -88,5 +88,5 @@ class GameMetadataLoader(MetadataLoader):
         guesses = self.search(title_key)
         if not guesses:
             log.error("No guesses for %s???" % title_key.title)
-            return GameMetadata(None, title_key)
+            return self.get_fake_metadata(title_key)
         return self.get_metadata(guesses[0])

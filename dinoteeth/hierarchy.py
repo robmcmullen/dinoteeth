@@ -23,10 +23,13 @@ class MMDBPopulator(MenuPopulator):
         
     def iter_image_path(self, artwork_loader):
         for metadata in self.get_sorted_metadata():
-            loader = MetadataLoader.get_loader(metadata)
-            imgpath = loader.get_poster(metadata)
-            if imgpath is not None:
-                yield imgpath
+            try:
+                loader = MetadataLoader.get_loader(metadata)
+                imgpath = loader.get_poster(metadata)
+                if imgpath is not None:
+                    yield imgpath
+            except RuntimeError:
+                print "No loader for %s" % str(metadata)
 
 class MetadataLookup(MMDBPopulator):
     def __init__(self, parent, config, filter=None):

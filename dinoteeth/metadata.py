@@ -19,6 +19,11 @@ class BaseMetadata(Persistent):
             self.id = "tt%s" % id
         else:
             self.id = id
+        self.set_title_key(title_key)
+        self.date_added = -1
+        self.starred = False
+    
+    def set_title_key(self, title_key):
         if title_key is None:
             self.title = ""
             self.year = None
@@ -27,8 +32,6 @@ class BaseMetadata(Persistent):
             self.title = title_key.title
             self.year = title_key.year
             self.kind = title_key.subcategory
-        self.date_added = -1
-        self.starred = False
     
     def __str__(self):
         return "%s '%s', id=%s" % (self.__class__.__name__, self.title, self.id)
@@ -43,6 +46,8 @@ class BaseMetadata(Persistent):
         return False
     
     def get_path_prefix(self):
+        if self.id is None:
+            raise RuntimeError("Can't get path prefix of metadata with no id: %s" % (str(self)))
         # convert to utf-8 because metadata ID may be unicode
         return os.path.join(self.media_category, self.media_subcategory, self.id).encode('utf-8')
     
@@ -160,6 +165,8 @@ class MetadataLoader(object):
         """Check if poster exists
         
         """
+        if metadata.id is None:
+            return None
         path = os.path.join(self.metadata_root, metadata.get_path_prefix())
         if suffix is not None:
             path += suffix

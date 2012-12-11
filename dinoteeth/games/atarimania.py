@@ -73,6 +73,8 @@ class AtariManiaGame(GameMetadata):
     def process_details(self, soup):
         div = soup.find(id="galleryb")
 #        print div
+        if not div:
+            return
         for img in div.find_all('img'):
             url = img.attrs['src']
 #            print url
@@ -183,6 +185,11 @@ class AtariManiaLoader(GameMetadataLoader):
             path = self.api.get_cache_path(url)
             posters.append((url, path))
         return posters
+    
+    def get_fake_metadata(self, title_key):
+        metadata = self.api.game_class()
+        metadata.set_title_key(title_key)
+        return metadata
 
 class AtariMania8bitLoader(AtariManiaLoader):
     def init_proxies(self, settings):
