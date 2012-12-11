@@ -309,7 +309,7 @@ class SeriesScan(AVScanBase):
         if self.is_bonus:
             title = self.bonus_title
         else:
-            title = "Episode %d" % guess['episodeNumber']
+            title = "Episode %d" % self.episode
             eptitle = guess.get('episodeTitle',"")
             if eptitle:
                 title += " " + eptitle
