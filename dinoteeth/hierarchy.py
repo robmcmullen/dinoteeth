@@ -12,6 +12,20 @@ log = logging.getLogger("dinoteeth.hierarchy")
 log.setLevel(logging.DEBUG)
 
 class MMDBPopulator(MenuPopulator):
+    def __init__(self, config):
+        MenuPopulator.__init__(self, config)
+        self.cached_media = None
+    
+    def get_media(self):
+        return []
+    
+    def get_cached_media(self):
+        if self.cached_media is None:
+            self.cached_media = self.get_media()
+        return self.cached_media
+    
+    media = property(get_cached_media)
+        
     def get_search_populator(self, text):
         return SearchPopulator(self, self.config, text)
     
@@ -40,8 +54,6 @@ class MetadataLookup(MMDBPopulator):
     def get_media(self):
         media = self.parent.get_media().filter(self.filter)
         return media
-    
-    media = property(get_media)
         
     def iter_create(self):
         metadata = self.get_sorted_metadata()
@@ -110,8 +122,6 @@ class TopLevelLookup(MetadataLookup):
 class TopLevelVideos(TopLevelLookup):
     def get_media(self):
         return self.config.db.get_all("video").filter(self.filter)
-    
-    media = property(get_media)
 
     def iter_credit(self):
         for title, credit, limit, converter, reverse_sort in settings.credit_map:
@@ -121,8 +131,6 @@ class TopLevelVideos(TopLevelLookup):
 class TopLevelGames(TopLevelLookup):
     def get_media(self):
         return self.config.db.get_all("game").filter(self.filter)
-    
-    media = property(get_media)
 
 
 
@@ -454,7 +462,7 @@ class ChangeImdb(MMDBPopulator):
 
 
 class ChangePosterRoot(MetadataLookup):
-    def __init__(self, parent, config, metadata):
+    def __init__(self, parent, config, metadata, season=None):
         MetadataLookup.__init__(self, parent, config, filter=lambda f: f.metadata.id == metadata.id)
         self.metadata = metadata
         self.root_title = "Change Poster"
@@ -526,8 +534,6 @@ class RootPopulator(MMDBPopulator):
         
     def get_media(self):
         return self.config.db.get_all("all")
-    
-    media = property(get_media)
 
     def iter_create(self):
         yield "Movies & Series", TopLevelVideos(self, self.config)
@@ -552,8 +558,6 @@ class TestMenuPopulator(MetadataLookup):
         stuff = self.config.db.get_all("all").filter(self.filter)
         print stuff
         return stuff
-    
-    media = property(get_media)
     
     def iter_create(self):
         media_files = self.get_media()
