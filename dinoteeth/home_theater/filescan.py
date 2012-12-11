@@ -254,7 +254,7 @@ class MovieScan(AVScanBase):
             if t.startswith(a):
                 t = t[len(a):] + ", %s" % t[0:len(article)]
                 break
-        key = (0, 9999, self.bonus_number, t, self.bonus_title)
+        key = (0, self.bonus_number, 0, t, self.bonus_title)
         return key
 
     def calc_film_number(self, file, info, guess):
@@ -287,7 +287,7 @@ class SeriesScan(AVScanBase):
             if t.startswith(a):
                 t = t[len(a):] + ", %s" % t[0:len(article)]
                 break
-        return (self.season, self.episode, self.bonus_number, t, self.bonus_title)
+        return (self.season, self.bonus_number, self.episode, t, self.bonus_title)
 
     def calc_title(self, file, info, guess):
         if 'series' in guess:
