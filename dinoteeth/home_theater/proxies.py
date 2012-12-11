@@ -6,8 +6,7 @@ from ..third_party.tvdb_api import tvdb_api, tvdb_exceptions
 
 from ..utils import FilePickleDict, HttpProxyBase
 
-log = logging.getLogger("dinoteeth.proxies")
-log.setLevel(logging.DEBUG)
+log = logging.getLogger("dinoteeth.home_theater")
 
 
 class TvdbPoster(object):

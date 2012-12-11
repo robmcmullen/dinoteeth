@@ -9,8 +9,7 @@ from ..metadata import MetadataLoader
 from metadata import *
 from proxies import Proxies, TMDbMovieBestPosterFromIdTask
 
-log = logging.getLogger("dinoteeth.home_theater.loader")
-log.setLevel(logging.DEBUG)
+log = logging.getLogger("dinoteeth.home_theater")
 
 
 class HomeTheaterMetadataLoader(MetadataLoader):

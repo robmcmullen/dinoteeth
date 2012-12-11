@@ -16,6 +16,8 @@ from api_base import GameAPI
 from metadata import GameMetadata, GameMetadataLoader
 from ..metadata import MetadataLoader
 
+log = logging.getLogger("dinoteeth.games")
+
 
 class AtariManiaGame(GameMetadata):
     media_subcategory = None
@@ -117,7 +119,7 @@ class AtariMania_API(GameAPI):
     def search(self, title):
         title, ext = os.path.splitext(title)
         while len(title) > 2:
-            print "trying title -->%s<--" % title
+            log.debug("trying title -->%s<--" % title)
             matches = self.autocomplete_title(title)
             if len(matches) > 0:
                 return self.get_search_results(matches[0])
@@ -136,7 +138,7 @@ class AtariMania_API(GameAPI):
         page = self.load_rel_url(path)
         results = []
         for line in page.splitlines():
-            print "-->%s<--" % line
+            log.debug("-->%s<--" % line)
             if line.endswith("|"):
                 line = line[:-1]
             results.append(line)
@@ -169,7 +171,7 @@ class AtariManiaLoader(GameMetadataLoader):
     def fetch_posters(self, item):
         for i, rel_url in enumerate(item.all_image_urls):
             url = self.api.get_rel_url(rel_url)
-            print("image %d url: %s" % (i, url))
+            log.debug("image %d url: %s" % (i, url))
             data = self.api.load_url(url)
             if i == 0:
                 self.save_poster(item, url, data)

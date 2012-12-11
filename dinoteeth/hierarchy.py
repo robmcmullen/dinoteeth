@@ -5,11 +5,10 @@ import settings
 from photo import TopLevelPhoto
 from metadata import MetadataLoader, BaseMetadata
 from utils import TitleKey
-
-logging.basicConfig(level=logging.WARNING)
+from database import StaticFileList
 
 log = logging.getLogger("dinoteeth.hierarchy")
-log.setLevel(logging.DEBUG)
+
 
 class MMDBPopulator(MenuPopulator):
     def __init__(self, config):
@@ -17,11 +16,13 @@ class MMDBPopulator(MenuPopulator):
         self.cached_media = None
     
     def get_media(self):
-        return []
+        return StaticFileList()
     
     def get_cached_media(self):
-        if self.cached_media is None:
+        if self.cached_media is None or True:
+            log.debug("start: getting media for %s" % self.__class__.__name__)
             self.cached_media = self.get_media()
+            log.debug("finish: getting media for %s" % self.__class__.__name__)
         return self.cached_media
     
     media = property(get_cached_media)

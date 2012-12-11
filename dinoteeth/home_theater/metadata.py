@@ -12,7 +12,7 @@ from .. import utils
 from .. import settings
 from ..metadata import BaseMetadata
 
-log = logging.getLogger("dinoteeth.metadata")
+log = logging.getLogger("dinoteeth.home_theater")
 log.setLevel(logging.DEBUG)
 
 

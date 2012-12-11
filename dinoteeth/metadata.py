@@ -6,6 +6,8 @@ from PIL import Image
 import settings
 from updates import UpdateManager
 
+import logging
+log = logging.getLogger("dinoteeth.metadata")
 
 
 class BaseMetadata(Persistent):
@@ -140,7 +142,7 @@ class MetadataLoader(object):
         before the extension
         """
         path = self.get_poster_filename_from_url(metadata, url, suffix)
-        print "Saving %d bytes from %s to %s" % (len(data), url, path)
+        log.debug("Saving %d bytes from %s to %s" % (len(data), url, path))
         with open(path, "wb") as fh:
             fh.write(data)
         self.scale_poster(path)
@@ -190,12 +192,12 @@ class MetadataLoader(object):
         """
         suffix = self.get_poster_suffix(**kwargs)
         path = self.get_poster_filename(metadata, suffix)
-        print "get_poster: %s" % path
+        log.debug("get_poster: %s" % path)
         return path
     
     def get_poster_background(self, metadata):
         task = self.get_poster_background_task(metadata)
-        print "starting task %s" % task
+        log.debug("starting task %s" % task)
         UpdateManager.start_task(task)
     
     def get_poster_background_task(self, metadata):
@@ -216,7 +218,7 @@ class MetadataLoader(object):
         size = (self.poster_width, height)
         img.thumbnail(size, Image.ANTIALIAS)
         img.save(filename, "JPEG", quality=90)
-        print("Created scaled poster: %s" % (filename))
+        log.debug("Created scaled poster: %s" % (filename))
     
     def get_known_posters(self, metadata, **kwargs):
         """Get all the known posters for the given metadata

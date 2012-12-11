@@ -7,7 +7,6 @@ from filescan import MediaFile
 from metadata import MetadataLoader
 
 log = logging.getLogger("dinoteeth.database")
-log.setLevel(logging.DEBUG)
 
 
 class StaticFileList(list):

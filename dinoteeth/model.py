@@ -4,7 +4,7 @@ from updates import UpdateManager
 from utils import DBFacade
 
 log = logging.getLogger("dinoteeth.model")
-log.setLevel(logging.DEBUG)
+
 
 class MenuItem(object):
     refresh_time = time.time()

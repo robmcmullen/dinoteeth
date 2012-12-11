@@ -14,8 +14,7 @@ from ..metadata import BaseMetadata, MetadataLoader
 from .. import settings
 from api_base import GameAPI
 
-log = logging.getLogger("dinoteeth.metadata")
-log.setLevel(logging.DEBUG)
+log = logging.getLogger("dinoteeth.games")
 
 
 def safestr(s):

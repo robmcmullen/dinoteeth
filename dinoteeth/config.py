@@ -22,12 +22,14 @@ import i18n
 
 logging.basicConfig(level=logging.WARNING)
 
-log = logging.getLogger("dinoteeth")
-#log.setLevel(logging.DEBUG)
-otherlog = logging.getLogger("dinoteeth.metadata")
-#otherlog.setLevel(logging.DEBUG)
-otherlog = logging.getLogger("dinoteeth.utils")
-#otherlog.setLevel(logging.DEBUG)
+log = logging.getLogger("dinoteeth.config")
+
+default_log_levels = {
+    0: ["dinoteeth.config"],
+    1: ["dinoteeth.database", "dinoteeth.hierarchy"],
+    2: ["dinoteeth.metadata", "dinoteeth.model"],
+    3: ["dinoteeth.home_theater", "dinoteeth.games"],
+    }
 
 
 class Config(object):
@@ -102,15 +104,13 @@ class Config(object):
         self.parser = parser
         (self.options, self.args) = self.parser.parse_known_args(extra_args)
         
-        debuglogs = ["dinoteeth.metadata", "dinoteeth.database"]
-        if self.options.verbose == 1:
-            level = logging.DEBUG
-        elif self.options.verbose > 1:
-            level = logging.INFO
-        else:
-            level = None
-        if level:
-            for name in debuglogs:
+        verbosity = max(default_log_levels.keys())
+        for v in range(verbosity + 1):
+            if self.options.verbose >= v:
+                level = logging.DEBUG
+            else:
+                level = logging.INFO
+            for name in default_log_levels[v]:
                 log = logging.getLogger(name)
                 log.setLevel(level)
         
