@@ -3,7 +3,6 @@ from datetime import datetime
 
 from persistent import Persistent
 
-from third_party.guessit import guess_file_info, Guess
 import kaa.metadata
 
 class MediaFile(Persistent):

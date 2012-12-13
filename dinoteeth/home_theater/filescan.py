@@ -6,7 +6,7 @@ from persistent import Persistent
 from .. import utils
 from .. import settings
 
-from ..third_party.guessit import guess_file_info, Guess
+from guessit import guess_file_info
 
 
 class AVScanBase(Persistent):
