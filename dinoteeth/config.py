@@ -9,7 +9,7 @@ from view import *
 from database import HomeTheaterDatabase
 from model import MenuItem
 from updates import UpdateManager, FileWatcher
-from utils import DBFacade, decode_title_text
+from utils import DBFacade, decode_title_text, TitleKey
 from image import ArtworkLoader, ScaledArtworkLoader
 from thumbnail import ThumbnailFactory
 from hierarchy import RootMenu
@@ -157,6 +157,15 @@ class Config(object):
         settings.imdb_language = self.options.imdb_language
         settings.iso_3166_1 = self.options.country_code
         settings.subtitle_file_extensions = self.get_subtitle_extensions()
+        
+        user_title_key_map = {}
+        if "title_key" in self.ini:
+            items = self.ini['title_key']
+            for encoded_title_key in items:
+                imdb_id = items[encoded_title_key]
+                title_key = TitleKey.get_from_encoded(encoded_title_key)
+                user_title_key_map[title_key] = imdb_id
+        settings.user_title_key_map = user_title_key_map
     
     def get_main_window_class(self):
         if self.options.ui == "sdl":

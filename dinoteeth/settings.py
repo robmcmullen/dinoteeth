@@ -5,6 +5,8 @@ poster_width = 342
 
 subtitle_file_extensions = []
 
+user_title_key_map = {}
+
 # IMDb settings
 imdb_cache_dir = "imdb-cache"
 imdb_country = "USA"

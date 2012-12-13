@@ -271,10 +271,12 @@ class HomeTheaterDatabase(object):
     def update_metadata_map(self):
         t = self.zodb.get_mapping("title_key_to_metadata")
         for title_key, scans in self.iter_title_key_map():
+            user_mid = MetadataLoader.get_user_specified_metadata_id(title_key)
             metadata = t.get(title_key, None)
-            if metadata is None:
-                loader = MetadataLoader.get_loader(title_key)
-                metadata = loader.best_guess(title_key, scans)
+            
+            # Also update metadata if the user specified metadata ID has changed
+            if metadata is None or (user_mid is not None and user_mid != metadata.id):
+                metadata = MetadataLoader.get_metadata(title_key, scans)
                 if metadata is None:
                     continue
                 self.title_key_to_metadata[title_key] = metadata

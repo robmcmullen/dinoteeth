@@ -1,4 +1,4 @@
-import os, sys, time, glob, logging, re
+import os, sys, time, glob, logging, re, shlex
 from datetime import datetime, timedelta
 
 from persistent import Persistent
@@ -213,6 +213,27 @@ class HttpProxyBase(object):
 
 
 class TitleKey(Persistent):
+    @classmethod
+    def get_from_encoded(cls, encoded_string):
+        """Convert a human-readable string representation into a title key
+        
+        Will be in the format:
+        
+           category/subcategory 'title'
+        
+        where title should include the quotes if there are spaces in the name
+        """
+        items = shlex.split(encoded_string)
+        try:
+            cat, subcat = items[0].split("/")
+            title = items[1]
+        except:
+            log.info("Bad title key: %s" % encoded_string)
+            raise
+        title_key = cls(cat, subcat, title, None)
+        print title_key
+        return title_key
+        
     def __init__(self, category, subcategory, title, year):
         self.category = category
         self.subcategory = subcategory

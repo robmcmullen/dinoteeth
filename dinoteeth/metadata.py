@@ -96,6 +96,26 @@ class MetadataLoader(object):
             subcat = obj.subcategory
         baseclass = cls.get_class(cat, subcat)
         return baseclass()
+    
+    @classmethod
+    def get_user_specified_metadata_id(cls, title_key):
+        try:
+            mid = settings.user_title_key_map[title_key]
+        except KeyError:
+            return
+        log.info("Found user metadata id %s for %s" % (mid, title_key))
+        return mid
+
+    @classmethod
+    def get_metadata(cls, title_key, scans):
+        loader = MetadataLoader.get_loader(title_key)
+        metadata = None
+        mid = loader.get_user_specified_metadata_id(title_key)
+        if mid:
+            metadata = loader.get_metadata_by_id(mid)
+        if not metadata:
+            metadata = loader.best_guess(title_key, scans)
+        return metadata
 
     def __init__(self):
         self.init_proxies(settings)
