@@ -11,6 +11,8 @@ def run():
         cfg = setup(sys.argv)
     except Exception, e:
         print "Startup failure: %s" % e
+        import traceback
+        traceback.print_exc()
         return
     window = cfg.get_main_window()
     try:
@@ -27,5 +29,7 @@ def run_monitor():
         cfg = setup(sys.argv)
     except Exception, e:
         print "Startup failure: %s" % e
+        import traceback
+        traceback.print_exc()
         return
     cfg.start_update_monitor()
