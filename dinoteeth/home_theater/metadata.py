@@ -210,12 +210,18 @@ class HomeTheaterMetadata(BaseMetadata):
     skip_title_parts = ["promotional title", "poster title", "IMAX", "DVD title", "complete title", "original title", "short title", "restored version"]
     skip_title_re = re.compile("|".join(skip_title_parts))
     
+    # Remove any year parens in the title; this will be added when displayed
+    end_year_re = re.compile("(.+) +(\([12][0-9]{3}\))")
+    
     def get_title(self, imdb_obj, country, language, tmdb_obj=None, tvdb_obj=None):
         if tmdb_obj:
             best = tmdb_obj['title']
         elif tvdb_obj:
             best = tvdb_obj.data['seriesname']
         if best:
+            match = self.end_year_re.match(best)
+            if match:
+                best = match.group(1)
             return best
         if imdb_obj.has_key('akas'):
             possibilities = []
