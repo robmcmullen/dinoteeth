@@ -227,7 +227,9 @@ class IMDbProxy(HttpProxyBase):
     
     def search_results_from_data(self, data, num_results=20):
         res = self.api.smProxy.search_movie_parser.parse(data, results=num_results)['data']
-        print res
+        log.debug("%d IMDb search results" % len(res))
+        for r in res:
+            log.debug("  %s" % unicode(r).encode('utf-8'))
         return [Movie.Movie(movieID=self.api._get_real_movieID(mi),
                             data=md, modFunct=self.api._defModFunct,
                             accessSystem=self.api.accessSystem) for mi, md in res][:num_results]

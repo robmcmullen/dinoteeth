@@ -46,7 +46,11 @@ class HomeTheaterMetadataLoader(MetadataLoader):
                 # TV Movies are treated as possible matches for both movies
                 # and series
                 pass
-            elif subcat is not None and subcat not in kind:
+            
+            # Skip this test for now because IMDb search result categories are
+            # unreliable lately (Dec 2012).  "Band of Brothers" and "From the
+            # Earth to the Moon" both show up as movies in the search list
+            elif False and subcat is not None and subcat not in kind:
                 # Other than TV Movies, skip results different from the
                 # requested kind
                 #
@@ -146,6 +150,7 @@ class HomeTheaterMetadataLoader(MetadataLoader):
                     movie = self.get_metadata(guess)
                 except:
                     print "failed loading imdb; probably in production or rumored movie"
+                    continue
                 if movie is None or kind != movie.media_subcategory:
                     continue
                 title = movie.title
