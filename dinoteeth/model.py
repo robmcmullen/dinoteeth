@@ -316,7 +316,7 @@ class MenuPopulator(object):
         nominal_x, nominal_y = self.get_mosaic_size()
         min_x = x
         max_x = x + w
-        min_y = y + nominal_y - 1
+        min_y = y
         y = y + h
         for imgpath in self.iter_image_path(artwork_loader):
             thumb_image = self.get_thumbnail(window, imgpath)

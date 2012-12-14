@@ -105,7 +105,6 @@ class MenuDetail2ColumnLayout(AbstractLayout):
     
     def draw(self):
         self.title_renderer.draw(self.hierarchy)
-        self.footer_renderer.draw(self.controller)
         while True:
             try:
                 menu = self.get_menu()
@@ -116,6 +115,7 @@ class MenuDetail2ColumnLayout(AbstractLayout):
             except MenuEmptyError:
                 if self.select_parent_menu():
                     break
+        self.footer_renderer.draw(self.controller)
 
 
 class Renderer(object):
@@ -333,7 +333,7 @@ class FooterRenderer(Renderer):
     def draw(self, controller):
         text = controller.get_markup()
         self.window.draw_box(self.x, self.y, self.w, self.h,
-                             (0,0,0,0), (255, 255, 255, 255))
+                             (0,0,0,255), (255, 255, 255, 255))
         if not text:
             return
         self.window.draw_markup(text, self.window.font,
