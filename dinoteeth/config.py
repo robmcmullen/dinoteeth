@@ -75,7 +75,7 @@ class Config(object):
         parser.add_argument("--font-name", action="store", default="Arial")
         parser.add_argument("--font-size-menu", action="store", type=int, default=16)
         parser.add_argument("--font-size-detail", action="store", type=int, default=12)
-        parser.add_argument("--font-size-selected", action="store", type=int, default=24)
+        parser.add_argument("--font-size-selected", action="store", type=int, default=16)
         
         parser.add_argument("--imdb-country", action="store", default="USA")
         parser.add_argument("--imdb-language", action="store", default="English")

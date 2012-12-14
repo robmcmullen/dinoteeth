@@ -98,8 +98,8 @@ class MenuDetail2ColumnLayout(AbstractLayout):
         main_y = y + footer_h
         main_h = h - footer_h - title_h
         self.title_box = (x, y + h - title_h + 1, w, title_h)
-        self.menu_box = (x, main_y, menu_w, main_h)
-        self.detail_box = (menu_w, main_y, w - menu_w, main_h)
+        self.menu_box = (x, main_y, menu_w - 10, main_h)
+        self.detail_box = (x + menu_w, main_y, w - menu_w - x, main_h)
         self.status_box = (menu_w + 10, main_y + 10, w - menu_w - 20, title_h + 20)
         self.footer_box = (-1, -1, self.width + 2, footer_h + y)
     
@@ -154,6 +154,8 @@ class VerticalMenuRenderer(MenuRenderer):
         if selected:
             font = self.window.selected_font
             italic = False
+            self.window.draw_box(self.x, y - font.height/2, self.w - 1, font.height,
+                             (255, 255, 255, 64), (255, 255, 255, 100))
         else:
             font = self.window.font
             italic = True
