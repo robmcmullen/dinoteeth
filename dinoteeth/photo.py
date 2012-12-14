@@ -59,8 +59,8 @@ class PhotoFolder(MenuPopulator):
         for path in dirs:
             if os.path.isdir(path):
                 files = glob.glob(os.path.join(path, "*"))
-                pictures = [f for f in files if os.path.splitext(f)[1].lower() in Pictures.valid_image_types]
-                videos = [f for f in files if os.path.splitext(f)[1].lower()[1:] in self.config.get_video_extensions()]
+                pictures = [f for f in files if os.path.splitext(f)[1].lower() in Pictures.valid_file_types]
+                videos = [f for f in files if os.path.splitext(f)[1].lower()[1:] in HomeVideos.valid_file_types]
                 if pictures:
                     yield utils.decode_title_text(os.path.basename(path)), Pictures(self.config, path)
                 if videos:
@@ -71,7 +71,7 @@ class PhotoFolder(MenuPopulator):
                         yield utils.decode_title_text(os.path.basename(path)) + " (folders)", PhotoFolder(self.config, path)
 
 class Pictures(MenuPopulator):
-    valid_image_types = ['.jpg', '.png', '.gif']
+    valid_file_types = ['.jpg', '.png', '.gif']
     
     def __init__(self, config, path):
         MenuPopulator.__init__(self, config)
@@ -83,7 +83,7 @@ class Pictures(MenuPopulator):
         for image in images:
             if not os.path.isdir(image):
                 _, ext = os.path.splitext(image)
-                if ext.lower() in self.valid_image_types:
+                if ext.lower() in self.valid_file_types:
                     yield image
 
     def play(self, config=None):
@@ -103,6 +103,8 @@ class Pictures(MenuPopulator):
             }
 
 class HomeVideos(MenuPopulator):
+    valid_file_types = ['asf', 'wmv', 'wma', 'flv', 'mkv', 'mka', 'webm', 'mov', 'qt', 'mp4', 'mp4a', '3gp', '3gp2', 'mk2', 'mpeg', 'mpg', 'mp4', 'ogm', 'ogg', 'avi']
+    
     def __init__(self, config, videos):
         MenuPopulator.__init__(self, config)
         self.videos = videos
