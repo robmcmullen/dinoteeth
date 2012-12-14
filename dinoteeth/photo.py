@@ -145,13 +145,21 @@ class HomeVideos(MenuPopulator):
             }
 
 class HomeVideoPlay(MenuPopulator):
+    # The media_* class attributes are used to specify the playback client in
+    # the call to config.get_media_client.
+    media_category = "video"
+    media_subcategory = "*"
+    
     def __init__(self, config, video):
         MenuPopulator.__init__(self, config)
         self.video = video
 
     def play(self, config=None):
         self.config.prepare_for_external_app()
-        client = self.config.get_media_client()
+        # Since we don't have a real media scan for the home video, the media_*
+        # class attributes are used to spoof a MediaScan instance in order to
+        # load up the video player
+        client = self.config.get_media_client(self)
         log.debug("Starting video for %s" % self.video)
         last_pos = client.play_file(self.video)
         self.config.restore_after_external_app()
