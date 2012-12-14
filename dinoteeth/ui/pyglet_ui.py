@@ -17,13 +17,13 @@ class PygletMainWindow(pyglet.window.Window, MainWindow):
     to_keycode = {}
     to_modifier = {}
     
-    def __init__(self, config, fullscreen=True, width=800, height=600, margins=None,
+    def __init__(self, config, factory, fullscreen=True, width=800, height=600, margins=None,
                  thumbnails=None):
         if fullscreen:
             pyglet.window.Window.__init__(self, fullscreen=fullscreen)
         else:
             pyglet.window.Window.__init__(self, width, height)
-        MainWindow.__init__(self, config, fullscreen, width, height, margins,
+        MainWindow.__init__(self, config, factory, fullscreen, width, height, margins,
                             thumbnails)
         
         self.create_keycode_maps()

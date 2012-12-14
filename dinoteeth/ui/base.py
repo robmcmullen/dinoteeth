@@ -1,12 +1,12 @@
 import os, Queue, functools, time
 
 class MainWindow(object):
-    def __init__(self, config, fullscreen=True, width=800, height=600, margins=None,
+    def __init__(self, config, factory, fullscreen=True, width=800, height=600, margins=None,
                  thumbnails=None):
         if margins is None:
             margins = (0, 0, 0, 0)
         self.get_fonts(config)
-        self.layout = config.get_layout(self, margins)
+        self.layout = factory.get_layout(self, margins, config)
         root = config.get_root(self)
         self.layout.set_root(root)
         self.controller = self.layout.get_controller()

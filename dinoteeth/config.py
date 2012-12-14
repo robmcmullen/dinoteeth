@@ -176,12 +176,13 @@ class Config(object):
             return PygletMainWindow
         raise RuntimeError("Unknown user interface: %s" % self.options.ui)
     
-    def get_main_window(self):
+    def get_main_window(self, factory):
         if self.main_window is None:
             margins = (self.options.top_margin, self.options.right_margin,
                        self.options.bottom_margin, self.options.left_margin)
             wincls = self.get_main_window_class()
-            self.main_window = wincls(self, fullscreen=self.options.fullscreen,
+            self.main_window = wincls(self, factory,
+                                      fullscreen=self.options.fullscreen,
                                       width=self.options.window_width,
                                       height=self.options.window_height,
                                       margins=margins,
@@ -243,9 +244,6 @@ class Config(object):
     def get_root(self, window):
         return self.root
     
-    def get_layout(self, window, margins):
-        return MenuDetail2ColumnLayout(window, margins, self)
-    
     def get_font_name(self):
         return self.options.font_name
     
@@ -257,15 +255,6 @@ class Config(object):
     
     def get_selected_font_size(self):
         return self.options.font_size_selected
-
-    def get_title_renderer(self, window, box):
-        return TitleRenderer(window, box, self)
-
-    def get_menu_renderer(self, window, box):
-        return VerticalMenuRenderer(window, box, self)
-
-    def get_detail_renderer(self, window, box):
-        return DetailRenderer(window, box, self)
     
     def get_artwork_loader(self):
         if not hasattr(self, "artwork_loader"):

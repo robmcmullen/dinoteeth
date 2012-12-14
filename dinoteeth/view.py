@@ -76,13 +76,13 @@ class AbstractLayout(object):
 
 
 class MenuDetail2ColumnLayout(AbstractLayout):
-    def __init__(self, window, margins, config):
+    def __init__(self, window, margins, config, factory):
         AbstractLayout.__init__(self, window, margins, config)
         self.controller = VerticalMenuController(self, config)
         self.compute_layout()
-        self.title_renderer = config.get_title_renderer(window, self.title_box)
-        self.menu_renderer = config.get_menu_renderer(window, self.menu_box)
-        self.detail_renderer = config.get_detail_renderer(window, self.detail_box)
+        self.title_renderer = factory.get_title_renderer(window, self.title_box, config)
+        self.menu_renderer = factory.get_menu_renderer(window, self.menu_box, config)
+        self.detail_renderer = factory.get_detail_renderer(window, self.detail_box, config)
         self.status_renderer = SimpleStatusRenderer(window, self.status_box, config)
         self.footer_renderer = FooterRenderer(window, self.footer_box, config)
     

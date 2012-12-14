@@ -16,7 +16,7 @@ class SdlMainWindow(MainWindow):
     upper left corner.)
     
     """
-    def __init__(self, config, fullscreen=True, width=800, height=600, margins=None,
+    def __init__(self, config, factory, fullscreen=True, width=800, height=600, margins=None,
                  thumbnails=None):
         os.environ["SDL_VIDEO_CENTERED"] = "1" # No other way to center windows in SDL 1.2!
         SDL.SDL_Init(SDL.SDL_INIT_EVERYTHING)
@@ -27,7 +27,7 @@ class SdlMainWindow(MainWindow):
         self.monitor_size = (info.contents.current_w, info.contents.current_h)
         self.window_size = (width, height)
         self.create_screen(fullscreen)
-        MainWindow.__init__(self, config, fullscreen, width, height, margins,
+        MainWindow.__init__(self, config, factory, fullscreen, width, height, margins,
                             thumbnails)
         __builtin__._ = escape_markup
 
