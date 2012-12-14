@@ -1,10 +1,29 @@
 Prerequisites
 =============
 
+Native libraries
+----------------
+
+SDL
+SDL_gfx
+SDL_image
+SDL_Pango
+
+Python libraries
+----------------
+
+PIL
 requests
+beautifulsoup4
 imdbpy
+guessit
 zodb3
 pyinotify
+kaa-base
+kaa.metadata (from https://github.com/robmcmullen/kaa-metadata for Atari support)
+
+Note: PyGame or other SDL bindings are not required because direct ctypes
+bindings are included
 
 
 Testing
