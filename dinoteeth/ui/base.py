@@ -1,4 +1,4 @@
-import os, Queue, functools
+import os, Queue, functools, time
 
 class MainWindow(object):
     def __init__(self, config, fullscreen=True, width=800, height=600, margins=None,
@@ -11,6 +11,8 @@ class MainWindow(object):
         self.layout.set_root(root)
         self.controller = self.layout.get_controller()
         self.status_text = Queue.Queue()
+        self.next_allowed_status_update = time.time()
+        self.status_update_interval = 1.0 # number of seconds before allowing a new status update
         self.using_external_app = False
         self.app_config = config
         self.thumbnail_loader = thumbnails
@@ -41,8 +43,13 @@ class MainWindow(object):
     def on_status_update(self, text=None):
         if self.using_external_app:
             print "ignoring status; external app in use"
+            return "skip redraw"
         elif text is not None:
             self.status_text.put(text)
+            if time.time() > self.next_allowed_status_update:
+                self.next_allowed_status_update = time.time() + self.status_update_interval
+            else:
+                return "skip redraw"
     
     def set_using_external_app(self, state, fullscreen):
         self.using_external_app = state
