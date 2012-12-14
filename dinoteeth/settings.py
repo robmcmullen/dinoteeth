@@ -44,11 +44,16 @@ credit_map = [
 
 # Clients
 
-# For mplayer, use SSA/ASS rendering to enable italics, bold, etc
-mplayer_opts = "-novm -fs -utf8 -ass -ass-color ffffff00 -ass-font-scale 1.4"
+client_progs = {
+    "game/atari-8bit": "atari800",
+    "game/atari-st": "hatari",
+    "video/*": "mplayer",
+    }
 
-atari800_prog = "atari800"
-atari800_opts = ""
-
-hatari_prog = "hatari"
-hatari_opts = ""
+client_args = {
+    "atari800": "",
+    "hatari": "",
+    
+    # For mplayer, use SSA/ASS rendering to enable italics, bold, etc
+    "mplayer": "-novm -fs -utf8 -ass -ass-color ffffff00 -ass-font-scale 1.4",
+    }

@@ -7,7 +7,7 @@ from .. import utils
 
 class MPlayerClient(Client):
     def get_mplayer_opts(self, path):
-        opts = self.settings.mplayer_opts.split()
+        opts = self.get_default_args()
         root, ext = os.path.splitext(path)
         # do something with path if desired
         return opts
@@ -69,4 +69,4 @@ class MPlayerClient(Client):
             mp.quit()
         return last_pos
 
-Client.register("video", "*", MPlayerClient)
+Client.register("mplayer", MPlayerClient)

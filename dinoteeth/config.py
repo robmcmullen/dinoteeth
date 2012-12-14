@@ -281,7 +281,7 @@ class Config(object):
     
     def get_media_client(self, media_file):
         client = Client.get_loader(media_file)
-        return client(settings)
+        return client
     
     def get_leading_articles(self):
         return ["a", "an", "the"]
