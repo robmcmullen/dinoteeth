@@ -279,6 +279,14 @@ class HomeTheaterDatabase(object):
                 metadata = MetadataLoader.get_metadata(title_key, scans)
                 if metadata is None:
                     continue
+                
+                # Check to see some other title key hasn't already generated
+                # the same metadata object, and use the previously saved
+                # metadata if so
+                if metadata.id in self.metadata:
+                    metadata = self.metadata[metadata.id]
+                else:
+                    self.metadata[metadata.id] = metadata
                 self.title_key_to_metadata[title_key] = metadata
             for item in scans:
                 item.metadata = metadata
