@@ -91,17 +91,22 @@ class HomeTheaterMetadataLoader(MetadataLoader):
     
     def get_metadata_by_id(self, imdb_id):
         imdb_obj = self.proxies.imdb_api.get_movie(imdb_id)
-        if imdb_obj['kind'] in ['movie', 'video movie', 'tv movie']:
+        kind = imdb_obj.get('kind')
+        if 'kind' is None:
+            log.error("Bad IMDb object for %s; possibly website timeout" % imdb_id)
+            return
+            
+        if kind in ['movie', 'video movie', 'tv movie']:
             tmdb_obj = self.proxies.tmdb_api.get_imdb_id(imdb_id)
             metadata = MovieMetadata(imdb_obj, tmdb_obj)
-        elif imdb_obj['kind'] in ['series', 'tv series', 'tv mini series']:
+        elif kind in ['series', 'tv series', 'tv mini series']:
             tvdb_obj = self.proxies.tvdb_api.get_imdb_id(imdb_id)
             metadata = SeriesMetadata(imdb_obj, tvdb_obj)
         else:
             # It's a video game or something else; skip it
-            log.error("Unhandled IMDb type '%s' for %s" % (imdb_obj['kind'], imdb_id))
+            log.error("Unhandled IMDb type '%s' for %s" % (kind, imdb_id))
             return
-        print (u"%s: %s -> %s" % (imdb_obj['title'], imdb_obj['kind'], metadata.media_subcategory)).encode('utf8')
+        print (u"%s: %s -> %s" % (imdb_obj['title'], kind, metadata.media_subcategory)).encode('utf8')
         return metadata
     
     def get_metadata(self, result):
