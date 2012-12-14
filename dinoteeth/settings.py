@@ -21,6 +21,7 @@ tmdb_poster_size = "w342"
 # TVDB settings
 tvdb_cache_dir = "tvdb-cache"
 
+import time
 credit_map = [
     # Title, attribute, limit_category (one of: 'series', 'movies' or None), converter (to change the data; e.g. change a raw timestamp into a month/year for bucketing), reverse sort flag (True or False/None)
     ("By Date Added", "date_added", None, lambda d: time.strftime("%B %Y", time.localtime(d)), True),
