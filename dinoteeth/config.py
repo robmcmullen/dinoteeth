@@ -195,11 +195,11 @@ class Config(object):
         return self.main_window
     
     def prepare_for_external_app(self):
-        win = self.get_main_window()
+        win = self.main_window
         win.set_using_external_app(True, self.options.fullscreen)
     
     def restore_after_external_app(self):
-        win = self.get_main_window()
+        win = self.main_window
         win.set_using_external_app(False, self.options.fullscreen)
     
     def create_root(self):
@@ -276,7 +276,7 @@ class Config(object):
         return ["a", "an", "the"]
     
     def show_status(self, text):
-        win = self.get_main_window()
+        win = self.main_window
         win.on_status_update(text)
     
     def do_shutdown_tasks(self):
