@@ -48,6 +48,8 @@ class SdlMainWindow(MainWindow):
         self.screen = SDL.SDL_SetVideoMode(w, h, 0, flags)
         self.width = self.screen.contents.w
         self.height = self.screen.contents.h
+        if fullscreen:
+            SDL.SDL_ShowCursor(SDL.SDL_DISABLE)
     
     def set_using_external_app(self, state, fullscreen):
         MainWindow.set_using_external_app(self, state, fullscreen)
