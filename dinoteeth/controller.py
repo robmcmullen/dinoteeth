@@ -1,6 +1,7 @@
 import os, sys, glob, time
-import ui.keycodes as k
 
+import settings
+import ui.keycodes as k
 
 class VerticalMenuController(object):
     def __init__(self, layout, config):
@@ -41,11 +42,13 @@ class VerticalMenuController(object):
             self.process_back()
         elif keycode == k.BACKSPACE:
             self.process_backspace()
+        elif (keycode == k.ESCAPE and modifiers & k.MOD_SHIFT):
+            self.layout.window.quit()
         elif keycode == k.ESCAPE:
             self.process_quit()
-        elif keycode == k.F11:
+        elif keycode == k.F11 and not settings.guest_mode:
             self.process_edit('edit_metadata')
-        elif keycode == k.F12:
+        elif keycode == k.F12 and not settings.guest_mode:
             self.process_edit('edit_poster')
         elif keycode == k.F1:
             self.process_audio()
@@ -179,4 +182,5 @@ class VerticalMenuController(object):
         try:
             self.layout.pop_root()
         except IndexError:
-            self.layout.window.quit()
+            if not settings.guest_mode:
+                self.layout.window.quit()

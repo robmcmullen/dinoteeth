@@ -82,6 +82,7 @@ class Config(object):
         parser.add_argument("--country-code", action="store", default="US")
         parser.add_argument("--test-threads", action="store_true", default=False)
         parser.add_argument("--test-menu", action="store", default="")
+        parser.add_argument("--guest-mode", action="store_true", default=False)
         return parser
     
     def parse_args(self, args, parser):
@@ -157,6 +158,7 @@ class Config(object):
         settings.imdb_language = self.options.imdb_language
         settings.iso_3166_1 = self.options.country_code
         settings.subtitle_file_extensions = self.get_subtitle_extensions()
+        settings.guest_mode = self.options.guest_mode
         
         user_title_key_map = {}
         if "title_key" in self.ini:

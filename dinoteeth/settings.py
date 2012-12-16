@@ -2,6 +2,7 @@ metadata_root = "/tmp"
 cache_root = "/tmp"
 
 poster_width = 342
+guest_mode = False
 
 subtitle_file_extensions = []
 
