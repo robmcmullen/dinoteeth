@@ -184,7 +184,7 @@ class MutableString(UserString):
     def __init__(self, string=""):
         self.data = string
     def __hash__(self):
-        raise TypeError, "unhashable type (it is mutable)"
+        raise TypeError("unhashable type (it is mutable)")
     def __setitem__(self, index, sub):
         if index < 0:
             index += len(self.data)
@@ -233,7 +233,7 @@ class String(MutableString, Union):
 
     def __len__(self):
         return self.data and len(self.data) or 0
-    
+
     def from_param(cls, obj):
         # Convert None or 0
         if obj is None or obj == 0:
@@ -246,15 +246,15 @@ class String(MutableString, Union):
         # Convert from str
         elif isinstance(obj, str):
             return cls(obj)
-        
+
         # Convert from c_char_p
         elif isinstance(obj, c_char_p):
             return obj
-        
+
         # Convert from POINTER(c_char)
         elif isinstance(obj, POINTER(c_char)):
             return obj
-        
+
         # Convert from raw pointer
         elif isinstance(obj, int):
             return cls(cast(obj, POINTER(c_char)))
@@ -264,7 +264,7 @@ class String(MutableString, Union):
             return String.from_param(obj._as_parameter_)
     from_param = classmethod(from_param)
 
-def ReturnString(obj):
+def ReturnString(obj, func=None, arguments=None):
     return String.from_param(obj)
 
 # As of ctypes 1.0, ctypes does not support custom error-checking
@@ -300,7 +300,6 @@ class _variadic_function(object):
             i+=1
         return self.func(*fixed_args+list(args[i:]))
 
-
 # End preamble
 
 _libs = {}
@@ -312,14 +311,14 @@ _libdirs = ['/usr/lib']
 # Copyright (c) 2008 David James
 # Copyright (c) 2006-2008 Alex Holkner
 # All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions 
+# modification, are permitted provided that the following conditions
 # are met:
 #
 #  * Redistributions of source code must retain the above copyright
 #    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright 
+#  * Redistributions in binary form must reproduce the above copyright
 #    notice, this list of conditions and the following disclaimer in
 #    the documentation and/or other materials provided with the
 #    distribution.
@@ -355,17 +354,17 @@ def _environ_path(name):
 class LibraryLoader(object):
     def __init__(self):
         self.other_dirs=[]
-    
+
     def load_library(self,libname):
         """Given the name of a library, load it."""
         paths = self.getpaths(libname)
-        
+
         for path in paths:
             if os.path.exists(path):
                 return self.load(path)
-        
-        raise ImportError,"%s not found." % libname
-    
+
+        raise ImportError("%s not found." % libname)
+
     def load(self,path):
         """Given a path to a library, load it."""
         try:
@@ -378,20 +377,20 @@ class LibraryLoader(object):
             else:
                 return ctypes.cdll.LoadLibrary(path)
         except OSError,e:
-            raise ImportError,e
-    
+            raise ImportError(e)
+
     def getpaths(self,libname):
         """Return a list of paths where the library might be found."""
         if os.path.isabs(libname):
             yield libname
-        
+
         else:
             for path in self.getplatformpaths(libname):
                 yield path
-            
+
             path = ctypes.util.find_library(libname)
             if path: yield path
-    
+
     def getplatformpaths(self, libname):
         return []
 
@@ -400,20 +399,20 @@ class LibraryLoader(object):
 class DarwinLibraryLoader(LibraryLoader):
     name_formats = ["lib%s.dylib", "lib%s.so", "lib%s.bundle", "%s.dylib",
                 "%s.so", "%s.bundle", "%s"]
-    
+
     def getplatformpaths(self,libname):
         if os.path.pathsep in libname:
             names = [libname]
         else:
             names = [format % libname for format in self.name_formats]
-        
+
         for dir in self.getdirs(libname):
             for name in names:
                 yield os.path.join(dir,name)
-    
+
     def getdirs(self,libname):
         '''Implements the dylib search as specified in Apple documentation:
-        
+
         http://developer.apple.com/documentation/DeveloperTools/Conceptual/
             DynamicLibraries/Articles/DynamicLibraryUsageGuidelines.html
 
@@ -426,9 +425,9 @@ class DarwinLibraryLoader(LibraryLoader):
         if not dyld_fallback_library_path:
             dyld_fallback_library_path = [os.path.expanduser('~/lib'),
                                           '/usr/local/lib', '/usr/lib']
-        
+
         dirs = []
-        
+
         if '/' in libname:
             dirs.extend(_environ_path("DYLD_LIBRARY_PATH"))
         else:
@@ -437,7 +436,7 @@ class DarwinLibraryLoader(LibraryLoader):
 
         dirs.extend(self.other_dirs)
         dirs.append(".")
-        
+
         if hasattr(sys, 'frozen') and sys.frozen == 'macosx_app':
             dirs.append(os.path.join(
                 os.environ['RESOURCEPATH'],
@@ -445,14 +444,14 @@ class DarwinLibraryLoader(LibraryLoader):
                 'Frameworks'))
 
         dirs.extend(dyld_fallback_library_path)
-        
+
         return dirs
 
 # Posix
 
 class PosixLibraryLoader(LibraryLoader):
     _ld_so_cache = None
-    
+
     def _create_ld_so_cache(self):
         # Recreate search path followed by ld.so.  This is going to be
         # slow to build, and incorrect (ld.so uses ld.so.cache, which may
@@ -488,7 +487,7 @@ class PosixLibraryLoader(LibraryLoader):
                     # Index by filename
                     if file not in cache:
                         cache[file] = path
-                    
+
                     # Index by library name
                     match = lib_re.match(file)
                     if match:
@@ -499,7 +498,7 @@ class PosixLibraryLoader(LibraryLoader):
                 pass
 
         self._ld_so_cache = cache
-    
+
     def getplatformpaths(self, libname):
         if self._ld_so_cache is None:
             self._create_ld_so_cache()
@@ -525,14 +524,39 @@ class _WindowsLibrary(object):
                 raise
 
 class WindowsLibraryLoader(LibraryLoader):
-    name_formats = ["%s.dll", "lib%s.dll"]
-    
+    name_formats = ["%s.dll", "lib%s.dll", "%slib.dll"]
+
+    def load_library(self, libname):
+        try:
+            result = LibraryLoader.load_library(self, libname)
+        except ImportError:
+            result = None
+            if os.path.sep not in libname:
+                for name in self.name_formats:
+                    try:
+                        result = getattr(ctypes.cdll, name % libname)
+                        if result:
+                            break
+                    except WindowsError:
+                        result = None
+            if result is None:
+                try:
+                    result = getattr(ctypes.cdll, libname)
+                except WindowsError:
+                    result = None
+            if result is None:
+                raise ImportError("%s not found." % libname)
+        return result
+
     def load(self, path):
         return _WindowsLibrary(path)
-    
+
     def getplatformpaths(self, libname):
         if os.path.sep not in libname:
             for name in self.name_formats:
+                dll_in_current_dir = os.path.abspath(name % libname)
+                if os.path.exists(dll_in_current_dir):
+                    yield dll_in_current_dir
                 path = ctypes.util.find_library(name % libname)
                 if path:
                     yield path
@@ -726,374 +750,374 @@ SDL_Surface = struct_SDL_Surface # /usr/include/SDL/SDL_video.h: 122
 # /usr/include/SDL/SDL_gfxPrimitives.h: 71
 if hasattr(_libs['SDL_gfx'], 'pixelColor'):
     pixelColor = _libs['SDL_gfx'].pixelColor
-    pixelColor.restype = c_int
     pixelColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Uint32]
+    pixelColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 72
 if hasattr(_libs['SDL_gfx'], 'pixelRGBA'):
     pixelRGBA = _libs['SDL_gfx'].pixelRGBA
-    pixelRGBA.restype = c_int
     pixelRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Uint8, Uint8, Uint8, Uint8]
+    pixelRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 76
 if hasattr(_libs['SDL_gfx'], 'hlineColor'):
     hlineColor = _libs['SDL_gfx'].hlineColor
-    hlineColor.restype = c_int
     hlineColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Uint32]
+    hlineColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 77
 if hasattr(_libs['SDL_gfx'], 'hlineRGBA'):
     hlineRGBA = _libs['SDL_gfx'].hlineRGBA
-    hlineRGBA.restype = c_int
     hlineRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Uint8, Uint8, Uint8, Uint8]
+    hlineRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 81
 if hasattr(_libs['SDL_gfx'], 'vlineColor'):
     vlineColor = _libs['SDL_gfx'].vlineColor
-    vlineColor.restype = c_int
     vlineColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Uint32]
+    vlineColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 82
 if hasattr(_libs['SDL_gfx'], 'vlineRGBA'):
     vlineRGBA = _libs['SDL_gfx'].vlineRGBA
-    vlineRGBA.restype = c_int
     vlineRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Uint8, Uint8, Uint8, Uint8]
+    vlineRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 86
 if hasattr(_libs['SDL_gfx'], 'rectangleColor'):
     rectangleColor = _libs['SDL_gfx'].rectangleColor
-    rectangleColor.restype = c_int
     rectangleColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Uint32]
+    rectangleColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 87
 if hasattr(_libs['SDL_gfx'], 'rectangleRGBA'):
     rectangleRGBA = _libs['SDL_gfx'].rectangleRGBA
-    rectangleRGBA.restype = c_int
     rectangleRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Uint8, Uint8, Uint8, Uint8]
+    rectangleRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 92
 if hasattr(_libs['SDL_gfx'], 'roundedRectangleColor'):
     roundedRectangleColor = _libs['SDL_gfx'].roundedRectangleColor
-    roundedRectangleColor.restype = c_int
     roundedRectangleColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Sint16, Uint32]
+    roundedRectangleColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 93
 if hasattr(_libs['SDL_gfx'], 'roundedRectangleRGBA'):
     roundedRectangleRGBA = _libs['SDL_gfx'].roundedRectangleRGBA
-    roundedRectangleRGBA.restype = c_int
     roundedRectangleRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Sint16, Uint8, Uint8, Uint8, Uint8]
+    roundedRectangleRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 98
 if hasattr(_libs['SDL_gfx'], 'boxColor'):
     boxColor = _libs['SDL_gfx'].boxColor
-    boxColor.restype = c_int
     boxColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Uint32]
+    boxColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 99
 if hasattr(_libs['SDL_gfx'], 'boxRGBA'):
     boxRGBA = _libs['SDL_gfx'].boxRGBA
-    boxRGBA.restype = c_int
     boxRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Uint8, Uint8, Uint8, Uint8]
+    boxRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 104
 if hasattr(_libs['SDL_gfx'], 'roundedBoxColor'):
     roundedBoxColor = _libs['SDL_gfx'].roundedBoxColor
-    roundedBoxColor.restype = c_int
     roundedBoxColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Sint16, Uint32]
+    roundedBoxColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 105
 if hasattr(_libs['SDL_gfx'], 'roundedBoxRGBA'):
     roundedBoxRGBA = _libs['SDL_gfx'].roundedBoxRGBA
-    roundedBoxRGBA.restype = c_int
     roundedBoxRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Sint16, Uint8, Uint8, Uint8, Uint8]
+    roundedBoxRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 110
 if hasattr(_libs['SDL_gfx'], 'lineColor'):
     lineColor = _libs['SDL_gfx'].lineColor
-    lineColor.restype = c_int
     lineColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Uint32]
+    lineColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 111
 if hasattr(_libs['SDL_gfx'], 'lineRGBA'):
     lineRGBA = _libs['SDL_gfx'].lineRGBA
-    lineRGBA.restype = c_int
     lineRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Uint8, Uint8, Uint8, Uint8]
+    lineRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 116
 if hasattr(_libs['SDL_gfx'], 'aalineColor'):
     aalineColor = _libs['SDL_gfx'].aalineColor
-    aalineColor.restype = c_int
     aalineColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Uint32]
+    aalineColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 117
 if hasattr(_libs['SDL_gfx'], 'aalineRGBA'):
     aalineRGBA = _libs['SDL_gfx'].aalineRGBA
-    aalineRGBA.restype = c_int
     aalineRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Uint8, Uint8, Uint8, Uint8]
+    aalineRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 121
 if hasattr(_libs['SDL_gfx'], 'thickLineColor'):
     thickLineColor = _libs['SDL_gfx'].thickLineColor
-    thickLineColor.restype = c_int
     thickLineColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Uint8, Uint32]
+    thickLineColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 123
 if hasattr(_libs['SDL_gfx'], 'thickLineRGBA'):
     thickLineRGBA = _libs['SDL_gfx'].thickLineRGBA
-    thickLineRGBA.restype = c_int
     thickLineRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Uint8, Uint8, Uint8, Uint8, Uint8]
+    thickLineRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 128
 if hasattr(_libs['SDL_gfx'], 'circleColor'):
     circleColor = _libs['SDL_gfx'].circleColor
-    circleColor.restype = c_int
     circleColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Uint32]
+    circleColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 129
 if hasattr(_libs['SDL_gfx'], 'circleRGBA'):
     circleRGBA = _libs['SDL_gfx'].circleRGBA
-    circleRGBA.restype = c_int
     circleRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Uint8, Uint8, Uint8, Uint8]
+    circleRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 133
 if hasattr(_libs['SDL_gfx'], 'arcColor'):
     arcColor = _libs['SDL_gfx'].arcColor
-    arcColor.restype = c_int
     arcColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Sint16, Uint32]
+    arcColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 134
 if hasattr(_libs['SDL_gfx'], 'arcRGBA'):
     arcRGBA = _libs['SDL_gfx'].arcRGBA
-    arcRGBA.restype = c_int
     arcRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Sint16, Uint8, Uint8, Uint8, Uint8]
+    arcRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 139
 if hasattr(_libs['SDL_gfx'], 'aacircleColor'):
     aacircleColor = _libs['SDL_gfx'].aacircleColor
-    aacircleColor.restype = c_int
     aacircleColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Uint32]
+    aacircleColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 140
 if hasattr(_libs['SDL_gfx'], 'aacircleRGBA'):
     aacircleRGBA = _libs['SDL_gfx'].aacircleRGBA
-    aacircleRGBA.restype = c_int
     aacircleRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Uint8, Uint8, Uint8, Uint8]
+    aacircleRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 145
 if hasattr(_libs['SDL_gfx'], 'filledCircleColor'):
     filledCircleColor = _libs['SDL_gfx'].filledCircleColor
-    filledCircleColor.restype = c_int
     filledCircleColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Uint32]
+    filledCircleColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 146
 if hasattr(_libs['SDL_gfx'], 'filledCircleRGBA'):
     filledCircleRGBA = _libs['SDL_gfx'].filledCircleRGBA
-    filledCircleRGBA.restype = c_int
     filledCircleRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Uint8, Uint8, Uint8, Uint8]
+    filledCircleRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 151
 if hasattr(_libs['SDL_gfx'], 'ellipseColor'):
     ellipseColor = _libs['SDL_gfx'].ellipseColor
-    ellipseColor.restype = c_int
     ellipseColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Uint32]
+    ellipseColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 152
 if hasattr(_libs['SDL_gfx'], 'ellipseRGBA'):
     ellipseRGBA = _libs['SDL_gfx'].ellipseRGBA
-    ellipseRGBA.restype = c_int
     ellipseRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Uint8, Uint8, Uint8, Uint8]
+    ellipseRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 157
 if hasattr(_libs['SDL_gfx'], 'aaellipseColor'):
     aaellipseColor = _libs['SDL_gfx'].aaellipseColor
-    aaellipseColor.restype = c_int
     aaellipseColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Uint32]
+    aaellipseColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 158
 if hasattr(_libs['SDL_gfx'], 'aaellipseRGBA'):
     aaellipseRGBA = _libs['SDL_gfx'].aaellipseRGBA
-    aaellipseRGBA.restype = c_int
     aaellipseRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Uint8, Uint8, Uint8, Uint8]
+    aaellipseRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 163
 if hasattr(_libs['SDL_gfx'], 'filledEllipseColor'):
     filledEllipseColor = _libs['SDL_gfx'].filledEllipseColor
-    filledEllipseColor.restype = c_int
     filledEllipseColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Uint32]
+    filledEllipseColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 164
 if hasattr(_libs['SDL_gfx'], 'filledEllipseRGBA'):
     filledEllipseRGBA = _libs['SDL_gfx'].filledEllipseRGBA
-    filledEllipseRGBA.restype = c_int
     filledEllipseRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Uint8, Uint8, Uint8, Uint8]
+    filledEllipseRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 169
 if hasattr(_libs['SDL_gfx'], 'pieColor'):
     pieColor = _libs['SDL_gfx'].pieColor
-    pieColor.restype = c_int
     pieColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Sint16, Uint32]
+    pieColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 171
 if hasattr(_libs['SDL_gfx'], 'pieRGBA'):
     pieRGBA = _libs['SDL_gfx'].pieRGBA
-    pieRGBA.restype = c_int
     pieRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Sint16, Uint8, Uint8, Uint8, Uint8]
+    pieRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 176
 if hasattr(_libs['SDL_gfx'], 'filledPieColor'):
     filledPieColor = _libs['SDL_gfx'].filledPieColor
-    filledPieColor.restype = c_int
     filledPieColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Sint16, Uint32]
+    filledPieColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 178
 if hasattr(_libs['SDL_gfx'], 'filledPieRGBA'):
     filledPieRGBA = _libs['SDL_gfx'].filledPieRGBA
-    filledPieRGBA.restype = c_int
     filledPieRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Sint16, Uint8, Uint8, Uint8, Uint8]
+    filledPieRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 183
 if hasattr(_libs['SDL_gfx'], 'trigonColor'):
     trigonColor = _libs['SDL_gfx'].trigonColor
-    trigonColor.restype = c_int
     trigonColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Sint16, Sint16, Uint32]
+    trigonColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 184
 if hasattr(_libs['SDL_gfx'], 'trigonRGBA'):
     trigonRGBA = _libs['SDL_gfx'].trigonRGBA
-    trigonRGBA.restype = c_int
     trigonRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Sint16, Sint16, Uint8, Uint8, Uint8, Uint8]
+    trigonRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 189
 if hasattr(_libs['SDL_gfx'], 'aatrigonColor'):
     aatrigonColor = _libs['SDL_gfx'].aatrigonColor
-    aatrigonColor.restype = c_int
     aatrigonColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Sint16, Sint16, Uint32]
+    aatrigonColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 190
 if hasattr(_libs['SDL_gfx'], 'aatrigonRGBA'):
     aatrigonRGBA = _libs['SDL_gfx'].aatrigonRGBA
-    aatrigonRGBA.restype = c_int
     aatrigonRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Sint16, Sint16, Uint8, Uint8, Uint8, Uint8]
+    aatrigonRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 195
 if hasattr(_libs['SDL_gfx'], 'filledTrigonColor'):
     filledTrigonColor = _libs['SDL_gfx'].filledTrigonColor
-    filledTrigonColor.restype = c_int
     filledTrigonColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Sint16, Sint16, Uint32]
+    filledTrigonColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 196
 if hasattr(_libs['SDL_gfx'], 'filledTrigonRGBA'):
     filledTrigonRGBA = _libs['SDL_gfx'].filledTrigonRGBA
-    filledTrigonRGBA.restype = c_int
     filledTrigonRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, Sint16, Sint16, Sint16, Sint16, Uint8, Uint8, Uint8, Uint8]
+    filledTrigonRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 201
 if hasattr(_libs['SDL_gfx'], 'polygonColor'):
     polygonColor = _libs['SDL_gfx'].polygonColor
-    polygonColor.restype = c_int
     polygonColor.argtypes = [POINTER(SDL_Surface), POINTER(Sint16), POINTER(Sint16), c_int, Uint32]
+    polygonColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 202
 if hasattr(_libs['SDL_gfx'], 'polygonRGBA'):
     polygonRGBA = _libs['SDL_gfx'].polygonRGBA
-    polygonRGBA.restype = c_int
     polygonRGBA.argtypes = [POINTER(SDL_Surface), POINTER(Sint16), POINTER(Sint16), c_int, Uint8, Uint8, Uint8, Uint8]
+    polygonRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 207
 if hasattr(_libs['SDL_gfx'], 'aapolygonColor'):
     aapolygonColor = _libs['SDL_gfx'].aapolygonColor
-    aapolygonColor.restype = c_int
     aapolygonColor.argtypes = [POINTER(SDL_Surface), POINTER(Sint16), POINTER(Sint16), c_int, Uint32]
+    aapolygonColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 208
 if hasattr(_libs['SDL_gfx'], 'aapolygonRGBA'):
     aapolygonRGBA = _libs['SDL_gfx'].aapolygonRGBA
-    aapolygonRGBA.restype = c_int
     aapolygonRGBA.argtypes = [POINTER(SDL_Surface), POINTER(Sint16), POINTER(Sint16), c_int, Uint8, Uint8, Uint8, Uint8]
+    aapolygonRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 213
 if hasattr(_libs['SDL_gfx'], 'filledPolygonColor'):
     filledPolygonColor = _libs['SDL_gfx'].filledPolygonColor
-    filledPolygonColor.restype = c_int
     filledPolygonColor.argtypes = [POINTER(SDL_Surface), POINTER(Sint16), POINTER(Sint16), c_int, Uint32]
+    filledPolygonColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 214
 if hasattr(_libs['SDL_gfx'], 'filledPolygonRGBA'):
     filledPolygonRGBA = _libs['SDL_gfx'].filledPolygonRGBA
-    filledPolygonRGBA.restype = c_int
     filledPolygonRGBA.argtypes = [POINTER(SDL_Surface), POINTER(Sint16), POINTER(Sint16), c_int, Uint8, Uint8, Uint8, Uint8]
+    filledPolygonRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 216
 if hasattr(_libs['SDL_gfx'], 'texturedPolygon'):
     texturedPolygon = _libs['SDL_gfx'].texturedPolygon
-    texturedPolygon.restype = c_int
     texturedPolygon.argtypes = [POINTER(SDL_Surface), POINTER(Sint16), POINTER(Sint16), c_int, POINTER(SDL_Surface), c_int, c_int]
+    texturedPolygon.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 220
 if hasattr(_libs['SDL_gfx'], 'filledPolygonColorMT'):
     filledPolygonColorMT = _libs['SDL_gfx'].filledPolygonColorMT
-    filledPolygonColorMT.restype = c_int
     filledPolygonColorMT.argtypes = [POINTER(SDL_Surface), POINTER(Sint16), POINTER(Sint16), c_int, Uint32, POINTER(POINTER(c_int)), POINTER(c_int)]
+    filledPolygonColorMT.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 221
 if hasattr(_libs['SDL_gfx'], 'filledPolygonRGBAMT'):
     filledPolygonRGBAMT = _libs['SDL_gfx'].filledPolygonRGBAMT
-    filledPolygonRGBAMT.restype = c_int
     filledPolygonRGBAMT.argtypes = [POINTER(SDL_Surface), POINTER(Sint16), POINTER(Sint16), c_int, Uint8, Uint8, Uint8, Uint8, POINTER(POINTER(c_int)), POINTER(c_int)]
+    filledPolygonRGBAMT.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 224
 if hasattr(_libs['SDL_gfx'], 'texturedPolygonMT'):
     texturedPolygonMT = _libs['SDL_gfx'].texturedPolygonMT
-    texturedPolygonMT.restype = c_int
     texturedPolygonMT.argtypes = [POINTER(SDL_Surface), POINTER(Sint16), POINTER(Sint16), c_int, POINTER(SDL_Surface), c_int, c_int, POINTER(POINTER(c_int)), POINTER(c_int)]
+    texturedPolygonMT.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 228
 if hasattr(_libs['SDL_gfx'], 'bezierColor'):
     bezierColor = _libs['SDL_gfx'].bezierColor
-    bezierColor.restype = c_int
     bezierColor.argtypes = [POINTER(SDL_Surface), POINTER(Sint16), POINTER(Sint16), c_int, c_int, Uint32]
+    bezierColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 229
 if hasattr(_libs['SDL_gfx'], 'bezierRGBA'):
     bezierRGBA = _libs['SDL_gfx'].bezierRGBA
-    bezierRGBA.restype = c_int
     bezierRGBA.argtypes = [POINTER(SDL_Surface), POINTER(Sint16), POINTER(Sint16), c_int, c_int, Uint8, Uint8, Uint8, Uint8]
+    bezierRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 234
 if hasattr(_libs['SDL_gfx'], 'gfxPrimitivesSetFont'):
     gfxPrimitivesSetFont = _libs['SDL_gfx'].gfxPrimitivesSetFont
-    gfxPrimitivesSetFont.restype = None
     gfxPrimitivesSetFont.argtypes = [POINTER(None), Uint32, Uint32]
+    gfxPrimitivesSetFont.restype = None
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 235
 if hasattr(_libs['SDL_gfx'], 'gfxPrimitivesSetFontRotation'):
     gfxPrimitivesSetFontRotation = _libs['SDL_gfx'].gfxPrimitivesSetFontRotation
-    gfxPrimitivesSetFontRotation.restype = None
     gfxPrimitivesSetFontRotation.argtypes = [Uint32]
+    gfxPrimitivesSetFontRotation.restype = None
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 236
 if hasattr(_libs['SDL_gfx'], 'characterColor'):
     characterColor = _libs['SDL_gfx'].characterColor
-    characterColor.restype = c_int
     characterColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, c_char, Uint32]
+    characterColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 237
 if hasattr(_libs['SDL_gfx'], 'characterRGBA'):
     characterRGBA = _libs['SDL_gfx'].characterRGBA
-    characterRGBA.restype = c_int
     characterRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, c_char, Uint8, Uint8, Uint8, Uint8]
+    characterRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 238
 if hasattr(_libs['SDL_gfx'], 'stringColor'):
     stringColor = _libs['SDL_gfx'].stringColor
-    stringColor.restype = c_int
     stringColor.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, String, Uint32]
+    stringColor.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 239
 if hasattr(_libs['SDL_gfx'], 'stringRGBA'):
     stringRGBA = _libs['SDL_gfx'].stringRGBA
-    stringRGBA.restype = c_int
     stringRGBA.argtypes = [POINTER(SDL_Surface), Sint16, Sint16, String, Uint8, Uint8, Uint8, Uint8]
+    stringRGBA.restype = c_int
 
 # /usr/include/SDL/SDL_gfxPrimitives.h: 47
 try:
@@ -1101,13 +1125,13 @@ try:
 except:
     pass
 
-# /usr/include/SDL/SDL_gfxPrimitives.h: 47
+# /usr/include/SDL/SDL_gfxPrimitives.h: 48
 try:
     SDL_GFXPRIMITIVES_MINOR = 0
 except:
     pass
 
-# /usr/include/SDL/SDL_gfxPrimitives.h: 47
+# /usr/include/SDL/SDL_gfxPrimitives.h: 49
 try:
     SDL_GFXPRIMITIVES_MICRO = 23
 except:

@@ -1,7 +1,7 @@
 '''Wrapper for SDL.h
 
 Generated with:
-/usr/bin/ctypesgen.py -L/usr/lib -I/usr/include/SDL -lSDL /usr/include/SDL/SDL.h /usr/include/SDL/SDL_quit.h /usr/include/SDL/SDL_keyboard.h /usr/include/SDL/SDL_keysym.h /usr/include/SDL/SDL_config.h /usr/include/SDL/SDL_video.h /usr/include/SDL/SDL_events.h /usr/include/SDL/SDL_timer.h -o SDL.py
+/usr/bin/ctypesgen.py -L/usr/lib -I/usr/include/SDL -lSDL /usr/include/SDL/SDL.h /usr/include/SDL/SDL_quit.h /usr/include/SDL/SDL_keyboard.h /usr/include/SDL/SDL_keysym.h /usr/include/SDL/SDL_config.h /usr/include/SDL/SDL_video.h /usr/include/SDL/SDL_events.h /usr/include/SDL/SDL_timer.h /usr/include/SDL/SDL_mouse.h -o SDL.py
 
 Do not modify this file.
 '''
@@ -184,7 +184,7 @@ class MutableString(UserString):
     def __init__(self, string=""):
         self.data = string
     def __hash__(self):
-        raise TypeError, "unhashable type (it is mutable)"
+        raise TypeError("unhashable type (it is mutable)")
     def __setitem__(self, index, sub):
         if index < 0:
             index += len(self.data)
@@ -233,7 +233,7 @@ class String(MutableString, Union):
 
     def __len__(self):
         return self.data and len(self.data) or 0
-    
+
     def from_param(cls, obj):
         # Convert None or 0
         if obj is None or obj == 0:
@@ -246,15 +246,15 @@ class String(MutableString, Union):
         # Convert from str
         elif isinstance(obj, str):
             return cls(obj)
-        
+
         # Convert from c_char_p
         elif isinstance(obj, c_char_p):
             return obj
-        
+
         # Convert from POINTER(c_char)
         elif isinstance(obj, POINTER(c_char)):
             return obj
-        
+
         # Convert from raw pointer
         elif isinstance(obj, int):
             return cls(cast(obj, POINTER(c_char)))
@@ -264,7 +264,7 @@ class String(MutableString, Union):
             return String.from_param(obj._as_parameter_)
     from_param = classmethod(from_param)
 
-def ReturnString(obj):
+def ReturnString(obj, func=None, arguments=None):
     return String.from_param(obj)
 
 # As of ctypes 1.0, ctypes does not support custom error-checking
@@ -300,7 +300,6 @@ class _variadic_function(object):
             i+=1
         return self.func(*fixed_args+list(args[i:]))
 
-
 # End preamble
 
 _libs = {}
@@ -312,14 +311,14 @@ _libdirs = ['/usr/lib']
 # Copyright (c) 2008 David James
 # Copyright (c) 2006-2008 Alex Holkner
 # All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions 
+# modification, are permitted provided that the following conditions
 # are met:
 #
 #  * Redistributions of source code must retain the above copyright
 #    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright 
+#  * Redistributions in binary form must reproduce the above copyright
 #    notice, this list of conditions and the following disclaimer in
 #    the documentation and/or other materials provided with the
 #    distribution.
@@ -355,17 +354,17 @@ def _environ_path(name):
 class LibraryLoader(object):
     def __init__(self):
         self.other_dirs=[]
-    
+
     def load_library(self,libname):
         """Given the name of a library, load it."""
         paths = self.getpaths(libname)
-        
+
         for path in paths:
             if os.path.exists(path):
                 return self.load(path)
-        
-        raise ImportError,"%s not found." % libname
-    
+
+        raise ImportError("%s not found." % libname)
+
     def load(self,path):
         """Given a path to a library, load it."""
         try:
@@ -378,20 +377,20 @@ class LibraryLoader(object):
             else:
                 return ctypes.cdll.LoadLibrary(path)
         except OSError,e:
-            raise ImportError,e
-    
+            raise ImportError(e)
+
     def getpaths(self,libname):
         """Return a list of paths where the library might be found."""
         if os.path.isabs(libname):
             yield libname
-        
+
         else:
             for path in self.getplatformpaths(libname):
                 yield path
-            
+
             path = ctypes.util.find_library(libname)
             if path: yield path
-    
+
     def getplatformpaths(self, libname):
         return []
 
@@ -400,20 +399,20 @@ class LibraryLoader(object):
 class DarwinLibraryLoader(LibraryLoader):
     name_formats = ["lib%s.dylib", "lib%s.so", "lib%s.bundle", "%s.dylib",
                 "%s.so", "%s.bundle", "%s"]
-    
+
     def getplatformpaths(self,libname):
         if os.path.pathsep in libname:
             names = [libname]
         else:
             names = [format % libname for format in self.name_formats]
-        
+
         for dir in self.getdirs(libname):
             for name in names:
                 yield os.path.join(dir,name)
-    
+
     def getdirs(self,libname):
         '''Implements the dylib search as specified in Apple documentation:
-        
+
         http://developer.apple.com/documentation/DeveloperTools/Conceptual/
             DynamicLibraries/Articles/DynamicLibraryUsageGuidelines.html
 
@@ -426,9 +425,9 @@ class DarwinLibraryLoader(LibraryLoader):
         if not dyld_fallback_library_path:
             dyld_fallback_library_path = [os.path.expanduser('~/lib'),
                                           '/usr/local/lib', '/usr/lib']
-        
+
         dirs = []
-        
+
         if '/' in libname:
             dirs.extend(_environ_path("DYLD_LIBRARY_PATH"))
         else:
@@ -437,7 +436,7 @@ class DarwinLibraryLoader(LibraryLoader):
 
         dirs.extend(self.other_dirs)
         dirs.append(".")
-        
+
         if hasattr(sys, 'frozen') and sys.frozen == 'macosx_app':
             dirs.append(os.path.join(
                 os.environ['RESOURCEPATH'],
@@ -445,14 +444,14 @@ class DarwinLibraryLoader(LibraryLoader):
                 'Frameworks'))
 
         dirs.extend(dyld_fallback_library_path)
-        
+
         return dirs
 
 # Posix
 
 class PosixLibraryLoader(LibraryLoader):
     _ld_so_cache = None
-    
+
     def _create_ld_so_cache(self):
         # Recreate search path followed by ld.so.  This is going to be
         # slow to build, and incorrect (ld.so uses ld.so.cache, which may
@@ -488,7 +487,7 @@ class PosixLibraryLoader(LibraryLoader):
                     # Index by filename
                     if file not in cache:
                         cache[file] = path
-                    
+
                     # Index by library name
                     match = lib_re.match(file)
                     if match:
@@ -499,7 +498,7 @@ class PosixLibraryLoader(LibraryLoader):
                 pass
 
         self._ld_so_cache = cache
-    
+
     def getplatformpaths(self, libname):
         if self._ld_so_cache is None:
             self._create_ld_so_cache()
@@ -525,14 +524,39 @@ class _WindowsLibrary(object):
                 raise
 
 class WindowsLibraryLoader(LibraryLoader):
-    name_formats = ["%s.dll", "lib%s.dll"]
-    
+    name_formats = ["%s.dll", "lib%s.dll", "%slib.dll"]
+
+    def load_library(self, libname):
+        try:
+            result = LibraryLoader.load_library(self, libname)
+        except ImportError:
+            result = None
+            if os.path.sep not in libname:
+                for name in self.name_formats:
+                    try:
+                        result = getattr(ctypes.cdll, name % libname)
+                        if result:
+                            break
+                    except WindowsError:
+                        result = None
+            if result is None:
+                try:
+                    result = getattr(ctypes.cdll, libname)
+                except WindowsError:
+                    result = None
+            if result is None:
+                raise ImportError("%s not found." % libname)
+        return result
+
     def load(self, path):
         return _WindowsLibrary(path)
-    
+
     def getplatformpaths(self, libname):
         if os.path.sep not in libname:
             for name in self.name_formats:
+                dll_in_current_dir = os.path.abspath(name % libname)
+                if os.path.exists(dll_in_current_dir):
+                    yield dll_in_current_dir
                 path = ctypes.util.find_library(name % libname)
                 if path:
                     yield path
@@ -574,15 +598,15 @@ __off_t = c_long # /usr/include/bits/types.h: 141
 
 __off64_t = c_long # /usr/include/bits/types.h: 142
 
-# /usr/include/libio.h: 271
+# /usr/include/libio.h: 273
 class struct__IO_FILE(Structure):
     pass
 
 FILE = struct__IO_FILE # /usr/include/stdio.h: 49
 
-_IO_lock_t = None # /usr/include/libio.h: 180
+_IO_lock_t = None # /usr/include/libio.h: 182
 
-# /usr/include/libio.h: 186
+# /usr/include/libio.h: 188
 class struct__IO_marker(Structure):
     pass
 
@@ -660,9 +684,9 @@ struct__IO_FILE._fields_ = [
     ('_unused2', c_char * (((15 * sizeof(c_int)) - (4 * sizeof(POINTER(None)))) - sizeof(c_size_t))),
 ]
 
-enum_anon_24 = c_int # /usr/include/SDL/SDL_stdinc.h: 96
+enum_anon_26 = c_int # /usr/include/SDL/SDL_stdinc.h: 96
 
-SDL_bool = enum_anon_24 # /usr/include/SDL/SDL_stdinc.h: 96
+SDL_bool = enum_anon_26 # /usr/include/SDL/SDL_stdinc.h: 96
 
 Uint8 = c_uint8 # /usr/include/SDL/SDL_stdinc.h: 99
 
@@ -679,57 +703,57 @@ class struct_SDL_RWops(Structure):
     pass
 
 # /usr/include/SDL/SDL_rwops.h: 78
-class struct_anon_27(Structure):
+class struct_anon_29(Structure):
     pass
 
-struct_anon_27.__slots__ = [
+struct_anon_29.__slots__ = [
     'autoclose',
     'fp',
 ]
-struct_anon_27._fields_ = [
+struct_anon_29._fields_ = [
     ('autoclose', c_int),
     ('fp', POINTER(FILE)),
 ]
 
 # /usr/include/SDL/SDL_rwops.h: 83
-class struct_anon_28(Structure):
+class struct_anon_30(Structure):
     pass
 
-struct_anon_28.__slots__ = [
+struct_anon_30.__slots__ = [
     'base',
     'here',
     'stop',
 ]
-struct_anon_28._fields_ = [
+struct_anon_30._fields_ = [
     ('base', POINTER(Uint8)),
     ('here', POINTER(Uint8)),
     ('stop', POINTER(Uint8)),
 ]
 
 # /usr/include/SDL/SDL_rwops.h: 88
-class struct_anon_29(Structure):
+class struct_anon_31(Structure):
     pass
 
-struct_anon_29.__slots__ = [
+struct_anon_31.__slots__ = [
     'data1',
 ]
-struct_anon_29._fields_ = [
+struct_anon_31._fields_ = [
     ('data1', POINTER(None)),
 ]
 
 # /usr/include/SDL/SDL_rwops.h: 65
-class union_anon_30(Union):
+class union_anon_32(Union):
     pass
 
-union_anon_30.__slots__ = [
+union_anon_32.__slots__ = [
     'stdio',
     'mem',
     'unknown',
 ]
-union_anon_30._fields_ = [
-    ('stdio', struct_anon_27),
-    ('mem', struct_anon_28),
-    ('unknown', struct_anon_29),
+union_anon_32._fields_ = [
+    ('stdio', struct_anon_29),
+    ('mem', struct_anon_30),
+    ('unknown', struct_anon_31),
 ]
 
 struct_SDL_RWops.__slots__ = [
@@ -746,7 +770,7 @@ struct_SDL_RWops._fields_ = [
     ('write', CFUNCTYPE(UNCHECKED(c_int), POINTER(struct_SDL_RWops), POINTER(None), c_int, c_int)),
     ('close', CFUNCTYPE(UNCHECKED(c_int), POINTER(struct_SDL_RWops))),
     ('type', Uint32),
-    ('hidden', union_anon_30),
+    ('hidden', union_anon_32),
 ]
 
 SDL_RWops = struct_SDL_RWops # /usr/include/SDL/SDL_rwops.h: 93
@@ -754,10 +778,10 @@ SDL_RWops = struct_SDL_RWops # /usr/include/SDL/SDL_rwops.h: 93
 # /usr/include/SDL/SDL_rwops.h: 99
 if hasattr(_libs['SDL'], 'SDL_RWFromFile'):
     SDL_RWFromFile = _libs['SDL'].SDL_RWFromFile
-    SDL_RWFromFile.restype = POINTER(SDL_RWops)
     SDL_RWFromFile.argtypes = [String, String]
+    SDL_RWFromFile.restype = POINTER(SDL_RWops)
 
-enum_anon_33 = c_int # /usr/include/SDL/SDL_keysym.h: 302
+enum_anon_35 = c_int # /usr/include/SDL/SDL_keysym.h: 302
 
 SDLK_UNKNOWN = 0 # /usr/include/SDL/SDL_keysym.h: 302
 
@@ -1227,9 +1251,9 @@ SDLK_UNDO = 322 # /usr/include/SDL/SDL_keysym.h: 302
 
 SDLK_LAST = (SDLK_UNDO + 1) # /usr/include/SDL/SDL_keysym.h: 302
 
-SDLKey = enum_anon_33 # /usr/include/SDL/SDL_keysym.h: 302
+SDLKey = enum_anon_35 # /usr/include/SDL/SDL_keysym.h: 302
 
-enum_anon_34 = c_int # /usr/include/SDL/SDL_keysym.h: 319
+enum_anon_36 = c_int # /usr/include/SDL/SDL_keysym.h: 319
 
 KMOD_NONE = 0 # /usr/include/SDL/SDL_keysym.h: 319
 
@@ -1257,7 +1281,7 @@ KMOD_MODE = 16384 # /usr/include/SDL/SDL_keysym.h: 319
 
 KMOD_RESERVED = 32768 # /usr/include/SDL/SDL_keysym.h: 319
 
-SDLMod = enum_anon_34 # /usr/include/SDL/SDL_keysym.h: 319
+SDLMod = enum_anon_36 # /usr/include/SDL/SDL_keysym.h: 319
 
 # /usr/include/SDL/SDL_keyboard.h: 64
 class struct_SDL_keysym(Structure):
@@ -1281,44 +1305,48 @@ SDL_keysym = struct_SDL_keysym # /usr/include/SDL/SDL_keyboard.h: 64
 # /usr/include/SDL/SDL_keyboard.h: 82
 if hasattr(_libs['SDL'], 'SDL_EnableUNICODE'):
     SDL_EnableUNICODE = _libs['SDL'].SDL_EnableUNICODE
-    SDL_EnableUNICODE.restype = c_int
     SDL_EnableUNICODE.argtypes = [c_int]
+    SDL_EnableUNICODE.restype = c_int
 
 # /usr/include/SDL/SDL_keyboard.h: 98
 if hasattr(_libs['SDL'], 'SDL_EnableKeyRepeat'):
     SDL_EnableKeyRepeat = _libs['SDL'].SDL_EnableKeyRepeat
-    SDL_EnableKeyRepeat.restype = c_int
     SDL_EnableKeyRepeat.argtypes = [c_int, c_int]
+    SDL_EnableKeyRepeat.restype = c_int
 
 # /usr/include/SDL/SDL_keyboard.h: 99
 if hasattr(_libs['SDL'], 'SDL_GetKeyRepeat'):
     SDL_GetKeyRepeat = _libs['SDL'].SDL_GetKeyRepeat
-    SDL_GetKeyRepeat.restype = None
     SDL_GetKeyRepeat.argtypes = [POINTER(c_int), POINTER(c_int)]
+    SDL_GetKeyRepeat.restype = None
 
 # /usr/include/SDL/SDL_keyboard.h: 110
 if hasattr(_libs['SDL'], 'SDL_GetKeyState'):
     SDL_GetKeyState = _libs['SDL'].SDL_GetKeyState
-    SDL_GetKeyState.restype = POINTER(Uint8)
     SDL_GetKeyState.argtypes = [POINTER(c_int)]
+    SDL_GetKeyState.restype = POINTER(Uint8)
 
 # /usr/include/SDL/SDL_keyboard.h: 115
 if hasattr(_libs['SDL'], 'SDL_GetModState'):
     SDL_GetModState = _libs['SDL'].SDL_GetModState
-    SDL_GetModState.restype = SDLMod
     SDL_GetModState.argtypes = []
+    SDL_GetModState.restype = SDLMod
 
 # /usr/include/SDL/SDL_keyboard.h: 121
 if hasattr(_libs['SDL'], 'SDL_SetModState'):
     SDL_SetModState = _libs['SDL'].SDL_SetModState
-    SDL_SetModState.restype = None
     SDL_SetModState.argtypes = [SDLMod]
+    SDL_SetModState.restype = None
 
 # /usr/include/SDL/SDL_keyboard.h: 126
 if hasattr(_libs['SDL'], 'SDL_GetKeyName'):
     SDL_GetKeyName = _libs['SDL'].SDL_GetKeyName
-    SDL_GetKeyName.restype = ReturnString
     SDL_GetKeyName.argtypes = [SDLKey]
+    if sizeof(c_int) == sizeof(c_void_p):
+        SDL_GetKeyName.restype = ReturnString
+    else:
+        SDL_GetKeyName.restype = String
+        SDL_GetKeyName.errcheck = ReturnString
 
 # /usr/include/SDL/SDL_video.h: 53
 class struct_SDL_Rect(Structure):
@@ -1549,7 +1577,7 @@ struct_SDL_Overlay._fields_ = [
 
 SDL_Overlay = struct_SDL_Overlay # /usr/include/SDL/SDL_video.h: 226
 
-enum_anon_35 = c_int # /usr/include/SDL/SDL_video.h: 248
+enum_anon_37 = c_int # /usr/include/SDL/SDL_video.h: 248
 
 SDL_GL_RED_SIZE = 0 # /usr/include/SDL/SDL_video.h: 248
 
@@ -1585,339 +1613,343 @@ SDL_GL_ACCELERATED_VISUAL = (SDL_GL_MULTISAMPLESAMPLES + 1) # /usr/include/SDL/S
 
 SDL_GL_SWAP_CONTROL = (SDL_GL_ACCELERATED_VISUAL + 1) # /usr/include/SDL/SDL_video.h: 248
 
-SDL_GLattr = enum_anon_35 # /usr/include/SDL/SDL_video.h: 248
+SDL_GLattr = enum_anon_37 # /usr/include/SDL/SDL_video.h: 248
 
 # /usr/include/SDL/SDL_video.h: 275
 if hasattr(_libs['SDL'], 'SDL_VideoInit'):
     SDL_VideoInit = _libs['SDL'].SDL_VideoInit
-    SDL_VideoInit.restype = c_int
     SDL_VideoInit.argtypes = [String, Uint32]
+    SDL_VideoInit.restype = c_int
 
 # /usr/include/SDL/SDL_video.h: 276
 if hasattr(_libs['SDL'], 'SDL_VideoQuit'):
     SDL_VideoQuit = _libs['SDL'].SDL_VideoQuit
-    SDL_VideoQuit.restype = None
     SDL_VideoQuit.argtypes = []
+    SDL_VideoQuit.restype = None
 
 # /usr/include/SDL/SDL_video.h: 284
 if hasattr(_libs['SDL'], 'SDL_VideoDriverName'):
     SDL_VideoDriverName = _libs['SDL'].SDL_VideoDriverName
-    SDL_VideoDriverName.restype = ReturnString
     SDL_VideoDriverName.argtypes = [String, c_int]
+    if sizeof(c_int) == sizeof(c_void_p):
+        SDL_VideoDriverName.restype = ReturnString
+    else:
+        SDL_VideoDriverName.restype = String
+        SDL_VideoDriverName.errcheck = ReturnString
 
 # /usr/include/SDL/SDL_video.h: 292
 if hasattr(_libs['SDL'], 'SDL_GetVideoSurface'):
     SDL_GetVideoSurface = _libs['SDL'].SDL_GetVideoSurface
-    SDL_GetVideoSurface.restype = POINTER(SDL_Surface)
     SDL_GetVideoSurface.argtypes = []
+    SDL_GetVideoSurface.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_video.h: 300
 if hasattr(_libs['SDL'], 'SDL_GetVideoInfo'):
     SDL_GetVideoInfo = _libs['SDL'].SDL_GetVideoInfo
-    SDL_GetVideoInfo.restype = POINTER(SDL_VideoInfo)
     SDL_GetVideoInfo.argtypes = []
+    SDL_GetVideoInfo.restype = POINTER(SDL_VideoInfo)
 
 # /usr/include/SDL/SDL_video.h: 313
 if hasattr(_libs['SDL'], 'SDL_VideoModeOK'):
     SDL_VideoModeOK = _libs['SDL'].SDL_VideoModeOK
-    SDL_VideoModeOK.restype = c_int
     SDL_VideoModeOK.argtypes = [c_int, c_int, c_int, Uint32]
+    SDL_VideoModeOK.restype = c_int
 
 # /usr/include/SDL/SDL_video.h: 324
 if hasattr(_libs['SDL'], 'SDL_ListModes'):
     SDL_ListModes = _libs['SDL'].SDL_ListModes
-    SDL_ListModes.restype = POINTER(POINTER(SDL_Rect))
     SDL_ListModes.argtypes = [POINTER(SDL_PixelFormat), Uint32]
+    SDL_ListModes.restype = POINTER(POINTER(SDL_Rect))
 
 # /usr/include/SDL/SDL_video.h: 384
 if hasattr(_libs['SDL'], 'SDL_SetVideoMode'):
     SDL_SetVideoMode = _libs['SDL'].SDL_SetVideoMode
-    SDL_SetVideoMode.restype = POINTER(SDL_Surface)
     SDL_SetVideoMode.argtypes = [c_int, c_int, c_int, Uint32]
+    SDL_SetVideoMode.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_video.h: 394
 if hasattr(_libs['SDL'], 'SDL_UpdateRects'):
     SDL_UpdateRects = _libs['SDL'].SDL_UpdateRects
-    SDL_UpdateRects.restype = None
     SDL_UpdateRects.argtypes = [POINTER(SDL_Surface), c_int, POINTER(SDL_Rect)]
+    SDL_UpdateRects.restype = None
 
 # /usr/include/SDL/SDL_video.h: 400
 if hasattr(_libs['SDL'], 'SDL_UpdateRect'):
     SDL_UpdateRect = _libs['SDL'].SDL_UpdateRect
-    SDL_UpdateRect.restype = None
     SDL_UpdateRect.argtypes = [POINTER(SDL_Surface), Sint32, Sint32, Uint32, Uint32]
+    SDL_UpdateRect.restype = None
 
 # /usr/include/SDL/SDL_video.h: 414
 if hasattr(_libs['SDL'], 'SDL_Flip'):
     SDL_Flip = _libs['SDL'].SDL_Flip
-    SDL_Flip.restype = c_int
     SDL_Flip.argtypes = [POINTER(SDL_Surface)]
+    SDL_Flip.restype = c_int
 
 # /usr/include/SDL/SDL_video.h: 424
 if hasattr(_libs['SDL'], 'SDL_SetGamma'):
     SDL_SetGamma = _libs['SDL'].SDL_SetGamma
-    SDL_SetGamma.restype = c_int
     SDL_SetGamma.argtypes = [c_float, c_float, c_float]
+    SDL_SetGamma.restype = c_int
 
 # /usr/include/SDL/SDL_video.h: 438
 if hasattr(_libs['SDL'], 'SDL_SetGammaRamp'):
     SDL_SetGammaRamp = _libs['SDL'].SDL_SetGammaRamp
-    SDL_SetGammaRamp.restype = c_int
     SDL_SetGammaRamp.argtypes = [POINTER(Uint16), POINTER(Uint16), POINTER(Uint16)]
+    SDL_SetGammaRamp.restype = c_int
 
 # /usr/include/SDL/SDL_video.h: 449
 if hasattr(_libs['SDL'], 'SDL_GetGammaRamp'):
     SDL_GetGammaRamp = _libs['SDL'].SDL_GetGammaRamp
-    SDL_GetGammaRamp.restype = c_int
     SDL_GetGammaRamp.argtypes = [POINTER(Uint16), POINTER(Uint16), POINTER(Uint16)]
+    SDL_GetGammaRamp.restype = c_int
 
 # /usr/include/SDL/SDL_video.h: 466
 if hasattr(_libs['SDL'], 'SDL_SetColors'):
     SDL_SetColors = _libs['SDL'].SDL_SetColors
-    SDL_SetColors.restype = c_int
     SDL_SetColors.argtypes = [POINTER(SDL_Surface), POINTER(SDL_Color), c_int, c_int]
+    SDL_SetColors.restype = c_int
 
 # /usr/include/SDL/SDL_video.h: 485
 if hasattr(_libs['SDL'], 'SDL_SetPalette'):
     SDL_SetPalette = _libs['SDL'].SDL_SetPalette
-    SDL_SetPalette.restype = c_int
     SDL_SetPalette.argtypes = [POINTER(SDL_Surface), c_int, POINTER(SDL_Color), c_int, c_int]
+    SDL_SetPalette.restype = c_int
 
 # /usr/include/SDL/SDL_video.h: 492
 if hasattr(_libs['SDL'], 'SDL_MapRGB'):
     SDL_MapRGB = _libs['SDL'].SDL_MapRGB
-    SDL_MapRGB.restype = Uint32
     SDL_MapRGB.argtypes = [POINTER(SDL_PixelFormat), Uint8, Uint8, Uint8]
+    SDL_MapRGB.restype = Uint32
 
 # /usr/include/SDL/SDL_video.h: 499
 if hasattr(_libs['SDL'], 'SDL_MapRGBA'):
     SDL_MapRGBA = _libs['SDL'].SDL_MapRGBA
-    SDL_MapRGBA.restype = Uint32
     SDL_MapRGBA.argtypes = [POINTER(SDL_PixelFormat), Uint8, Uint8, Uint8, Uint8]
+    SDL_MapRGBA.restype = Uint32
 
 # /usr/include/SDL/SDL_video.h: 506
 if hasattr(_libs['SDL'], 'SDL_GetRGB'):
     SDL_GetRGB = _libs['SDL'].SDL_GetRGB
-    SDL_GetRGB.restype = None
     SDL_GetRGB.argtypes = [Uint32, POINTER(SDL_PixelFormat), POINTER(Uint8), POINTER(Uint8), POINTER(Uint8)]
+    SDL_GetRGB.restype = None
 
 # /usr/include/SDL/SDL_video.h: 513
 if hasattr(_libs['SDL'], 'SDL_GetRGBA'):
     SDL_GetRGBA = _libs['SDL'].SDL_GetRGBA
-    SDL_GetRGBA.restype = None
     SDL_GetRGBA.argtypes = [Uint32, POINTER(SDL_PixelFormat), POINTER(Uint8), POINTER(Uint8), POINTER(Uint8), POINTER(Uint8)]
+    SDL_GetRGBA.restype = None
 
 # /usr/include/SDL/SDL_video.h: 553
 if hasattr(_libs['SDL'], 'SDL_CreateRGBSurface'):
     SDL_CreateRGBSurface = _libs['SDL'].SDL_CreateRGBSurface
-    SDL_CreateRGBSurface.restype = POINTER(SDL_Surface)
     SDL_CreateRGBSurface.argtypes = [Uint32, c_int, c_int, c_int, Uint32, Uint32, Uint32, Uint32]
+    SDL_CreateRGBSurface.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_video.h: 557
 if hasattr(_libs['SDL'], 'SDL_CreateRGBSurfaceFrom'):
     SDL_CreateRGBSurfaceFrom = _libs['SDL'].SDL_CreateRGBSurfaceFrom
-    SDL_CreateRGBSurfaceFrom.restype = POINTER(SDL_Surface)
     SDL_CreateRGBSurfaceFrom.argtypes = [POINTER(None), c_int, c_int, c_int, c_int, Uint32, Uint32, Uint32, Uint32]
+    SDL_CreateRGBSurfaceFrom.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_video.h: 560
 if hasattr(_libs['SDL'], 'SDL_FreeSurface'):
     SDL_FreeSurface = _libs['SDL'].SDL_FreeSurface
-    SDL_FreeSurface.restype = None
     SDL_FreeSurface.argtypes = [POINTER(SDL_Surface)]
+    SDL_FreeSurface.restype = None
 
 # /usr/include/SDL/SDL_video.h: 580
 if hasattr(_libs['SDL'], 'SDL_LockSurface'):
     SDL_LockSurface = _libs['SDL'].SDL_LockSurface
-    SDL_LockSurface.restype = c_int
     SDL_LockSurface.argtypes = [POINTER(SDL_Surface)]
+    SDL_LockSurface.restype = c_int
 
 # /usr/include/SDL/SDL_video.h: 581
 if hasattr(_libs['SDL'], 'SDL_UnlockSurface'):
     SDL_UnlockSurface = _libs['SDL'].SDL_UnlockSurface
-    SDL_UnlockSurface.restype = None
     SDL_UnlockSurface.argtypes = [POINTER(SDL_Surface)]
+    SDL_UnlockSurface.restype = None
 
 # /usr/include/SDL/SDL_video.h: 589
 if hasattr(_libs['SDL'], 'SDL_LoadBMP_RW'):
     SDL_LoadBMP_RW = _libs['SDL'].SDL_LoadBMP_RW
-    SDL_LoadBMP_RW.restype = POINTER(SDL_Surface)
     SDL_LoadBMP_RW.argtypes = [POINTER(SDL_RWops), c_int]
+    SDL_LoadBMP_RW.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_video.h: 599
 if hasattr(_libs['SDL'], 'SDL_SaveBMP_RW'):
     SDL_SaveBMP_RW = _libs['SDL'].SDL_SaveBMP_RW
-    SDL_SaveBMP_RW.restype = c_int
     SDL_SaveBMP_RW.argtypes = [POINTER(SDL_Surface), POINTER(SDL_RWops), c_int]
+    SDL_SaveBMP_RW.restype = c_int
 
 # /usr/include/SDL/SDL_video.h: 615
 if hasattr(_libs['SDL'], 'SDL_SetColorKey'):
     SDL_SetColorKey = _libs['SDL'].SDL_SetColorKey
-    SDL_SetColorKey.restype = c_int
     SDL_SetColorKey.argtypes = [POINTER(SDL_Surface), Uint32, Uint32]
+    SDL_SetColorKey.restype = c_int
 
 # /usr/include/SDL/SDL_video.h: 633
 if hasattr(_libs['SDL'], 'SDL_SetAlpha'):
     SDL_SetAlpha = _libs['SDL'].SDL_SetAlpha
-    SDL_SetAlpha.restype = c_int
     SDL_SetAlpha.argtypes = [POINTER(SDL_Surface), Uint32, Uint8]
+    SDL_SetAlpha.restype = c_int
 
 # /usr/include/SDL/SDL_video.h: 647
 if hasattr(_libs['SDL'], 'SDL_SetClipRect'):
     SDL_SetClipRect = _libs['SDL'].SDL_SetClipRect
-    SDL_SetClipRect.restype = SDL_bool
     SDL_SetClipRect.argtypes = [POINTER(SDL_Surface), POINTER(SDL_Rect)]
+    SDL_SetClipRect.restype = SDL_bool
 
 # /usr/include/SDL/SDL_video.h: 654
 if hasattr(_libs['SDL'], 'SDL_GetClipRect'):
     SDL_GetClipRect = _libs['SDL'].SDL_GetClipRect
-    SDL_GetClipRect.restype = None
     SDL_GetClipRect.argtypes = [POINTER(SDL_Surface), POINTER(SDL_Rect)]
+    SDL_GetClipRect.restype = None
 
 # /usr/include/SDL/SDL_video.h: 668
 if hasattr(_libs['SDL'], 'SDL_ConvertSurface'):
     SDL_ConvertSurface = _libs['SDL'].SDL_ConvertSurface
-    SDL_ConvertSurface.restype = POINTER(SDL_Surface)
     SDL_ConvertSurface.argtypes = [POINTER(SDL_Surface), POINTER(SDL_PixelFormat), Uint32]
+    SDL_ConvertSurface.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_video.h: 748
 if hasattr(_libs['SDL'], 'SDL_UpperBlit'):
     SDL_UpperBlit = _libs['SDL'].SDL_UpperBlit
-    SDL_UpperBlit.restype = c_int
     SDL_UpperBlit.argtypes = [POINTER(SDL_Surface), POINTER(SDL_Rect), POINTER(SDL_Surface), POINTER(SDL_Rect)]
+    SDL_UpperBlit.restype = c_int
 
 # /usr/include/SDL/SDL_video.h: 754
 if hasattr(_libs['SDL'], 'SDL_LowerBlit'):
     SDL_LowerBlit = _libs['SDL'].SDL_LowerBlit
-    SDL_LowerBlit.restype = c_int
     SDL_LowerBlit.argtypes = [POINTER(SDL_Surface), POINTER(SDL_Rect), POINTER(SDL_Surface), POINTER(SDL_Rect)]
+    SDL_LowerBlit.restype = c_int
 
 # /usr/include/SDL/SDL_video.h: 767
 if hasattr(_libs['SDL'], 'SDL_FillRect'):
     SDL_FillRect = _libs['SDL'].SDL_FillRect
-    SDL_FillRect.restype = c_int
     SDL_FillRect.argtypes = [POINTER(SDL_Surface), POINTER(SDL_Rect), Uint32]
+    SDL_FillRect.restype = c_int
 
 # /usr/include/SDL/SDL_video.h: 781
 if hasattr(_libs['SDL'], 'SDL_DisplayFormat'):
     SDL_DisplayFormat = _libs['SDL'].SDL_DisplayFormat
-    SDL_DisplayFormat.restype = POINTER(SDL_Surface)
     SDL_DisplayFormat.argtypes = [POINTER(SDL_Surface)]
+    SDL_DisplayFormat.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_video.h: 795
 if hasattr(_libs['SDL'], 'SDL_DisplayFormatAlpha'):
     SDL_DisplayFormatAlpha = _libs['SDL'].SDL_DisplayFormatAlpha
-    SDL_DisplayFormatAlpha.restype = POINTER(SDL_Surface)
     SDL_DisplayFormatAlpha.argtypes = [POINTER(SDL_Surface)]
+    SDL_DisplayFormatAlpha.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_video.h: 807
 if hasattr(_libs['SDL'], 'SDL_CreateYUVOverlay'):
     SDL_CreateYUVOverlay = _libs['SDL'].SDL_CreateYUVOverlay
-    SDL_CreateYUVOverlay.restype = POINTER(SDL_Overlay)
     SDL_CreateYUVOverlay.argtypes = [c_int, c_int, Uint32, POINTER(SDL_Surface)]
+    SDL_CreateYUVOverlay.restype = POINTER(SDL_Overlay)
 
 # /usr/include/SDL/SDL_video.h: 811
 if hasattr(_libs['SDL'], 'SDL_LockYUVOverlay'):
     SDL_LockYUVOverlay = _libs['SDL'].SDL_LockYUVOverlay
-    SDL_LockYUVOverlay.restype = c_int
     SDL_LockYUVOverlay.argtypes = [POINTER(SDL_Overlay)]
+    SDL_LockYUVOverlay.restype = c_int
 
 # /usr/include/SDL/SDL_video.h: 812
 if hasattr(_libs['SDL'], 'SDL_UnlockYUVOverlay'):
     SDL_UnlockYUVOverlay = _libs['SDL'].SDL_UnlockYUVOverlay
-    SDL_UnlockYUVOverlay.restype = None
     SDL_UnlockYUVOverlay.argtypes = [POINTER(SDL_Overlay)]
+    SDL_UnlockYUVOverlay.restype = None
 
 # /usr/include/SDL/SDL_video.h: 820
 if hasattr(_libs['SDL'], 'SDL_DisplayYUVOverlay'):
     SDL_DisplayYUVOverlay = _libs['SDL'].SDL_DisplayYUVOverlay
-    SDL_DisplayYUVOverlay.restype = c_int
     SDL_DisplayYUVOverlay.argtypes = [POINTER(SDL_Overlay), POINTER(SDL_Rect)]
+    SDL_DisplayYUVOverlay.restype = c_int
 
 # /usr/include/SDL/SDL_video.h: 823
 if hasattr(_libs['SDL'], 'SDL_FreeYUVOverlay'):
     SDL_FreeYUVOverlay = _libs['SDL'].SDL_FreeYUVOverlay
-    SDL_FreeYUVOverlay.restype = None
     SDL_FreeYUVOverlay.argtypes = [POINTER(SDL_Overlay)]
+    SDL_FreeYUVOverlay.restype = None
 
 # /usr/include/SDL/SDL_video.h: 837
 if hasattr(_libs['SDL'], 'SDL_GL_LoadLibrary'):
     SDL_GL_LoadLibrary = _libs['SDL'].SDL_GL_LoadLibrary
-    SDL_GL_LoadLibrary.restype = c_int
     SDL_GL_LoadLibrary.argtypes = [String]
+    SDL_GL_LoadLibrary.restype = c_int
 
 # /usr/include/SDL/SDL_video.h: 842
 if hasattr(_libs['SDL'], 'SDL_GL_GetProcAddress'):
     SDL_GL_GetProcAddress = _libs['SDL'].SDL_GL_GetProcAddress
-    SDL_GL_GetProcAddress.restype = POINTER(None)
     SDL_GL_GetProcAddress.argtypes = [String]
+    SDL_GL_GetProcAddress.restype = POINTER(None)
 
 # /usr/include/SDL/SDL_video.h: 847
 if hasattr(_libs['SDL'], 'SDL_GL_SetAttribute'):
     SDL_GL_SetAttribute = _libs['SDL'].SDL_GL_SetAttribute
-    SDL_GL_SetAttribute.restype = c_int
     SDL_GL_SetAttribute.argtypes = [SDL_GLattr, c_int]
+    SDL_GL_SetAttribute.restype = c_int
 
 # /usr/include/SDL/SDL_video.h: 858
 if hasattr(_libs['SDL'], 'SDL_GL_GetAttribute'):
     SDL_GL_GetAttribute = _libs['SDL'].SDL_GL_GetAttribute
-    SDL_GL_GetAttribute.restype = c_int
     SDL_GL_GetAttribute.argtypes = [SDL_GLattr, POINTER(c_int)]
+    SDL_GL_GetAttribute.restype = c_int
 
 # /usr/include/SDL/SDL_video.h: 863
 if hasattr(_libs['SDL'], 'SDL_GL_SwapBuffers'):
     SDL_GL_SwapBuffers = _libs['SDL'].SDL_GL_SwapBuffers
-    SDL_GL_SwapBuffers.restype = None
     SDL_GL_SwapBuffers.argtypes = []
+    SDL_GL_SwapBuffers.restype = None
 
 # /usr/include/SDL/SDL_video.h: 870
 if hasattr(_libs['SDL'], 'SDL_GL_UpdateRects'):
     SDL_GL_UpdateRects = _libs['SDL'].SDL_GL_UpdateRects
-    SDL_GL_UpdateRects.restype = None
     SDL_GL_UpdateRects.argtypes = [c_int, POINTER(SDL_Rect)]
+    SDL_GL_UpdateRects.restype = None
 
 # /usr/include/SDL/SDL_video.h: 871
 if hasattr(_libs['SDL'], 'SDL_GL_Lock'):
     SDL_GL_Lock = _libs['SDL'].SDL_GL_Lock
-    SDL_GL_Lock.restype = None
     SDL_GL_Lock.argtypes = []
+    SDL_GL_Lock.restype = None
 
 # /usr/include/SDL/SDL_video.h: 872
 if hasattr(_libs['SDL'], 'SDL_GL_Unlock'):
     SDL_GL_Unlock = _libs['SDL'].SDL_GL_Unlock
-    SDL_GL_Unlock.restype = None
     SDL_GL_Unlock.argtypes = []
+    SDL_GL_Unlock.restype = None
 
 # /usr/include/SDL/SDL_video.h: 885
 if hasattr(_libs['SDL'], 'SDL_WM_SetCaption'):
     SDL_WM_SetCaption = _libs['SDL'].SDL_WM_SetCaption
-    SDL_WM_SetCaption.restype = None
     SDL_WM_SetCaption.argtypes = [String, String]
+    SDL_WM_SetCaption.restype = None
 
 # /usr/include/SDL/SDL_video.h: 889
 if hasattr(_libs['SDL'], 'SDL_WM_GetCaption'):
     SDL_WM_GetCaption = _libs['SDL'].SDL_WM_GetCaption
-    SDL_WM_GetCaption.restype = None
     SDL_WM_GetCaption.argtypes = [POINTER(POINTER(c_char)), POINTER(POINTER(c_char))]
+    SDL_WM_GetCaption.restype = None
 
 # /usr/include/SDL/SDL_video.h: 897
 if hasattr(_libs['SDL'], 'SDL_WM_SetIcon'):
     SDL_WM_SetIcon = _libs['SDL'].SDL_WM_SetIcon
-    SDL_WM_SetIcon.restype = None
     SDL_WM_SetIcon.argtypes = [POINTER(SDL_Surface), POINTER(Uint8)]
+    SDL_WM_SetIcon.restype = None
 
 # /usr/include/SDL/SDL_video.h: 904
 if hasattr(_libs['SDL'], 'SDL_WM_IconifyWindow'):
     SDL_WM_IconifyWindow = _libs['SDL'].SDL_WM_IconifyWindow
-    SDL_WM_IconifyWindow.restype = c_int
     SDL_WM_IconifyWindow.argtypes = []
+    SDL_WM_IconifyWindow.restype = c_int
 
 # /usr/include/SDL/SDL_video.h: 921
 if hasattr(_libs['SDL'], 'SDL_WM_ToggleFullScreen'):
     SDL_WM_ToggleFullScreen = _libs['SDL'].SDL_WM_ToggleFullScreen
-    SDL_WM_ToggleFullScreen.restype = c_int
     SDL_WM_ToggleFullScreen.argtypes = [POINTER(SDL_Surface)]
+    SDL_WM_ToggleFullScreen.restype = c_int
 
-enum_anon_36 = c_int # /usr/include/SDL/SDL_video.h: 928
+enum_anon_38 = c_int # /usr/include/SDL/SDL_video.h: 928
 
 SDL_GRAB_QUERY = (-1) # /usr/include/SDL/SDL_video.h: 928
 
@@ -1927,21 +1959,100 @@ SDL_GRAB_ON = 1 # /usr/include/SDL/SDL_video.h: 928
 
 SDL_GRAB_FULLSCREEN = (SDL_GRAB_ON + 1) # /usr/include/SDL/SDL_video.h: 928
 
-SDL_GrabMode = enum_anon_36 # /usr/include/SDL/SDL_video.h: 928
+SDL_GrabMode = enum_anon_38 # /usr/include/SDL/SDL_video.h: 928
 
 # /usr/include/SDL/SDL_video.h: 937
 if hasattr(_libs['SDL'], 'SDL_WM_GrabInput'):
     SDL_WM_GrabInput = _libs['SDL'].SDL_WM_GrabInput
-    SDL_WM_GrabInput.restype = SDL_GrabMode
     SDL_WM_GrabInput.argtypes = [SDL_GrabMode]
+    SDL_WM_GrabInput.restype = SDL_GrabMode
 
 # /usr/include/SDL/SDL_video.h: 942
 if hasattr(_libs['SDL'], 'SDL_SoftStretch'):
     SDL_SoftStretch = _libs['SDL'].SDL_SoftStretch
-    SDL_SoftStretch.restype = c_int
     SDL_SoftStretch.argtypes = [POINTER(SDL_Surface), POINTER(SDL_Rect), POINTER(SDL_Surface), POINTER(SDL_Rect)]
+    SDL_SoftStretch.restype = c_int
 
-enum_anon_37 = c_int # /usr/include/SDL/SDL_events.h: 83
+# /usr/include/SDL/SDL_mouse.h: 40
+class struct_WMcursor(Structure):
+    pass
+
+WMcursor = struct_WMcursor # /usr/include/SDL/SDL_mouse.h: 40
+
+# /usr/include/SDL/SDL_mouse.h: 48
+class struct_SDL_Cursor(Structure):
+    pass
+
+struct_SDL_Cursor.__slots__ = [
+    'area',
+    'hot_x',
+    'hot_y',
+    'data',
+    'mask',
+    'save',
+    'wm_cursor',
+]
+struct_SDL_Cursor._fields_ = [
+    ('area', SDL_Rect),
+    ('hot_x', Sint16),
+    ('hot_y', Sint16),
+    ('data', POINTER(Uint8)),
+    ('mask', POINTER(Uint8)),
+    ('save', POINTER(Uint8) * 2),
+    ('wm_cursor', POINTER(WMcursor)),
+]
+
+SDL_Cursor = struct_SDL_Cursor # /usr/include/SDL/SDL_mouse.h: 48
+
+# /usr/include/SDL/SDL_mouse.h: 57
+if hasattr(_libs['SDL'], 'SDL_GetMouseState'):
+    SDL_GetMouseState = _libs['SDL'].SDL_GetMouseState
+    SDL_GetMouseState.argtypes = [POINTER(c_int), POINTER(c_int)]
+    SDL_GetMouseState.restype = Uint8
+
+# /usr/include/SDL/SDL_mouse.h: 65
+if hasattr(_libs['SDL'], 'SDL_GetRelativeMouseState'):
+    SDL_GetRelativeMouseState = _libs['SDL'].SDL_GetRelativeMouseState
+    SDL_GetRelativeMouseState.argtypes = [POINTER(c_int), POINTER(c_int)]
+    SDL_GetRelativeMouseState.restype = Uint8
+
+# /usr/include/SDL/SDL_mouse.h: 70
+if hasattr(_libs['SDL'], 'SDL_WarpMouse'):
+    SDL_WarpMouse = _libs['SDL'].SDL_WarpMouse
+    SDL_WarpMouse.argtypes = [Uint16, Uint16]
+    SDL_WarpMouse.restype = None
+
+# /usr/include/SDL/SDL_mouse.h: 85
+if hasattr(_libs['SDL'], 'SDL_CreateCursor'):
+    SDL_CreateCursor = _libs['SDL'].SDL_CreateCursor
+    SDL_CreateCursor.argtypes = [POINTER(Uint8), POINTER(Uint8), c_int, c_int, c_int, c_int]
+    SDL_CreateCursor.restype = POINTER(SDL_Cursor)
+
+# /usr/include/SDL/SDL_mouse.h: 93
+if hasattr(_libs['SDL'], 'SDL_SetCursor'):
+    SDL_SetCursor = _libs['SDL'].SDL_SetCursor
+    SDL_SetCursor.argtypes = [POINTER(SDL_Cursor)]
+    SDL_SetCursor.restype = None
+
+# /usr/include/SDL/SDL_mouse.h: 98
+if hasattr(_libs['SDL'], 'SDL_GetCursor'):
+    SDL_GetCursor = _libs['SDL'].SDL_GetCursor
+    SDL_GetCursor.argtypes = []
+    SDL_GetCursor.restype = POINTER(SDL_Cursor)
+
+# /usr/include/SDL/SDL_mouse.h: 103
+if hasattr(_libs['SDL'], 'SDL_FreeCursor'):
+    SDL_FreeCursor = _libs['SDL'].SDL_FreeCursor
+    SDL_FreeCursor.argtypes = [POINTER(SDL_Cursor)]
+    SDL_FreeCursor.restype = None
+
+# /usr/include/SDL/SDL_mouse.h: 112
+if hasattr(_libs['SDL'], 'SDL_ShowCursor'):
+    SDL_ShowCursor = _libs['SDL'].SDL_ShowCursor
+    SDL_ShowCursor.argtypes = [c_int]
+    SDL_ShowCursor.restype = c_int
+
+enum_anon_39 = c_int # /usr/include/SDL/SDL_events.h: 83
 
 SDL_NOEVENT = 0 # /usr/include/SDL/SDL_events.h: 83
 
@@ -1995,9 +2106,9 @@ SDL_USEREVENT = 24 # /usr/include/SDL/SDL_events.h: 83
 
 SDL_NUMEVENTS = 32 # /usr/include/SDL/SDL_events.h: 83
 
-SDL_EventType = enum_anon_37 # /usr/include/SDL/SDL_events.h: 83
+SDL_EventType = enum_anon_39 # /usr/include/SDL/SDL_events.h: 83
 
-enum_anon_38 = c_int # /usr/include/SDL/SDL_events.h: 114
+enum_anon_40 = c_int # /usr/include/SDL/SDL_events.h: 114
 
 SDL_ACTIVEEVENTMASK = (1 << SDL_ACTIVEEVENT) # /usr/include/SDL/SDL_events.h: 114
 
@@ -2035,7 +2146,7 @@ SDL_QUITMASK = (1 << SDL_QUIT) # /usr/include/SDL/SDL_events.h: 114
 
 SDL_SYSWMEVENTMASK = (1 << SDL_SYSWMEVENT) # /usr/include/SDL/SDL_events.h: 114
 
-SDL_EventMask = enum_anon_38 # /usr/include/SDL/SDL_events.h: 114
+SDL_EventMask = enum_anon_40 # /usr/include/SDL/SDL_events.h: 114
 
 # /usr/include/SDL/SDL_events.h: 123
 class struct_SDL_ActiveEvent(Structure):
@@ -2324,10 +2435,10 @@ SDL_Event = union_SDL_Event # /usr/include/SDL/SDL_events.h: 242
 # /usr/include/SDL/SDL_events.h: 251
 if hasattr(_libs['SDL'], 'SDL_PumpEvents'):
     SDL_PumpEvents = _libs['SDL'].SDL_PumpEvents
-    SDL_PumpEvents.restype = None
     SDL_PumpEvents.argtypes = []
+    SDL_PumpEvents.restype = None
 
-enum_anon_39 = c_int # /usr/include/SDL/SDL_events.h: 257
+enum_anon_41 = c_int # /usr/include/SDL/SDL_events.h: 257
 
 SDL_ADDEVENT = 0 # /usr/include/SDL/SDL_events.h: 257
 
@@ -2335,71 +2446,71 @@ SDL_PEEKEVENT = (SDL_ADDEVENT + 1) # /usr/include/SDL/SDL_events.h: 257
 
 SDL_GETEVENT = (SDL_PEEKEVENT + 1) # /usr/include/SDL/SDL_events.h: 257
 
-SDL_eventaction = enum_anon_39 # /usr/include/SDL/SDL_events.h: 257
+SDL_eventaction = enum_anon_41 # /usr/include/SDL/SDL_events.h: 257
 
 # /usr/include/SDL/SDL_events.h: 277
 if hasattr(_libs['SDL'], 'SDL_PeepEvents'):
     SDL_PeepEvents = _libs['SDL'].SDL_PeepEvents
-    SDL_PeepEvents.restype = c_int
     SDL_PeepEvents.argtypes = [POINTER(SDL_Event), c_int, SDL_eventaction, Uint32]
+    SDL_PeepEvents.restype = c_int
 
 # /usr/include/SDL/SDL_events.h: 284
 if hasattr(_libs['SDL'], 'SDL_PollEvent'):
     SDL_PollEvent = _libs['SDL'].SDL_PollEvent
-    SDL_PollEvent.restype = c_int
     SDL_PollEvent.argtypes = [POINTER(SDL_Event)]
+    SDL_PollEvent.restype = c_int
 
 # /usr/include/SDL/SDL_events.h: 290
 if hasattr(_libs['SDL'], 'SDL_WaitEvent'):
     SDL_WaitEvent = _libs['SDL'].SDL_WaitEvent
-    SDL_WaitEvent.restype = c_int
     SDL_WaitEvent.argtypes = [POINTER(SDL_Event)]
+    SDL_WaitEvent.restype = c_int
 
 # /usr/include/SDL/SDL_events.h: 296
 if hasattr(_libs['SDL'], 'SDL_PushEvent'):
     SDL_PushEvent = _libs['SDL'].SDL_PushEvent
-    SDL_PushEvent.restype = c_int
     SDL_PushEvent.argtypes = [POINTER(SDL_Event)]
+    SDL_PushEvent.restype = c_int
 
 SDL_EventFilter = CFUNCTYPE(UNCHECKED(c_int), POINTER(SDL_Event)) # /usr/include/SDL/SDL_events.h: 300
 
 # /usr/include/SDL/SDL_events.h: 323
 if hasattr(_libs['SDL'], 'SDL_SetEventFilter'):
     SDL_SetEventFilter = _libs['SDL'].SDL_SetEventFilter
-    SDL_SetEventFilter.restype = None
     SDL_SetEventFilter.argtypes = [SDL_EventFilter]
+    SDL_SetEventFilter.restype = None
 
 # /usr/include/SDL/SDL_events.h: 329
 if hasattr(_libs['SDL'], 'SDL_GetEventFilter'):
     SDL_GetEventFilter = _libs['SDL'].SDL_GetEventFilter
-    SDL_GetEventFilter.restype = SDL_EventFilter
     SDL_GetEventFilter.argtypes = []
+    SDL_GetEventFilter.restype = SDL_EventFilter
 
 # /usr/include/SDL/SDL_events.h: 348
 if hasattr(_libs['SDL'], 'SDL_EventState'):
     SDL_EventState = _libs['SDL'].SDL_EventState
-    SDL_EventState.restype = Uint8
     SDL_EventState.argtypes = [Uint8, c_int]
+    SDL_EventState.restype = Uint8
 
 # /usr/include/SDL/SDL_timer.h: 49
 if hasattr(_libs['SDL'], 'SDL_GetTicks'):
     SDL_GetTicks = _libs['SDL'].SDL_GetTicks
-    SDL_GetTicks.restype = Uint32
     SDL_GetTicks.argtypes = []
+    SDL_GetTicks.restype = Uint32
 
 # /usr/include/SDL/SDL_timer.h: 52
 if hasattr(_libs['SDL'], 'SDL_Delay'):
     SDL_Delay = _libs['SDL'].SDL_Delay
-    SDL_Delay.restype = None
     SDL_Delay.argtypes = [Uint32]
+    SDL_Delay.restype = None
 
 SDL_TimerCallback = CFUNCTYPE(UNCHECKED(Uint32), Uint32) # /usr/include/SDL/SDL_timer.h: 55
 
 # /usr/include/SDL/SDL_timer.h: 86
 if hasattr(_libs['SDL'], 'SDL_SetTimer'):
     SDL_SetTimer = _libs['SDL'].SDL_SetTimer
-    SDL_SetTimer.restype = c_int
     SDL_SetTimer.argtypes = [Uint32, SDL_TimerCallback]
+    SDL_SetTimer.restype = c_int
 
 SDL_NewTimerCallback = CFUNCTYPE(UNCHECKED(Uint32), Uint32, POINTER(None)) # /usr/include/SDL/SDL_timer.h: 101
 
@@ -2412,44 +2523,44 @@ SDL_TimerID = POINTER(struct__SDL_TimerID) # /usr/include/SDL/SDL_timer.h: 104
 # /usr/include/SDL/SDL_timer.h: 109
 if hasattr(_libs['SDL'], 'SDL_AddTimer'):
     SDL_AddTimer = _libs['SDL'].SDL_AddTimer
-    SDL_AddTimer.restype = SDL_TimerID
     SDL_AddTimer.argtypes = [Uint32, SDL_NewTimerCallback, POINTER(None)]
+    SDL_AddTimer.restype = SDL_TimerID
 
 # /usr/include/SDL/SDL_timer.h: 115
 if hasattr(_libs['SDL'], 'SDL_RemoveTimer'):
     SDL_RemoveTimer = _libs['SDL'].SDL_RemoveTimer
-    SDL_RemoveTimer.restype = SDL_bool
     SDL_RemoveTimer.argtypes = [SDL_TimerID]
+    SDL_RemoveTimer.restype = SDL_bool
 
 # /usr/include/SDL/SDL.h: 76
 if hasattr(_libs['SDL'], 'SDL_Init'):
     SDL_Init = _libs['SDL'].SDL_Init
-    SDL_Init.restype = c_int
     SDL_Init.argtypes = [Uint32]
+    SDL_Init.restype = c_int
 
 # /usr/include/SDL/SDL.h: 79
 if hasattr(_libs['SDL'], 'SDL_InitSubSystem'):
     SDL_InitSubSystem = _libs['SDL'].SDL_InitSubSystem
-    SDL_InitSubSystem.restype = c_int
     SDL_InitSubSystem.argtypes = [Uint32]
+    SDL_InitSubSystem.restype = c_int
 
 # /usr/include/SDL/SDL.h: 82
 if hasattr(_libs['SDL'], 'SDL_QuitSubSystem'):
     SDL_QuitSubSystem = _libs['SDL'].SDL_QuitSubSystem
-    SDL_QuitSubSystem.restype = None
     SDL_QuitSubSystem.argtypes = [Uint32]
+    SDL_QuitSubSystem.restype = None
 
 # /usr/include/SDL/SDL.h: 88
 if hasattr(_libs['SDL'], 'SDL_WasInit'):
     SDL_WasInit = _libs['SDL'].SDL_WasInit
-    SDL_WasInit.restype = Uint32
     SDL_WasInit.argtypes = [Uint32]
+    SDL_WasInit.restype = Uint32
 
 # /usr/include/SDL/SDL.h: 93
 if hasattr(_libs['SDL'], 'SDL_Quit'):
     SDL_Quit = _libs['SDL'].SDL_Quit
-    SDL_Quit.restype = None
     SDL_Quit.argtypes = []
+    SDL_Quit.restype = None
 
 # /usr/include/SDL/SDL_config.h: 53
 try:
@@ -2457,355 +2568,355 @@ try:
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 55
+# /usr/include/SDL/SDL_config.h: 56
 try:
     SDL_BYTEORDER = 1234
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 57
+# /usr/include/SDL/SDL_config.h: 59
 try:
     HAVE_LIBC = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 60
+# /usr/include/SDL/SDL_config.h: 63
 try:
     HAVE_ALLOCA_H = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 60
+# /usr/include/SDL/SDL_config.h: 64
 try:
     HAVE_SYS_TYPES_H = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 60
+# /usr/include/SDL/SDL_config.h: 65
 try:
     HAVE_STDIO_H = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 60
+# /usr/include/SDL/SDL_config.h: 66
 try:
     STDC_HEADERS = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 60
+# /usr/include/SDL/SDL_config.h: 67
 try:
     HAVE_STDLIB_H = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 60
+# /usr/include/SDL/SDL_config.h: 68
 try:
     HAVE_STDARG_H = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 60
+# /usr/include/SDL/SDL_config.h: 69
 try:
     HAVE_MALLOC_H = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 60
+# /usr/include/SDL/SDL_config.h: 70
 try:
     HAVE_MEMORY_H = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 60
+# /usr/include/SDL/SDL_config.h: 71
 try:
     HAVE_STRING_H = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 60
+# /usr/include/SDL/SDL_config.h: 72
 try:
     HAVE_STRINGS_H = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 60
+# /usr/include/SDL/SDL_config.h: 73
 try:
     HAVE_INTTYPES_H = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 60
+# /usr/include/SDL/SDL_config.h: 74
 try:
     HAVE_STDINT_H = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 60
+# /usr/include/SDL/SDL_config.h: 75
 try:
     HAVE_CTYPE_H = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 60
+# /usr/include/SDL/SDL_config.h: 76
 try:
     HAVE_MATH_H = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 60
+# /usr/include/SDL/SDL_config.h: 77
 try:
     HAVE_ICONV_H = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 60
+# /usr/include/SDL/SDL_config.h: 78
 try:
     HAVE_SIGNAL_H = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 63
+# /usr/include/SDL/SDL_config.h: 82
 try:
     HAVE_MALLOC = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 63
+# /usr/include/SDL/SDL_config.h: 83
 try:
     HAVE_CALLOC = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 63
+# /usr/include/SDL/SDL_config.h: 84
 try:
     HAVE_REALLOC = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 63
+# /usr/include/SDL/SDL_config.h: 85
 try:
     HAVE_FREE = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 63
+# /usr/include/SDL/SDL_config.h: 86
 try:
     HAVE_ALLOCA = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 64
+# /usr/include/SDL/SDL_config.h: 88
 try:
     HAVE_GETENV = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 64
+# /usr/include/SDL/SDL_config.h: 89
 try:
     HAVE_PUTENV = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 64
+# /usr/include/SDL/SDL_config.h: 90
 try:
     HAVE_UNSETENV = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 65
+# /usr/include/SDL/SDL_config.h: 92
 try:
     HAVE_QSORT = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 65
+# /usr/include/SDL/SDL_config.h: 93
 try:
     HAVE_ABS = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 65
+# /usr/include/SDL/SDL_config.h: 94
 try:
     HAVE_BCOPY = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 65
+# /usr/include/SDL/SDL_config.h: 95
 try:
     HAVE_MEMSET = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 65
+# /usr/include/SDL/SDL_config.h: 96
 try:
     HAVE_MEMCPY = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 65
+# /usr/include/SDL/SDL_config.h: 97
 try:
     HAVE_MEMMOVE = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 65
+# /usr/include/SDL/SDL_config.h: 98
 try:
     HAVE_MEMCMP = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 65
+# /usr/include/SDL/SDL_config.h: 99
 try:
     HAVE_STRLEN = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 67
+# /usr/include/SDL/SDL_config.h: 102
 try:
     HAVE_STRDUP = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 72
+# /usr/include/SDL/SDL_config.h: 108
 try:
     HAVE_STRCHR = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 72
+# /usr/include/SDL/SDL_config.h: 109
 try:
     HAVE_STRRCHR = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 72
+# /usr/include/SDL/SDL_config.h: 110
 try:
     HAVE_STRSTR = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 76
+# /usr/include/SDL/SDL_config.h: 115
 try:
     HAVE_STRTOL = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 76
+# /usr/include/SDL/SDL_config.h: 116
 try:
     HAVE_STRTOUL = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 78
+# /usr/include/SDL/SDL_config.h: 119
 try:
     HAVE_STRTOLL = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 78
+# /usr/include/SDL/SDL_config.h: 120
 try:
     HAVE_STRTOULL = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 78
+# /usr/include/SDL/SDL_config.h: 121
 try:
     HAVE_STRTOD = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 78
+# /usr/include/SDL/SDL_config.h: 122
 try:
     HAVE_ATOI = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 78
+# /usr/include/SDL/SDL_config.h: 123
 try:
     HAVE_ATOF = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 78
+# /usr/include/SDL/SDL_config.h: 124
 try:
     HAVE_STRCMP = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 78
+# /usr/include/SDL/SDL_config.h: 125
 try:
     HAVE_STRNCMP = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 79
+# /usr/include/SDL/SDL_config.h: 127
 try:
     HAVE_STRCASECMP = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 80
+# /usr/include/SDL/SDL_config.h: 129
 try:
     HAVE_STRNCASECMP = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 80
+# /usr/include/SDL/SDL_config.h: 130
 try:
     HAVE_SSCANF = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 80
+# /usr/include/SDL/SDL_config.h: 131
 try:
     HAVE_SNPRINTF = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 80
+# /usr/include/SDL/SDL_config.h: 132
 try:
     HAVE_VSNPRINTF = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 80
+# /usr/include/SDL/SDL_config.h: 133
 try:
     HAVE_ICONV = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 80
+# /usr/include/SDL/SDL_config.h: 134
 try:
     HAVE_SIGACTION = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 80
+# /usr/include/SDL/SDL_config.h: 135
 try:
     HAVE_SA_SIGACTION = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 80
+# /usr/include/SDL/SDL_config.h: 136
 try:
     HAVE_SETJMP = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 80
+# /usr/include/SDL/SDL_config.h: 137
 try:
     HAVE_NANOSLEEP = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 82
+# /usr/include/SDL/SDL_config.h: 140
 try:
     HAVE_MPROTECT = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 82
+# /usr/include/SDL/SDL_config.h: 141
 try:
     HAVE_SEM_TIMEDWAIT = 1
 except:
@@ -2823,7 +2934,7 @@ try:
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 170
+# /usr/include/SDL/SDL_config.h: 171
 try:
     SDL_AUDIO_DRIVER_DUMMY = 1
 except:
@@ -2841,7 +2952,7 @@ try:
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 213
+# /usr/include/SDL/SDL_config.h: 214
 try:
     SDL_JOYSTICK_LINUX = 1
 except:
@@ -2859,7 +2970,7 @@ try:
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 238
+# /usr/include/SDL/SDL_config.h: 239
 try:
     SDL_THREAD_PTHREAD_RECURSIVE_MUTEX = 1
 except:
@@ -2871,13 +2982,13 @@ try:
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 256
+# /usr/include/SDL/SDL_config.h: 257
 try:
     SDL_VIDEO_DRIVER_AALIB = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 263
+# /usr/include/SDL/SDL_config.h: 265
 try:
     SDL_VIDEO_DRIVER_DUMMY = 1
 except:
@@ -2889,91 +3000,91 @@ try:
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 286
+# /usr/include/SDL/SDL_config.h: 287
 try:
     SDL_VIDEO_DRIVER_X11_DYNAMIC = 'libX11.so.6'
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 286
+# /usr/include/SDL/SDL_config.h: 288
 try:
     SDL_VIDEO_DRIVER_X11_DYNAMIC_XEXT = 'libXext.so.6'
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 286
+# /usr/include/SDL/SDL_config.h: 289
 try:
     SDL_VIDEO_DRIVER_X11_DYNAMIC_XRANDR = 'libXrandr.so.2'
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 286
+# /usr/include/SDL/SDL_config.h: 290
 try:
     SDL_VIDEO_DRIVER_X11_DYNAMIC_XRENDER = 'libXrender.so.1'
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 286
+# /usr/include/SDL/SDL_config.h: 291
 try:
     SDL_VIDEO_DRIVER_X11_VIDMODE = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 288
+# /usr/include/SDL/SDL_config.h: 294
 try:
     SDL_VIDEO_DRIVER_X11_XRANDR = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 288
+# /usr/include/SDL/SDL_config.h: 295
 try:
     SDL_VIDEO_DRIVER_X11_XV = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 291
+# /usr/include/SDL/SDL_config.h: 299
 try:
     SDL_VIDEO_OPENGL = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 291
+# /usr/include/SDL/SDL_config.h: 300
 try:
     SDL_VIDEO_OPENGL_GLX = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 296
+# /usr/include/SDL/SDL_config.h: 306
 try:
     SDL_VIDEO_DISABLE_SCREENSAVER = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_config.h: 298
+# /usr/include/SDL/SDL_config.h: 309
 try:
     SDL_ASSEMBLY_ROUTINES = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_keysym.h: 320
+# /usr/include/SDL/SDL_keysym.h: 321
 try:
     KMOD_CTRL = (KMOD_LCTRL | KMOD_RCTRL)
 except:
     pass
 
-# /usr/include/SDL/SDL_keysym.h: 320
+# /usr/include/SDL/SDL_keysym.h: 322
 try:
     KMOD_SHIFT = (KMOD_LSHIFT | KMOD_RSHIFT)
 except:
     pass
 
-# /usr/include/SDL/SDL_keysym.h: 320
+# /usr/include/SDL/SDL_keysym.h: 323
 try:
     KMOD_ALT = (KMOD_LALT | KMOD_RALT)
 except:
     pass
 
-# /usr/include/SDL/SDL_keysym.h: 320
+# /usr/include/SDL/SDL_keysym.h: 324
 try:
     KMOD_META = (KMOD_LMETA | KMOD_RMETA)
 except:
@@ -2991,7 +3102,7 @@ try:
 except:
     pass
 
-# /usr/include/SDL/SDL_keyboard.h: 84
+# /usr/include/SDL/SDL_keyboard.h: 85
 try:
     SDL_DEFAULT_REPEAT_INTERVAL = 30
 except:
@@ -3003,13 +3114,13 @@ try:
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 44
+# /usr/include/SDL/SDL_video.h: 45
 try:
     SDL_ALPHA_TRANSPARENT = 0
 except:
     pass
 
-SDL_Colour = SDL_Color # /usr/include/SDL/SDL_video.h: 59
+SDL_Colour = SDL_Color # /usr/include/SDL/SDL_video.h: 61
 
 # /usr/include/SDL/SDL_video.h: 131
 try:
@@ -3017,103 +3128,103 @@ try:
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 131
+# /usr/include/SDL/SDL_video.h: 132
 try:
     SDL_HWSURFACE = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 131
+# /usr/include/SDL/SDL_video.h: 133
 try:
     SDL_ASYNCBLIT = 4
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 135
+# /usr/include/SDL/SDL_video.h: 138
 try:
     SDL_ANYFORMAT = 268435456
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 135
+# /usr/include/SDL/SDL_video.h: 139
 try:
     SDL_HWPALETTE = 536870912
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 135
+# /usr/include/SDL/SDL_video.h: 140
 try:
     SDL_DOUBLEBUF = 1073741824
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 135
+# /usr/include/SDL/SDL_video.h: 141
 try:
     SDL_FULLSCREEN = 2147483648
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 135
+# /usr/include/SDL/SDL_video.h: 142
 try:
     SDL_OPENGL = 2
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 135
+# /usr/include/SDL/SDL_video.h: 143
 try:
     SDL_OPENGLBLIT = 10
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 135
+# /usr/include/SDL/SDL_video.h: 144
 try:
     SDL_RESIZABLE = 16
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 135
+# /usr/include/SDL/SDL_video.h: 145
 try:
     SDL_NOFRAME = 32
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 139
+# /usr/include/SDL/SDL_video.h: 150
 try:
     SDL_HWACCEL = 256
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 139
+# /usr/include/SDL/SDL_video.h: 151
 try:
     SDL_SRCCOLORKEY = 4096
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 139
+# /usr/include/SDL/SDL_video.h: 152
 try:
     SDL_RLEACCELOK = 8192
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 139
+# /usr/include/SDL/SDL_video.h: 153
 try:
     SDL_RLEACCEL = 16384
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 139
+# /usr/include/SDL/SDL_video.h: 154
 try:
     SDL_SRCALPHA = 65536
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 139
+# /usr/include/SDL/SDL_video.h: 155
 try:
     SDL_PREALLOC = 16777216
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 144
+# /usr/include/SDL/SDL_video.h: 161
 def SDL_MUSTLOCK(surface):
     return ((surface.contents.offset) or ((((surface.contents.flags).value) & ((SDL_HWSURFACE | SDL_ASYNCBLIT) | SDL_RLEACCEL)) != 0))
 
@@ -3123,37 +3234,37 @@ try:
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 200
+# /usr/include/SDL/SDL_video.h: 201
 try:
     SDL_IYUV_OVERLAY = 1448433993
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 200
+# /usr/include/SDL/SDL_video.h: 202
 try:
     SDL_YUY2_OVERLAY = 844715353
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 200
+# /usr/include/SDL/SDL_video.h: 203
 try:
     SDL_UYVY_OVERLAY = 1498831189
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 200
+# /usr/include/SDL/SDL_video.h: 204
 try:
     SDL_YVYU_OVERLAY = 1431918169
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 247
+# /usr/include/SDL/SDL_video.h: 252
 try:
     SDL_LOGPAL = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_video.h: 247
+# /usr/include/SDL/SDL_video.h: 253
 try:
     SDL_PHYSPAL = 2
 except:
@@ -3169,13 +3280,89 @@ except:
 def SDL_LoadBMP(file):
     return (SDL_LoadBMP_RW ((SDL_RWFromFile (file, 'rb')), 1))
 
-# /usr/include/SDL/SDL_video.h: 602
+# /usr/include/SDL/SDL_video.h: 603
 def SDL_SaveBMP(surface, file):
     return (SDL_SaveBMP_RW (surface, (SDL_RWFromFile (file, 'wb')), 1))
 
 # /usr/include/SDL/SDL_video.h: 743
 try:
     SDL_BlitSurface = SDL_UpperBlit
+except:
+    pass
+
+# /usr/include/SDL/SDL_mouse.h: 122
+def SDL_BUTTON(X):
+    return (1 << (X - 1))
+
+# /usr/include/SDL/SDL_mouse.h: 123
+try:
+    SDL_BUTTON_LEFT = 1
+except:
+    pass
+
+# /usr/include/SDL/SDL_mouse.h: 124
+try:
+    SDL_BUTTON_MIDDLE = 2
+except:
+    pass
+
+# /usr/include/SDL/SDL_mouse.h: 125
+try:
+    SDL_BUTTON_RIGHT = 3
+except:
+    pass
+
+# /usr/include/SDL/SDL_mouse.h: 126
+try:
+    SDL_BUTTON_WHEELUP = 4
+except:
+    pass
+
+# /usr/include/SDL/SDL_mouse.h: 127
+try:
+    SDL_BUTTON_WHEELDOWN = 5
+except:
+    pass
+
+# /usr/include/SDL/SDL_mouse.h: 128
+try:
+    SDL_BUTTON_X1 = 6
+except:
+    pass
+
+# /usr/include/SDL/SDL_mouse.h: 129
+try:
+    SDL_BUTTON_X2 = 7
+except:
+    pass
+
+# /usr/include/SDL/SDL_mouse.h: 130
+try:
+    SDL_BUTTON_LMASK = (SDL_BUTTON (SDL_BUTTON_LEFT))
+except:
+    pass
+
+# /usr/include/SDL/SDL_mouse.h: 131
+try:
+    SDL_BUTTON_MMASK = (SDL_BUTTON (SDL_BUTTON_MIDDLE))
+except:
+    pass
+
+# /usr/include/SDL/SDL_mouse.h: 132
+try:
+    SDL_BUTTON_RMASK = (SDL_BUTTON (SDL_BUTTON_RIGHT))
+except:
+    pass
+
+# /usr/include/SDL/SDL_mouse.h: 133
+try:
+    SDL_BUTTON_X1MASK = (SDL_BUTTON (SDL_BUTTON_X1))
+except:
+    pass
+
+# /usr/include/SDL/SDL_mouse.h: 134
+try:
+    SDL_BUTTON_X2MASK = (SDL_BUTTON (SDL_BUTTON_X2))
 except:
     pass
 
@@ -3191,17 +3378,17 @@ try:
 except:
     pass
 
-# /usr/include/SDL/SDL_events.h: 47
+# /usr/include/SDL/SDL_events.h: 48
 try:
     SDL_PRESSED = 1
 except:
     pass
 
-# /usr/include/SDL/SDL_events.h: 85
+# /usr/include/SDL/SDL_events.h: 87
 def SDL_EVENTMASK(X):
     return (1 << X)
 
-# /usr/include/SDL/SDL_events.h: 112
+# /usr/include/SDL/SDL_events.h: 115
 try:
     SDL_ALLEVENTS = 4294967295
 except:
@@ -3213,19 +3400,19 @@ try:
 except:
     pass
 
-# /usr/include/SDL/SDL_events.h: 334
+# /usr/include/SDL/SDL_events.h: 335
 try:
     SDL_IGNORE = 0
 except:
     pass
 
-# /usr/include/SDL/SDL_events.h: 334
+# /usr/include/SDL/SDL_events.h: 336
 try:
     SDL_DISABLE = 0
 except:
     pass
 
-# /usr/include/SDL/SDL_events.h: 334
+# /usr/include/SDL/SDL_events.h: 337
 try:
     SDL_ENABLE = 1
 except:
@@ -3237,7 +3424,7 @@ try:
 except:
     pass
 
-# /usr/include/SDL/SDL_timer.h: 42
+# /usr/include/SDL/SDL_timer.h: 43
 try:
     TIMER_RESOLUTION = 10
 except:
@@ -3249,43 +3436,43 @@ try:
 except:
     pass
 
-# /usr/include/SDL/SDL.h: 61
+# /usr/include/SDL/SDL.h: 62
 try:
     SDL_INIT_AUDIO = 16
 except:
     pass
 
-# /usr/include/SDL/SDL.h: 61
+# /usr/include/SDL/SDL.h: 63
 try:
     SDL_INIT_VIDEO = 32
 except:
     pass
 
-# /usr/include/SDL/SDL.h: 61
+# /usr/include/SDL/SDL.h: 64
 try:
     SDL_INIT_CDROM = 256
 except:
     pass
 
-# /usr/include/SDL/SDL.h: 61
+# /usr/include/SDL/SDL.h: 65
 try:
     SDL_INIT_JOYSTICK = 512
 except:
     pass
 
-# /usr/include/SDL/SDL.h: 61
+# /usr/include/SDL/SDL.h: 66
 try:
     SDL_INIT_NOPARACHUTE = 1048576
 except:
     pass
 
-# /usr/include/SDL/SDL.h: 61
+# /usr/include/SDL/SDL.h: 67
 try:
     SDL_INIT_EVENTTHREAD = 16777216
 except:
     pass
 
-# /usr/include/SDL/SDL.h: 61
+# /usr/include/SDL/SDL.h: 68
 try:
     SDL_INIT_EVERYTHING = 65535
 except:
@@ -3314,6 +3501,10 @@ private_yuvhwfuncs = struct_private_yuvhwfuncs # /usr/include/SDL/SDL_video.h: 2
 private_yuvhwdata = struct_private_yuvhwdata # /usr/include/SDL/SDL_video.h: 218
 
 SDL_Overlay = struct_SDL_Overlay # /usr/include/SDL/SDL_video.h: 226
+
+WMcursor = struct_WMcursor # /usr/include/SDL/SDL_mouse.h: 40
+
+SDL_Cursor = struct_SDL_Cursor # /usr/include/SDL/SDL_mouse.h: 48
 
 SDL_ActiveEvent = struct_SDL_ActiveEvent # /usr/include/SDL/SDL_events.h: 123
 

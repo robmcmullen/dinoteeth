@@ -184,7 +184,7 @@ class MutableString(UserString):
     def __init__(self, string=""):
         self.data = string
     def __hash__(self):
-        raise TypeError, "unhashable type (it is mutable)"
+        raise TypeError("unhashable type (it is mutable)")
     def __setitem__(self, index, sub):
         if index < 0:
             index += len(self.data)
@@ -233,7 +233,7 @@ class String(MutableString, Union):
 
     def __len__(self):
         return self.data and len(self.data) or 0
-    
+
     def from_param(cls, obj):
         # Convert None or 0
         if obj is None or obj == 0:
@@ -246,15 +246,15 @@ class String(MutableString, Union):
         # Convert from str
         elif isinstance(obj, str):
             return cls(obj)
-        
+
         # Convert from c_char_p
         elif isinstance(obj, c_char_p):
             return obj
-        
+
         # Convert from POINTER(c_char)
         elif isinstance(obj, POINTER(c_char)):
             return obj
-        
+
         # Convert from raw pointer
         elif isinstance(obj, int):
             return cls(cast(obj, POINTER(c_char)))
@@ -264,7 +264,7 @@ class String(MutableString, Union):
             return String.from_param(obj._as_parameter_)
     from_param = classmethod(from_param)
 
-def ReturnString(obj):
+def ReturnString(obj, func=None, arguments=None):
     return String.from_param(obj)
 
 # As of ctypes 1.0, ctypes does not support custom error-checking
@@ -300,7 +300,6 @@ class _variadic_function(object):
             i+=1
         return self.func(*fixed_args+list(args[i:]))
 
-
 # End preamble
 
 _libs = {}
@@ -312,14 +311,14 @@ _libdirs = ['/usr/lib']
 # Copyright (c) 2008 David James
 # Copyright (c) 2006-2008 Alex Holkner
 # All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions 
+# modification, are permitted provided that the following conditions
 # are met:
 #
 #  * Redistributions of source code must retain the above copyright
 #    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright 
+#  * Redistributions in binary form must reproduce the above copyright
 #    notice, this list of conditions and the following disclaimer in
 #    the documentation and/or other materials provided with the
 #    distribution.
@@ -355,17 +354,17 @@ def _environ_path(name):
 class LibraryLoader(object):
     def __init__(self):
         self.other_dirs=[]
-    
+
     def load_library(self,libname):
         """Given the name of a library, load it."""
         paths = self.getpaths(libname)
-        
+
         for path in paths:
             if os.path.exists(path):
                 return self.load(path)
-        
-        raise ImportError,"%s not found." % libname
-    
+
+        raise ImportError("%s not found." % libname)
+
     def load(self,path):
         """Given a path to a library, load it."""
         try:
@@ -378,20 +377,20 @@ class LibraryLoader(object):
             else:
                 return ctypes.cdll.LoadLibrary(path)
         except OSError,e:
-            raise ImportError,e
-    
+            raise ImportError(e)
+
     def getpaths(self,libname):
         """Return a list of paths where the library might be found."""
         if os.path.isabs(libname):
             yield libname
-        
+
         else:
             for path in self.getplatformpaths(libname):
                 yield path
-            
+
             path = ctypes.util.find_library(libname)
             if path: yield path
-    
+
     def getplatformpaths(self, libname):
         return []
 
@@ -400,20 +399,20 @@ class LibraryLoader(object):
 class DarwinLibraryLoader(LibraryLoader):
     name_formats = ["lib%s.dylib", "lib%s.so", "lib%s.bundle", "%s.dylib",
                 "%s.so", "%s.bundle", "%s"]
-    
+
     def getplatformpaths(self,libname):
         if os.path.pathsep in libname:
             names = [libname]
         else:
             names = [format % libname for format in self.name_formats]
-        
+
         for dir in self.getdirs(libname):
             for name in names:
                 yield os.path.join(dir,name)
-    
+
     def getdirs(self,libname):
         '''Implements the dylib search as specified in Apple documentation:
-        
+
         http://developer.apple.com/documentation/DeveloperTools/Conceptual/
             DynamicLibraries/Articles/DynamicLibraryUsageGuidelines.html
 
@@ -426,9 +425,9 @@ class DarwinLibraryLoader(LibraryLoader):
         if not dyld_fallback_library_path:
             dyld_fallback_library_path = [os.path.expanduser('~/lib'),
                                           '/usr/local/lib', '/usr/lib']
-        
+
         dirs = []
-        
+
         if '/' in libname:
             dirs.extend(_environ_path("DYLD_LIBRARY_PATH"))
         else:
@@ -437,7 +436,7 @@ class DarwinLibraryLoader(LibraryLoader):
 
         dirs.extend(self.other_dirs)
         dirs.append(".")
-        
+
         if hasattr(sys, 'frozen') and sys.frozen == 'macosx_app':
             dirs.append(os.path.join(
                 os.environ['RESOURCEPATH'],
@@ -445,14 +444,14 @@ class DarwinLibraryLoader(LibraryLoader):
                 'Frameworks'))
 
         dirs.extend(dyld_fallback_library_path)
-        
+
         return dirs
 
 # Posix
 
 class PosixLibraryLoader(LibraryLoader):
     _ld_so_cache = None
-    
+
     def _create_ld_so_cache(self):
         # Recreate search path followed by ld.so.  This is going to be
         # slow to build, and incorrect (ld.so uses ld.so.cache, which may
@@ -488,7 +487,7 @@ class PosixLibraryLoader(LibraryLoader):
                     # Index by filename
                     if file not in cache:
                         cache[file] = path
-                    
+
                     # Index by library name
                     match = lib_re.match(file)
                     if match:
@@ -499,7 +498,7 @@ class PosixLibraryLoader(LibraryLoader):
                 pass
 
         self._ld_so_cache = cache
-    
+
     def getplatformpaths(self, libname):
         if self._ld_so_cache is None:
             self._create_ld_so_cache()
@@ -525,14 +524,39 @@ class _WindowsLibrary(object):
                 raise
 
 class WindowsLibraryLoader(LibraryLoader):
-    name_formats = ["%s.dll", "lib%s.dll"]
-    
+    name_formats = ["%s.dll", "lib%s.dll", "%slib.dll"]
+
+    def load_library(self, libname):
+        try:
+            result = LibraryLoader.load_library(self, libname)
+        except ImportError:
+            result = None
+            if os.path.sep not in libname:
+                for name in self.name_formats:
+                    try:
+                        result = getattr(ctypes.cdll, name % libname)
+                        if result:
+                            break
+                    except WindowsError:
+                        result = None
+            if result is None:
+                try:
+                    result = getattr(ctypes.cdll, libname)
+                except WindowsError:
+                    result = None
+            if result is None:
+                raise ImportError("%s not found." % libname)
+        return result
+
     def load(self, path):
         return _WindowsLibrary(path)
-    
+
     def getplatformpaths(self, libname):
         if os.path.sep not in libname:
             for name in self.name_formats:
+                dll_in_current_dir = os.path.abspath(name % libname)
+                if os.path.exists(dll_in_current_dir):
+                    yield dll_in_current_dir
                 path = ctypes.util.find_library(name % libname)
                 if path:
                     yield path
@@ -802,7 +826,7 @@ try:
 except:
     pass
 
-enum_anon_40 = c_int # /usr/include/SDL_Pango.h: 110
+enum_anon_42 = c_int # /usr/include/SDL_Pango.h: 110
 
 SDLPANGO_DIRECTION_LTR = 0 # /usr/include/SDL_Pango.h: 110
 
@@ -814,9 +838,9 @@ SDLPANGO_DIRECTION_WEAK_RTL = (SDLPANGO_DIRECTION_WEAK_LTR + 1) # /usr/include/S
 
 SDLPANGO_DIRECTION_NEUTRAL = (SDLPANGO_DIRECTION_WEAK_RTL + 1) # /usr/include/SDL_Pango.h: 110
 
-SDLPango_Direction = enum_anon_40 # /usr/include/SDL_Pango.h: 110
+SDLPango_Direction = enum_anon_42 # /usr/include/SDL_Pango.h: 110
 
-enum_anon_41 = c_int # /usr/include/SDL_Pango.h: 119
+enum_anon_43 = c_int # /usr/include/SDL_Pango.h: 119
 
 SDLPANGO_ALIGN_LEFT = 0 # /usr/include/SDL_Pango.h: 119
 
@@ -824,115 +848,115 @@ SDLPANGO_ALIGN_CENTER = (SDLPANGO_ALIGN_LEFT + 1) # /usr/include/SDL_Pango.h: 11
 
 SDLPANGO_ALIGN_RIGHT = (SDLPANGO_ALIGN_CENTER + 1) # /usr/include/SDL_Pango.h: 119
 
-SDLPango_Alignment = enum_anon_41 # /usr/include/SDL_Pango.h: 119
+SDLPango_Alignment = enum_anon_43 # /usr/include/SDL_Pango.h: 119
 
 # /usr/include/SDL_Pango.h: 121
 if hasattr(_libs['SDL_Pango'], 'SDLPango_Init'):
     SDLPango_Init = _libs['SDL_Pango'].SDLPango_Init
-    SDLPango_Init.restype = c_int
     SDLPango_Init.argtypes = []
+    SDLPango_Init.restype = c_int
 
 # /usr/include/SDL_Pango.h: 123
 if hasattr(_libs['SDL_Pango'], 'SDLPango_WasInit'):
     SDLPango_WasInit = _libs['SDL_Pango'].SDLPango_WasInit
-    SDLPango_WasInit.restype = c_int
     SDLPango_WasInit.argtypes = []
+    SDLPango_WasInit.restype = c_int
 
 # /usr/include/SDL_Pango.h: 125
 if hasattr(_libs['SDL_Pango'], 'SDLPango_CreateContext_GivenFontDesc'):
     SDLPango_CreateContext_GivenFontDesc = _libs['SDL_Pango'].SDLPango_CreateContext_GivenFontDesc
-    SDLPango_CreateContext_GivenFontDesc.restype = POINTER(SDLPango_Context)
     SDLPango_CreateContext_GivenFontDesc.argtypes = [String]
+    SDLPango_CreateContext_GivenFontDesc.restype = POINTER(SDLPango_Context)
 
 # /usr/include/SDL_Pango.h: 126
 if hasattr(_libs['SDL_Pango'], 'SDLPango_CreateContext'):
     SDLPango_CreateContext = _libs['SDL_Pango'].SDLPango_CreateContext
-    SDLPango_CreateContext.restype = POINTER(SDLPango_Context)
     SDLPango_CreateContext.argtypes = []
+    SDLPango_CreateContext.restype = POINTER(SDLPango_Context)
 
 # /usr/include/SDL_Pango.h: 128
 if hasattr(_libs['SDL_Pango'], 'SDLPango_FreeContext'):
     SDLPango_FreeContext = _libs['SDL_Pango'].SDLPango_FreeContext
-    SDLPango_FreeContext.restype = None
     SDLPango_FreeContext.argtypes = [POINTER(SDLPango_Context)]
+    SDLPango_FreeContext.restype = None
 
 # /usr/include/SDL_Pango.h: 131
 if hasattr(_libs['SDL_Pango'], 'SDLPango_SetSurfaceCreateArgs'):
     SDLPango_SetSurfaceCreateArgs = _libs['SDL_Pango'].SDLPango_SetSurfaceCreateArgs
-    SDLPango_SetSurfaceCreateArgs.restype = None
     SDLPango_SetSurfaceCreateArgs.argtypes = [POINTER(SDLPango_Context), Uint32, c_int, Uint32, Uint32, Uint32, Uint32]
+    SDLPango_SetSurfaceCreateArgs.restype = None
 
 # /usr/include/SDL_Pango.h: 137
 if hasattr(_libs['SDL_Pango'], 'SDLPango_CreateSurfaceDraw'):
     SDLPango_CreateSurfaceDraw = _libs['SDL_Pango'].SDLPango_CreateSurfaceDraw
-    SDLPango_CreateSurfaceDraw.restype = POINTER(SDL_Surface)
     SDLPango_CreateSurfaceDraw.argtypes = [POINTER(SDLPango_Context)]
+    SDLPango_CreateSurfaceDraw.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL_Pango.h: 140
 if hasattr(_libs['SDL_Pango'], 'SDLPango_Draw'):
     SDLPango_Draw = _libs['SDL_Pango'].SDLPango_Draw
-    SDLPango_Draw.restype = None
     SDLPango_Draw.argtypes = [POINTER(SDLPango_Context), POINTER(SDL_Surface), c_int, c_int]
+    SDLPango_Draw.restype = None
 
 # /usr/include/SDL_Pango.h: 145
 if hasattr(_libs['SDL_Pango'], 'SDLPango_SetDpi'):
     SDLPango_SetDpi = _libs['SDL_Pango'].SDLPango_SetDpi
-    SDLPango_SetDpi.restype = None
     SDLPango_SetDpi.argtypes = [POINTER(SDLPango_Context), c_double, c_double]
+    SDLPango_SetDpi.restype = None
 
 # /usr/include/SDL_Pango.h: 149
 if hasattr(_libs['SDL_Pango'], 'SDLPango_SetMinimumSize'):
     SDLPango_SetMinimumSize = _libs['SDL_Pango'].SDLPango_SetMinimumSize
-    SDLPango_SetMinimumSize.restype = None
     SDLPango_SetMinimumSize.argtypes = [POINTER(SDLPango_Context), c_int, c_int]
+    SDLPango_SetMinimumSize.restype = None
 
 # /usr/include/SDL_Pango.h: 153
 if hasattr(_libs['SDL_Pango'], 'SDLPango_SetDefaultColor'):
     SDLPango_SetDefaultColor = _libs['SDL_Pango'].SDLPango_SetDefaultColor
-    SDLPango_SetDefaultColor.restype = None
     SDLPango_SetDefaultColor.argtypes = [POINTER(SDLPango_Context), POINTER(SDLPango_Matrix)]
+    SDLPango_SetDefaultColor.restype = None
 
 # /usr/include/SDL_Pango.h: 157
 if hasattr(_libs['SDL_Pango'], 'SDLPango_GetLayoutWidth'):
     SDLPango_GetLayoutWidth = _libs['SDL_Pango'].SDLPango_GetLayoutWidth
-    SDLPango_GetLayoutWidth.restype = c_int
     SDLPango_GetLayoutWidth.argtypes = [POINTER(SDLPango_Context)]
+    SDLPango_GetLayoutWidth.restype = c_int
 
 # /usr/include/SDL_Pango.h: 160
 if hasattr(_libs['SDL_Pango'], 'SDLPango_GetLayoutHeight'):
     SDLPango_GetLayoutHeight = _libs['SDL_Pango'].SDLPango_GetLayoutHeight
-    SDLPango_GetLayoutHeight.restype = c_int
     SDLPango_GetLayoutHeight.argtypes = [POINTER(SDLPango_Context)]
+    SDLPango_GetLayoutHeight.restype = c_int
 
 # /usr/include/SDL_Pango.h: 163
 if hasattr(_libs['SDL_Pango'], 'SDLPango_SetMarkup'):
     SDLPango_SetMarkup = _libs['SDL_Pango'].SDLPango_SetMarkup
-    SDLPango_SetMarkup.restype = None
     SDLPango_SetMarkup.argtypes = [POINTER(SDLPango_Context), String, c_int]
+    SDLPango_SetMarkup.restype = None
 
 # /usr/include/SDL_Pango.h: 168
 if hasattr(_libs['SDL_Pango'], 'SDLPango_SetText_GivenAlignment'):
     SDLPango_SetText_GivenAlignment = _libs['SDL_Pango'].SDLPango_SetText_GivenAlignment
-    SDLPango_SetText_GivenAlignment.restype = None
     SDLPango_SetText_GivenAlignment.argtypes = [POINTER(SDLPango_Context), String, c_int, SDLPango_Alignment]
+    SDLPango_SetText_GivenAlignment.restype = None
 
 # /usr/include/SDL_Pango.h: 174
 if hasattr(_libs['SDL_Pango'], 'SDLPango_SetText'):
     SDLPango_SetText = _libs['SDL_Pango'].SDLPango_SetText
-    SDLPango_SetText.restype = None
     SDLPango_SetText.argtypes = [POINTER(SDLPango_Context), String, c_int]
+    SDLPango_SetText.restype = None
 
 # /usr/include/SDL_Pango.h: 179
 if hasattr(_libs['SDL_Pango'], 'SDLPango_SetLanguage'):
     SDLPango_SetLanguage = _libs['SDL_Pango'].SDLPango_SetLanguage
-    SDLPango_SetLanguage.restype = None
     SDLPango_SetLanguage.argtypes = [POINTER(SDLPango_Context), String]
+    SDLPango_SetLanguage.restype = None
 
 # /usr/include/SDL_Pango.h: 183
 if hasattr(_libs['SDL_Pango'], 'SDLPango_SetBaseDirection'):
     SDLPango_SetBaseDirection = _libs['SDL_Pango'].SDLPango_SetBaseDirection
-    SDLPango_SetBaseDirection.restype = None
     SDLPango_SetBaseDirection.argtypes = [POINTER(SDLPango_Context), SDLPango_Direction]
+    SDLPango_SetBaseDirection.restype = None
 
 _contextImpl = struct__contextImpl # /usr/include/SDL_Pango.h: 40
 

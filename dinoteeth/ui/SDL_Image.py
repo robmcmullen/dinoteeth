@@ -184,7 +184,7 @@ class MutableString(UserString):
     def __init__(self, string=""):
         self.data = string
     def __hash__(self):
-        raise TypeError, "unhashable type (it is mutable)"
+        raise TypeError("unhashable type (it is mutable)")
     def __setitem__(self, index, sub):
         if index < 0:
             index += len(self.data)
@@ -233,7 +233,7 @@ class String(MutableString, Union):
 
     def __len__(self):
         return self.data and len(self.data) or 0
-    
+
     def from_param(cls, obj):
         # Convert None or 0
         if obj is None or obj == 0:
@@ -246,15 +246,15 @@ class String(MutableString, Union):
         # Convert from str
         elif isinstance(obj, str):
             return cls(obj)
-        
+
         # Convert from c_char_p
         elif isinstance(obj, c_char_p):
             return obj
-        
+
         # Convert from POINTER(c_char)
         elif isinstance(obj, POINTER(c_char)):
             return obj
-        
+
         # Convert from raw pointer
         elif isinstance(obj, int):
             return cls(cast(obj, POINTER(c_char)))
@@ -264,7 +264,7 @@ class String(MutableString, Union):
             return String.from_param(obj._as_parameter_)
     from_param = classmethod(from_param)
 
-def ReturnString(obj):
+def ReturnString(obj, func=None, arguments=None):
     return String.from_param(obj)
 
 # As of ctypes 1.0, ctypes does not support custom error-checking
@@ -300,7 +300,6 @@ class _variadic_function(object):
             i+=1
         return self.func(*fixed_args+list(args[i:]))
 
-
 # End preamble
 
 _libs = {}
@@ -312,14 +311,14 @@ _libdirs = ['/usr/lib']
 # Copyright (c) 2008 David James
 # Copyright (c) 2006-2008 Alex Holkner
 # All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions 
+# modification, are permitted provided that the following conditions
 # are met:
 #
 #  * Redistributions of source code must retain the above copyright
 #    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright 
+#  * Redistributions in binary form must reproduce the above copyright
 #    notice, this list of conditions and the following disclaimer in
 #    the documentation and/or other materials provided with the
 #    distribution.
@@ -355,17 +354,17 @@ def _environ_path(name):
 class LibraryLoader(object):
     def __init__(self):
         self.other_dirs=[]
-    
+
     def load_library(self,libname):
         """Given the name of a library, load it."""
         paths = self.getpaths(libname)
-        
+
         for path in paths:
             if os.path.exists(path):
                 return self.load(path)
-        
-        raise ImportError,"%s not found." % libname
-    
+
+        raise ImportError("%s not found." % libname)
+
     def load(self,path):
         """Given a path to a library, load it."""
         try:
@@ -378,20 +377,20 @@ class LibraryLoader(object):
             else:
                 return ctypes.cdll.LoadLibrary(path)
         except OSError,e:
-            raise ImportError,e
-    
+            raise ImportError(e)
+
     def getpaths(self,libname):
         """Return a list of paths where the library might be found."""
         if os.path.isabs(libname):
             yield libname
-        
+
         else:
             for path in self.getplatformpaths(libname):
                 yield path
-            
+
             path = ctypes.util.find_library(libname)
             if path: yield path
-    
+
     def getplatformpaths(self, libname):
         return []
 
@@ -400,20 +399,20 @@ class LibraryLoader(object):
 class DarwinLibraryLoader(LibraryLoader):
     name_formats = ["lib%s.dylib", "lib%s.so", "lib%s.bundle", "%s.dylib",
                 "%s.so", "%s.bundle", "%s"]
-    
+
     def getplatformpaths(self,libname):
         if os.path.pathsep in libname:
             names = [libname]
         else:
             names = [format % libname for format in self.name_formats]
-        
+
         for dir in self.getdirs(libname):
             for name in names:
                 yield os.path.join(dir,name)
-    
+
     def getdirs(self,libname):
         '''Implements the dylib search as specified in Apple documentation:
-        
+
         http://developer.apple.com/documentation/DeveloperTools/Conceptual/
             DynamicLibraries/Articles/DynamicLibraryUsageGuidelines.html
 
@@ -426,9 +425,9 @@ class DarwinLibraryLoader(LibraryLoader):
         if not dyld_fallback_library_path:
             dyld_fallback_library_path = [os.path.expanduser('~/lib'),
                                           '/usr/local/lib', '/usr/lib']
-        
+
         dirs = []
-        
+
         if '/' in libname:
             dirs.extend(_environ_path("DYLD_LIBRARY_PATH"))
         else:
@@ -437,7 +436,7 @@ class DarwinLibraryLoader(LibraryLoader):
 
         dirs.extend(self.other_dirs)
         dirs.append(".")
-        
+
         if hasattr(sys, 'frozen') and sys.frozen == 'macosx_app':
             dirs.append(os.path.join(
                 os.environ['RESOURCEPATH'],
@@ -445,14 +444,14 @@ class DarwinLibraryLoader(LibraryLoader):
                 'Frameworks'))
 
         dirs.extend(dyld_fallback_library_path)
-        
+
         return dirs
 
 # Posix
 
 class PosixLibraryLoader(LibraryLoader):
     _ld_so_cache = None
-    
+
     def _create_ld_so_cache(self):
         # Recreate search path followed by ld.so.  This is going to be
         # slow to build, and incorrect (ld.so uses ld.so.cache, which may
@@ -488,7 +487,7 @@ class PosixLibraryLoader(LibraryLoader):
                     # Index by filename
                     if file not in cache:
                         cache[file] = path
-                    
+
                     # Index by library name
                     match = lib_re.match(file)
                     if match:
@@ -499,7 +498,7 @@ class PosixLibraryLoader(LibraryLoader):
                 pass
 
         self._ld_so_cache = cache
-    
+
     def getplatformpaths(self, libname):
         if self._ld_so_cache is None:
             self._create_ld_so_cache()
@@ -525,14 +524,39 @@ class _WindowsLibrary(object):
                 raise
 
 class WindowsLibraryLoader(LibraryLoader):
-    name_formats = ["%s.dll", "lib%s.dll"]
-    
+    name_formats = ["%s.dll", "lib%s.dll", "%slib.dll"]
+
+    def load_library(self, libname):
+        try:
+            result = LibraryLoader.load_library(self, libname)
+        except ImportError:
+            result = None
+            if os.path.sep not in libname:
+                for name in self.name_formats:
+                    try:
+                        result = getattr(ctypes.cdll, name % libname)
+                        if result:
+                            break
+                    except WindowsError:
+                        result = None
+            if result is None:
+                try:
+                    result = getattr(ctypes.cdll, libname)
+                except WindowsError:
+                    result = None
+            if result is None:
+                raise ImportError("%s not found." % libname)
+        return result
+
     def load(self, path):
         return _WindowsLibrary(path)
-    
+
     def getplatformpaths(self, libname):
         if os.path.sep not in libname:
             for name in self.name_formats:
+                dll_in_current_dir = os.path.abspath(name % libname)
+                if os.path.exists(dll_in_current_dir):
+                    yield dll_in_current_dir
                 path = ctypes.util.find_library(name % libname)
                 if path:
                     yield path
@@ -574,15 +598,15 @@ __off_t = c_long # /usr/include/bits/types.h: 141
 
 __off64_t = c_long # /usr/include/bits/types.h: 142
 
-# /usr/include/libio.h: 271
+# /usr/include/libio.h: 273
 class struct__IO_FILE(Structure):
     pass
 
 FILE = struct__IO_FILE # /usr/include/stdio.h: 49
 
-_IO_lock_t = None # /usr/include/libio.h: 180
+_IO_lock_t = None # /usr/include/libio.h: 182
 
-# /usr/include/libio.h: 186
+# /usr/include/libio.h: 188
 class struct__IO_marker(Structure):
     pass
 
@@ -678,65 +702,69 @@ if hasattr(_libs['SDL_image'], 'SDL_SetError'):
 # /usr/include/SDL/SDL_error.h: 44
 if hasattr(_libs['SDL_image'], 'SDL_GetError'):
     SDL_GetError = _libs['SDL_image'].SDL_GetError
-    SDL_GetError.restype = ReturnString
     SDL_GetError.argtypes = []
+    if sizeof(c_int) == sizeof(c_void_p):
+        SDL_GetError.restype = ReturnString
+    else:
+        SDL_GetError.restype = String
+        SDL_GetError.errcheck = ReturnString
 
 # /usr/include/SDL/SDL_rwops.h: 42
 class struct_SDL_RWops(Structure):
     pass
 
 # /usr/include/SDL/SDL_rwops.h: 78
-class struct_anon_27(Structure):
+class struct_anon_29(Structure):
     pass
 
-struct_anon_27.__slots__ = [
+struct_anon_29.__slots__ = [
     'autoclose',
     'fp',
 ]
-struct_anon_27._fields_ = [
+struct_anon_29._fields_ = [
     ('autoclose', c_int),
     ('fp', POINTER(FILE)),
 ]
 
 # /usr/include/SDL/SDL_rwops.h: 83
-class struct_anon_28(Structure):
+class struct_anon_30(Structure):
     pass
 
-struct_anon_28.__slots__ = [
+struct_anon_30.__slots__ = [
     'base',
     'here',
     'stop',
 ]
-struct_anon_28._fields_ = [
+struct_anon_30._fields_ = [
     ('base', POINTER(Uint8)),
     ('here', POINTER(Uint8)),
     ('stop', POINTER(Uint8)),
 ]
 
 # /usr/include/SDL/SDL_rwops.h: 88
-class struct_anon_29(Structure):
+class struct_anon_31(Structure):
     pass
 
-struct_anon_29.__slots__ = [
+struct_anon_31.__slots__ = [
     'data1',
 ]
-struct_anon_29._fields_ = [
+struct_anon_31._fields_ = [
     ('data1', POINTER(None)),
 ]
 
 # /usr/include/SDL/SDL_rwops.h: 65
-class union_anon_30(Union):
+class union_anon_32(Union):
     pass
 
-union_anon_30.__slots__ = [
+union_anon_32.__slots__ = [
     'stdio',
     'mem',
     'unknown',
 ]
-union_anon_30._fields_ = [
-    ('stdio', struct_anon_27),
-    ('mem', struct_anon_28),
-    ('unknown', struct_anon_29),
+union_anon_32._fields_ = [
+    ('stdio', struct_anon_29),
+    ('mem', struct_anon_30),
+    ('unknown', struct_anon_31),
 ]
 
 struct_SDL_RWops.__slots__ = [
@@ -753,7 +781,7 @@ struct_SDL_RWops._fields_ = [
     ('write', CFUNCTYPE(UNCHECKED(c_int), POINTER(struct_SDL_RWops), POINTER(None), c_int, c_int)),
     ('close', CFUNCTYPE(UNCHECKED(c_int), POINTER(struct_SDL_RWops))),
     ('type', Uint32),
-    ('hidden', union_anon_30),
+    ('hidden', union_anon_32),
 ]
 
 SDL_RWops = struct_SDL_RWops # /usr/include/SDL/SDL_rwops.h: 93
@@ -923,10 +951,10 @@ SDL_version = struct_SDL_version # /usr/include/SDL/SDL_version.h: 51
 # /usr/include/SDL/SDL_image.h: 56
 if hasattr(_libs['SDL_image'], 'IMG_Linked_Version'):
     IMG_Linked_Version = _libs['SDL_image'].IMG_Linked_Version
-    IMG_Linked_Version.restype = POINTER(SDL_version)
     IMG_Linked_Version.argtypes = []
+    IMG_Linked_Version.restype = POINTER(SDL_version)
 
-enum_anon_40 = c_int # /usr/include/SDL/SDL_image.h: 64
+enum_anon_42 = c_int # /usr/include/SDL/SDL_image.h: 64
 
 IMG_INIT_JPG = 1 # /usr/include/SDL/SDL_image.h: 64
 
@@ -936,223 +964,223 @@ IMG_INIT_TIF = 4 # /usr/include/SDL/SDL_image.h: 64
 
 IMG_INIT_WEBP = 8 # /usr/include/SDL/SDL_image.h: 64
 
-IMG_InitFlags = enum_anon_40 # /usr/include/SDL/SDL_image.h: 64
+IMG_InitFlags = enum_anon_42 # /usr/include/SDL/SDL_image.h: 64
 
 # /usr/include/SDL/SDL_image.h: 70
 if hasattr(_libs['SDL_image'], 'IMG_Init'):
     IMG_Init = _libs['SDL_image'].IMG_Init
-    IMG_Init.restype = c_int
     IMG_Init.argtypes = [c_int]
+    IMG_Init.restype = c_int
 
 # /usr/include/SDL/SDL_image.h: 73
 if hasattr(_libs['SDL_image'], 'IMG_Quit'):
     IMG_Quit = _libs['SDL_image'].IMG_Quit
-    IMG_Quit.restype = None
     IMG_Quit.argtypes = []
+    IMG_Quit.restype = None
 
 # /usr/include/SDL/SDL_image.h: 83
 if hasattr(_libs['SDL_image'], 'IMG_LoadTyped_RW'):
     IMG_LoadTyped_RW = _libs['SDL_image'].IMG_LoadTyped_RW
-    IMG_LoadTyped_RW.restype = POINTER(SDL_Surface)
     IMG_LoadTyped_RW.argtypes = [POINTER(SDL_RWops), c_int, String]
+    IMG_LoadTyped_RW.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_image.h: 85
 if hasattr(_libs['SDL_image'], 'IMG_Load'):
     IMG_Load = _libs['SDL_image'].IMG_Load
-    IMG_Load.restype = POINTER(SDL_Surface)
     IMG_Load.argtypes = [String]
+    IMG_Load.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_image.h: 86
 if hasattr(_libs['SDL_image'], 'IMG_Load_RW'):
     IMG_Load_RW = _libs['SDL_image'].IMG_Load_RW
-    IMG_Load_RW.restype = POINTER(SDL_Surface)
     IMG_Load_RW.argtypes = [POINTER(SDL_RWops), c_int]
+    IMG_Load_RW.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_image.h: 91
 if hasattr(_libs['SDL_image'], 'IMG_InvertAlpha'):
     IMG_InvertAlpha = _libs['SDL_image'].IMG_InvertAlpha
-    IMG_InvertAlpha.restype = c_int
     IMG_InvertAlpha.argtypes = [c_int]
+    IMG_InvertAlpha.restype = c_int
 
 # /usr/include/SDL/SDL_image.h: 94
 if hasattr(_libs['SDL_image'], 'IMG_isICO'):
     IMG_isICO = _libs['SDL_image'].IMG_isICO
-    IMG_isICO.restype = c_int
     IMG_isICO.argtypes = [POINTER(SDL_RWops)]
+    IMG_isICO.restype = c_int
 
 # /usr/include/SDL/SDL_image.h: 95
 if hasattr(_libs['SDL_image'], 'IMG_isCUR'):
     IMG_isCUR = _libs['SDL_image'].IMG_isCUR
-    IMG_isCUR.restype = c_int
     IMG_isCUR.argtypes = [POINTER(SDL_RWops)]
+    IMG_isCUR.restype = c_int
 
 # /usr/include/SDL/SDL_image.h: 96
 if hasattr(_libs['SDL_image'], 'IMG_isBMP'):
     IMG_isBMP = _libs['SDL_image'].IMG_isBMP
-    IMG_isBMP.restype = c_int
     IMG_isBMP.argtypes = [POINTER(SDL_RWops)]
+    IMG_isBMP.restype = c_int
 
 # /usr/include/SDL/SDL_image.h: 97
 if hasattr(_libs['SDL_image'], 'IMG_isGIF'):
     IMG_isGIF = _libs['SDL_image'].IMG_isGIF
-    IMG_isGIF.restype = c_int
     IMG_isGIF.argtypes = [POINTER(SDL_RWops)]
+    IMG_isGIF.restype = c_int
 
 # /usr/include/SDL/SDL_image.h: 98
 if hasattr(_libs['SDL_image'], 'IMG_isJPG'):
     IMG_isJPG = _libs['SDL_image'].IMG_isJPG
-    IMG_isJPG.restype = c_int
     IMG_isJPG.argtypes = [POINTER(SDL_RWops)]
+    IMG_isJPG.restype = c_int
 
 # /usr/include/SDL/SDL_image.h: 99
 if hasattr(_libs['SDL_image'], 'IMG_isLBM'):
     IMG_isLBM = _libs['SDL_image'].IMG_isLBM
-    IMG_isLBM.restype = c_int
     IMG_isLBM.argtypes = [POINTER(SDL_RWops)]
+    IMG_isLBM.restype = c_int
 
 # /usr/include/SDL/SDL_image.h: 100
 if hasattr(_libs['SDL_image'], 'IMG_isPCX'):
     IMG_isPCX = _libs['SDL_image'].IMG_isPCX
-    IMG_isPCX.restype = c_int
     IMG_isPCX.argtypes = [POINTER(SDL_RWops)]
+    IMG_isPCX.restype = c_int
 
 # /usr/include/SDL/SDL_image.h: 101
 if hasattr(_libs['SDL_image'], 'IMG_isPNG'):
     IMG_isPNG = _libs['SDL_image'].IMG_isPNG
-    IMG_isPNG.restype = c_int
     IMG_isPNG.argtypes = [POINTER(SDL_RWops)]
+    IMG_isPNG.restype = c_int
 
 # /usr/include/SDL/SDL_image.h: 102
 if hasattr(_libs['SDL_image'], 'IMG_isPNM'):
     IMG_isPNM = _libs['SDL_image'].IMG_isPNM
-    IMG_isPNM.restype = c_int
     IMG_isPNM.argtypes = [POINTER(SDL_RWops)]
+    IMG_isPNM.restype = c_int
 
 # /usr/include/SDL/SDL_image.h: 103
 if hasattr(_libs['SDL_image'], 'IMG_isTIF'):
     IMG_isTIF = _libs['SDL_image'].IMG_isTIF
-    IMG_isTIF.restype = c_int
     IMG_isTIF.argtypes = [POINTER(SDL_RWops)]
+    IMG_isTIF.restype = c_int
 
 # /usr/include/SDL/SDL_image.h: 104
 if hasattr(_libs['SDL_image'], 'IMG_isXCF'):
     IMG_isXCF = _libs['SDL_image'].IMG_isXCF
-    IMG_isXCF.restype = c_int
     IMG_isXCF.argtypes = [POINTER(SDL_RWops)]
+    IMG_isXCF.restype = c_int
 
 # /usr/include/SDL/SDL_image.h: 105
 if hasattr(_libs['SDL_image'], 'IMG_isXPM'):
     IMG_isXPM = _libs['SDL_image'].IMG_isXPM
-    IMG_isXPM.restype = c_int
     IMG_isXPM.argtypes = [POINTER(SDL_RWops)]
+    IMG_isXPM.restype = c_int
 
 # /usr/include/SDL/SDL_image.h: 106
 if hasattr(_libs['SDL_image'], 'IMG_isXV'):
     IMG_isXV = _libs['SDL_image'].IMG_isXV
-    IMG_isXV.restype = c_int
     IMG_isXV.argtypes = [POINTER(SDL_RWops)]
+    IMG_isXV.restype = c_int
 
 # /usr/include/SDL/SDL_image.h: 107
 if hasattr(_libs['SDL_image'], 'IMG_isWEBP'):
     IMG_isWEBP = _libs['SDL_image'].IMG_isWEBP
-    IMG_isWEBP.restype = c_int
     IMG_isWEBP.argtypes = [POINTER(SDL_RWops)]
+    IMG_isWEBP.restype = c_int
 
 # /usr/include/SDL/SDL_image.h: 110
 if hasattr(_libs['SDL_image'], 'IMG_LoadICO_RW'):
     IMG_LoadICO_RW = _libs['SDL_image'].IMG_LoadICO_RW
-    IMG_LoadICO_RW.restype = POINTER(SDL_Surface)
     IMG_LoadICO_RW.argtypes = [POINTER(SDL_RWops)]
+    IMG_LoadICO_RW.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_image.h: 111
 if hasattr(_libs['SDL_image'], 'IMG_LoadCUR_RW'):
     IMG_LoadCUR_RW = _libs['SDL_image'].IMG_LoadCUR_RW
-    IMG_LoadCUR_RW.restype = POINTER(SDL_Surface)
     IMG_LoadCUR_RW.argtypes = [POINTER(SDL_RWops)]
+    IMG_LoadCUR_RW.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_image.h: 112
 if hasattr(_libs['SDL_image'], 'IMG_LoadBMP_RW'):
     IMG_LoadBMP_RW = _libs['SDL_image'].IMG_LoadBMP_RW
-    IMG_LoadBMP_RW.restype = POINTER(SDL_Surface)
     IMG_LoadBMP_RW.argtypes = [POINTER(SDL_RWops)]
+    IMG_LoadBMP_RW.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_image.h: 113
 if hasattr(_libs['SDL_image'], 'IMG_LoadGIF_RW'):
     IMG_LoadGIF_RW = _libs['SDL_image'].IMG_LoadGIF_RW
-    IMG_LoadGIF_RW.restype = POINTER(SDL_Surface)
     IMG_LoadGIF_RW.argtypes = [POINTER(SDL_RWops)]
+    IMG_LoadGIF_RW.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_image.h: 114
 if hasattr(_libs['SDL_image'], 'IMG_LoadJPG_RW'):
     IMG_LoadJPG_RW = _libs['SDL_image'].IMG_LoadJPG_RW
-    IMG_LoadJPG_RW.restype = POINTER(SDL_Surface)
     IMG_LoadJPG_RW.argtypes = [POINTER(SDL_RWops)]
+    IMG_LoadJPG_RW.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_image.h: 115
 if hasattr(_libs['SDL_image'], 'IMG_LoadLBM_RW'):
     IMG_LoadLBM_RW = _libs['SDL_image'].IMG_LoadLBM_RW
-    IMG_LoadLBM_RW.restype = POINTER(SDL_Surface)
     IMG_LoadLBM_RW.argtypes = [POINTER(SDL_RWops)]
+    IMG_LoadLBM_RW.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_image.h: 116
 if hasattr(_libs['SDL_image'], 'IMG_LoadPCX_RW'):
     IMG_LoadPCX_RW = _libs['SDL_image'].IMG_LoadPCX_RW
-    IMG_LoadPCX_RW.restype = POINTER(SDL_Surface)
     IMG_LoadPCX_RW.argtypes = [POINTER(SDL_RWops)]
+    IMG_LoadPCX_RW.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_image.h: 117
 if hasattr(_libs['SDL_image'], 'IMG_LoadPNG_RW'):
     IMG_LoadPNG_RW = _libs['SDL_image'].IMG_LoadPNG_RW
-    IMG_LoadPNG_RW.restype = POINTER(SDL_Surface)
     IMG_LoadPNG_RW.argtypes = [POINTER(SDL_RWops)]
+    IMG_LoadPNG_RW.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_image.h: 118
 if hasattr(_libs['SDL_image'], 'IMG_LoadPNM_RW'):
     IMG_LoadPNM_RW = _libs['SDL_image'].IMG_LoadPNM_RW
-    IMG_LoadPNM_RW.restype = POINTER(SDL_Surface)
     IMG_LoadPNM_RW.argtypes = [POINTER(SDL_RWops)]
+    IMG_LoadPNM_RW.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_image.h: 119
 if hasattr(_libs['SDL_image'], 'IMG_LoadTGA_RW'):
     IMG_LoadTGA_RW = _libs['SDL_image'].IMG_LoadTGA_RW
-    IMG_LoadTGA_RW.restype = POINTER(SDL_Surface)
     IMG_LoadTGA_RW.argtypes = [POINTER(SDL_RWops)]
+    IMG_LoadTGA_RW.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_image.h: 120
 if hasattr(_libs['SDL_image'], 'IMG_LoadTIF_RW'):
     IMG_LoadTIF_RW = _libs['SDL_image'].IMG_LoadTIF_RW
-    IMG_LoadTIF_RW.restype = POINTER(SDL_Surface)
     IMG_LoadTIF_RW.argtypes = [POINTER(SDL_RWops)]
+    IMG_LoadTIF_RW.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_image.h: 121
 if hasattr(_libs['SDL_image'], 'IMG_LoadXCF_RW'):
     IMG_LoadXCF_RW = _libs['SDL_image'].IMG_LoadXCF_RW
-    IMG_LoadXCF_RW.restype = POINTER(SDL_Surface)
     IMG_LoadXCF_RW.argtypes = [POINTER(SDL_RWops)]
+    IMG_LoadXCF_RW.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_image.h: 122
 if hasattr(_libs['SDL_image'], 'IMG_LoadXPM_RW'):
     IMG_LoadXPM_RW = _libs['SDL_image'].IMG_LoadXPM_RW
-    IMG_LoadXPM_RW.restype = POINTER(SDL_Surface)
     IMG_LoadXPM_RW.argtypes = [POINTER(SDL_RWops)]
+    IMG_LoadXPM_RW.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_image.h: 123
 if hasattr(_libs['SDL_image'], 'IMG_LoadXV_RW'):
     IMG_LoadXV_RW = _libs['SDL_image'].IMG_LoadXV_RW
-    IMG_LoadXV_RW.restype = POINTER(SDL_Surface)
     IMG_LoadXV_RW.argtypes = [POINTER(SDL_RWops)]
+    IMG_LoadXV_RW.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_image.h: 124
 if hasattr(_libs['SDL_image'], 'IMG_LoadWEBP_RW'):
     IMG_LoadWEBP_RW = _libs['SDL_image'].IMG_LoadWEBP_RW
-    IMG_LoadWEBP_RW.restype = POINTER(SDL_Surface)
     IMG_LoadWEBP_RW.argtypes = [POINTER(SDL_RWops)]
+    IMG_LoadWEBP_RW.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_image.h: 126
 if hasattr(_libs['SDL_image'], 'IMG_ReadXPMFromArray'):
     IMG_ReadXPMFromArray = _libs['SDL_image'].IMG_ReadXPMFromArray
-    IMG_ReadXPMFromArray.restype = POINTER(SDL_Surface)
     IMG_ReadXPMFromArray.argtypes = [POINTER(POINTER(c_char))]
+    IMG_ReadXPMFromArray.restype = POINTER(SDL_Surface)
 
 # /usr/include/SDL/SDL_image.h: 38
 try:
@@ -1160,13 +1188,13 @@ try:
 except:
     pass
 
-# /usr/include/SDL/SDL_image.h: 38
+# /usr/include/SDL/SDL_image.h: 39
 try:
     SDL_IMAGE_MINOR_VERSION = 2
 except:
     pass
 
-# /usr/include/SDL/SDL_image.h: 38
+# /usr/include/SDL/SDL_image.h: 40
 try:
     SDL_IMAGE_PATCHLEVEL = 12
 except:
@@ -1178,7 +1206,7 @@ try:
 except:
     pass
 
-# /usr/include/SDL/SDL_image.h: 129
+# /usr/include/SDL/SDL_image.h: 130
 try:
     IMG_GetError = SDL_GetError
 except:
