@@ -36,7 +36,7 @@ class MMDBPopulator(MenuPopulator):
         metadata.sort()
         return metadata
         
-    def iter_image_path(self, artwork_loader):
+    def iter_image_path(self):
         for metadata in self.get_sorted_metadata():
             try:
                 loader = MetadataLoader.get_loader(metadata)

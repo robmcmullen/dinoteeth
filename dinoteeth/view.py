@@ -215,9 +215,6 @@ class TitleRenderer(Renderer):
 
 
 class DetailRenderer(Renderer):
-    def compute_params(self, conf):
-        self.artwork_loader = conf.get_artwork_loader()
-        
     def draw(self, menu):
         item = menu.get_selected_item()
         m = item.get_metadata(self)
@@ -240,7 +237,7 @@ class DetailRenderer(Renderer):
     
     def draw_imagegen(self, item, m):
         image_generator = m['imagegen']
-        image_generator(self.window, self.artwork_loader, self.x, self.y, self.w, self.h)
+        image_generator(self.window, self.x, self.y, self.w, self.h)
     
     def draw_mmdb(self, item, m):
         metadata = m['mmdb']

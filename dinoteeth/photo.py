@@ -77,7 +77,7 @@ class Pictures(MenuPopulator):
         MenuPopulator.__init__(self, config)
         self.path = path
     
-    def iter_image_path(self, artwork_loader):
+    def iter_image_path(self):
         images = glob.glob(os.path.join(self.path, "*"))
         images.sort()
         for image in images:
@@ -110,7 +110,7 @@ class HomeVideos(MenuPopulator):
         self.videos = videos
         self.videos.sort()
     
-    def iter_image_path(self, artwork_loader):
+    def iter_image_path(self):
         for video in self.videos:
             yield video
     
@@ -169,7 +169,7 @@ class HomeVideoPlay(MenuPopulator):
             'imagegen': self.video_detail,
             }
 
-    def video_detail(self, window, artwork_loader, x, y, w, h):
+    def video_detail(self, window, x, y, w, h):
         image = window.get_thumbnail_image(self.video)
         window.blit(image, x, h - image.height, 0)
 

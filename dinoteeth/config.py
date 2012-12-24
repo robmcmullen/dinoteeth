@@ -10,7 +10,6 @@ from database import HomeTheaterDatabase
 from model import MenuItem
 from updates import UpdateManager, FileWatcher
 from utils import DBFacade, decode_title_text, TitleKey
-from image import ArtworkLoader, ScaledArtworkLoader
 from thumbnail import ThumbnailFactory
 from hierarchy import RootMenu
 from photo import PhotoDB
@@ -257,14 +256,6 @@ class Config(object):
     
     def get_selected_font_size(self):
         return self.options.font_size_selected
-    
-    def get_artwork_loader(self):
-        if not hasattr(self, "artwork_loader"):
-            system_image_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../graphics"))
-            na = os.path.join(system_image_dir, "artwork-not-available.png")
-            full_size_loader = ArtworkLoader(self.get_metadata_pathname(self.options.image_dir), na)
-            self.artwork_loader = ScaledArtworkLoader(full_size_loader, self.options.poster_width)
-        return self.artwork_loader
     
     def get_thumbnail_loader(self):
         thumbnail_factory = ThumbnailFactory(self.options.thumbnail_dir, self.get_metadata_pathname(self.options.image_dir))
