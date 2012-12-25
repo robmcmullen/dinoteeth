@@ -95,7 +95,7 @@ class AVScanBase(Persistent):
         self.length = info.length
         
         self.selected_audio_id = 0
-        self.selected_subtitle_id = 0
+        self.selected_subtitle_id = None
         
         self.title = self.calc_title(file, info, guess)
         self.init_bonus(file, info, guess)
@@ -176,6 +176,14 @@ class AVScanBase(Persistent):
         return None
     
     def get_subtitle_options(self, pathname):
+        # Default subtitle display based on user settings
+        if self.selected_subtitle_id is None:
+            if settings.default_subtitles:
+                self.selected_subtitle_id = 0
+            else:
+                self.selected_subtitle_id = -1
+            print "default: %s => %s" % (settings.default_subtitles, self.selected_subtitle_id)
+                
         # Unlike audio, "No subtitles" should always be an option in case
         # people don't want to view subtitles
         options = [(-1, -1 == self.selected_subtitle_id, "No subtitles")]

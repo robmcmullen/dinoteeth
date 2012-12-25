@@ -1,26 +1,53 @@
-metadata_root = "/tmp"
-cache_root = "/tmp"
+default_conf = """
+[defaults]
+ui = string(default="sdl")
+fullscreen = boolean(default=True)
+guest_mode = boolean(default=False)
+default_subtitles = boolean(default=False)
 
-poster_width = 342
-guest_mode = False
+[posters]
+poster_width = integer(default=342)
 
+[window]
+left_margin = integer(default=0)
+right_margin = integer(default=0)
+top_margin = integer(default=0)
+bottom_margin = integer(default=0)
+window_width = integer(default=1366)
+window_height = integer(default=768)
+
+[fonts]
+font_name = string(default="Liberation Sans")
+font_size_menu = integer(min=1, default=16)
+font_size_selected = integer(min=1, default=16)
+font_size_detail = integer(min=1, default=14)
+
+[metadata]
+metadata_root = string
+cache_root = string
+media_root = string(default=None)
+thumbnail_dir = string(default=None)
+image_dir = string(default=None)
+db_host = string(default=None)
+db_file = string(default=None)
+
+[metadata providers]
+imdb_cache_dir = string(default="imdb-cache")
+imdb_country = string(default="USA")
+imdb_language = string(default="English")
+
+tmdb_cache_dir = string(default="tmdb-cache")
+iso_3166_1 = string(default="US")
+iso_639_1 = string(default="en")
+tmdb_poster_size = string(default="w342")
+
+tvdb_cache_dir = string(default="tvdb-cache")
+"""
+
+# Subtitles
 subtitle_file_extensions = []
 
 user_title_key_map = {}
-
-# IMDb settings
-imdb_cache_dir = "imdb-cache"
-imdb_country = "USA"
-imdb_language = "English"
-
-# TMDb settings
-tmdb_cache_dir = "tmdb-cache"
-iso_3166_1 = "US"
-iso_639_1 = "en"
-tmdb_poster_size = "w342"
-
-# TVDB settings
-tvdb_cache_dir = "tvdb-cache"
 
 import time
 credit_map = [

@@ -231,7 +231,7 @@ class TitleKey(Persistent):
             log.info("Bad title key: %s" % encoded_string)
             raise
         title_key = cls(cat, subcat, title, None)
-        print title_key
+        log.debug(title_key)
         return title_key
         
     def __init__(self, category, subcategory, title, year):

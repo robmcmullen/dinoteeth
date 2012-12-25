@@ -4,6 +4,7 @@ try:
 except:
     import third_party.argparse as argparse
 from third_party.configobj import ConfigObj
+from third_party.validate import Validator
 
 from view import *
 from database import HomeTheaterDatabase
@@ -50,38 +51,15 @@ class Config(object):
         parser.add_argument("-c", "--conf_file",
                     help="Specify config file", metavar="FILE")
         parser.add_argument("-v", "--verbose", action="count", default=0)
-        parser.add_argument("--ui", action="store", default="sdl")
-        parser.add_argument("--metadata-root", action="store", default="",
-                          help="Default metadata/database root directory for those databases and the image directories that don't specify a full path")
-        parser.add_argument("--cache-root", action="store", default="",
-                          help="Default root directory for cached downloads")
-        parser.add_argument("--db", action="store", dest="database", default="dinoteeth.zodb")
-        parser.add_argument("--db-host", action="store", dest="db_host", default="")
-        parser.add_argument("--thumbnail-dir", action="store", default="")
-        parser.add_argument("-i", "--image-dir", action="store", dest="image_dir", default="graphics")
-        parser.add_argument("--poster-width", action="store", type=int, default=-1, help="Maximum displayed poster width")
-        parser.add_argument("--media-root", action="store", default="",
-                          help="Media under this directory will be stored in the database as relative paths, permitting the structure to be moved to other machines without rebuilding the database")
-        parser.add_argument("-l", "--language", action="store", default="en")
-        parser.add_argument("-w", "--window", action="store_false", dest="fullscreen", default=True)
-        parser.add_argument("--window-width", action="store", type=int, default=1280)
-        parser.add_argument("--window-height", action="store", type=int, default=720)
-        parser.add_argument("--top-margin", action="store", type=int, default=0)
-        parser.add_argument("--right-margin", action="store", type=int, default=0)
-        parser.add_argument("--bottom-margin", action="store", type=int, default=0)
-        parser.add_argument("--left-margin", action="store", type=int, default=0)
-        
-        parser.add_argument("--font-name", action="store", default="Arial")
-        parser.add_argument("--font-size-menu", action="store", type=int, default=16)
-        parser.add_argument("--font-size-detail", action="store", type=int, default=12)
-        parser.add_argument("--font-size-selected", action="store", type=int, default=16)
-        
-        parser.add_argument("--imdb-country", action="store", default="USA")
-        parser.add_argument("--imdb-language", action="store", default="English")
-        parser.add_argument("--country-code", action="store", default="US")
         parser.add_argument("--test-threads", action="store_true", default=False)
         parser.add_argument("--test-menu", action="store", default="")
-        parser.add_argument("--guest-mode", action="store_true", default=False)
+        
+        # commands that can override settings in the [default] section; defaults
+        # are provided by the configspec set in settings.default_conf
+        parser.add_argument("--ui", action="store")
+        parser.add_argument("-w", "--window", dest='fullscreen', action="store_false")
+        parser.add_argument("--guest-mode", action="store_true")
+        parser.add_argument("--default-subtitles", action="store_true")
         return parser
     
     def parse_args(self, args, parser):
@@ -93,7 +71,9 @@ class Config(object):
         conf_file = os.path.expanduser("~/.dinoteeth/settings.ini")
         if options.conf_file:
             conf_file = options.conf_file
-        self.ini = ConfigObj(conf_file)
+        configspec = ConfigObj(settings.default_conf.splitlines(), list_values=False)
+        self.ini = ConfigObj(conf_file, configspec=configspec)
+        self.ini.validate(Validator())
         if "defaults" in self.ini:
             defaults = dict(self.ini["defaults"])
         
@@ -114,7 +94,11 @@ class Config(object):
                 log = logging.getLogger(name)
                 log.setLevel(level)
         
-        self.set_class_defaults()
+        self.set_class_defaults(self.ini, configspec)
+        if self.options.verbose > 0:
+            for k in dir(settings):
+                if not k.startswith("_") and k != "default_conf":
+                    print "%s: %s" % (k, getattr(settings, k))
         
         self.db = self.get_home_theater_database()
         if self.args:
@@ -150,14 +134,22 @@ class Config(object):
         except Exception, e:
             log.error("Can't save configuration file %s: %s" % (name, e))
     
-    def set_class_defaults(self):
-        settings.metadata_root = self.options.metadata_root
-        settings.cache_root = self.options.cache_root
-        settings.imdb_country = self.options.imdb_country
-        settings.imdb_language = self.options.imdb_language
-        settings.iso_3166_1 = self.options.country_code
-        settings.subtitle_file_extensions = self.get_subtitle_extensions()
-        settings.guest_mode = self.options.guest_mode
+    def set_class_defaults(self, ini, configspec):
+        # default section is overridden by command line arguments if specified
+        section = "defaults"
+        known = dict(configspec[section])
+#        print "known [%s]: %s" % (section, known)
+        for k in known.keys():
+            setattr(settings, k, getattr(self.options, k))
+        
+        # parameters in other sections are only specified through config file
+        for section in ["window", "fonts", "metadata", "metadata providers", "posters"]:
+            user = dict(ini[section])
+#            print "user [%s]: %s" % (section, user)
+            known = dict(configspec[section])
+#            print "known [%s]: %s" % (section, known)
+            for k in known.keys():
+                setattr(settings, k, user[k])
         
         user_title_key_map = {}
         if "title_key" in self.ini:
@@ -169,23 +161,23 @@ class Config(object):
         settings.user_title_key_map = user_title_key_map
     
     def get_main_window_class(self):
-        if self.options.ui == "sdl":
+        if settings.ui == "sdl":
             from ui.sdl_ui import SdlMainWindow
             return SdlMainWindow
-        elif self.options.ui == "pyglet":
+        elif settings.ui == "pyglet":
             from ui.pyglet_ui import PygletMainWindow
             return PygletMainWindow
-        raise RuntimeError("Unknown user interface: %s" % self.options.ui)
+        raise RuntimeError("Unknown user interface: %s" % settings.ui)
     
     def get_main_window(self, factory):
         if self.main_window is None:
-            margins = (self.options.top_margin, self.options.right_margin,
-                       self.options.bottom_margin, self.options.left_margin)
+            margins = (settings.top_margin, settings.right_margin,
+                       settings.bottom_margin, settings.left_margin)
             wincls = self.get_main_window_class()
             self.main_window = wincls(self, factory,
-                                      fullscreen=self.options.fullscreen,
-                                      width=self.options.window_width,
-                                      height=self.options.window_height,
+                                      fullscreen=settings.fullscreen,
+                                      width=settings.window_width,
+                                      height=settings.window_height,
                                       margins=margins,
                                       thumbnails=self.get_thumbnail_loader())
             
@@ -197,26 +189,26 @@ class Config(object):
     
     def prepare_for_external_app(self):
         win = self.main_window
-        win.set_using_external_app(True, self.options.fullscreen)
+        win.set_using_external_app(True, settings.fullscreen)
     
     def restore_after_external_app(self):
         win = self.main_window
-        win.set_using_external_app(False, self.options.fullscreen)
+        win.set_using_external_app(False, settings.fullscreen)
     
     def create_root(self):
         self.root = RootMenu(self)
     
     def get_metadata_pathname(self, option):
-        if not os.path.isabs(option) and self.options.metadata_root:
-            if not os.path.exists(self.options.metadata_root):
-                os.mkdir(self.options.metadata_root)
-            option = os.path.join(self.options.metadata_root, option)
+        if option is not None and not os.path.isabs(option) and settings.metadata_root:
+            if not os.path.exists(settings.metadata_root):
+                os.mkdir(settings.metadata_root)
+            option = os.path.join(settings.metadata_root, option)
         log.debug("database: %s" % option)
         return option
     
     def get_object_database(self):
         if not hasattr(self, 'zodb'):
-            self.zodb = DBFacade(self.get_metadata_pathname(self.options.database), self.options.db_host)
+            self.zodb = DBFacade(self.get_metadata_pathname(settings.db_file), settings.db_host)
             self.zodb.add_commit_callback(MenuItem.needs_refresh)
         return self.zodb
     
@@ -234,8 +226,8 @@ class Config(object):
     def start_update_monitor(self):
         watcher = FileWatcher(self.db)
         for path, flags in self.ini["media_paths"].iteritems():
-            if self.options.media_root and not os.path.isabs(path):
-                path = os.path.join(self.options.media_root, path)
+            if settings.media_root and not os.path.isabs(path):
+                path = os.path.join(settings.media_root, path)
             watcher.add_path(path, flags)
         watcher.watch()
     
@@ -246,19 +238,19 @@ class Config(object):
         return self.root
     
     def get_font_name(self):
-        return self.options.font_name
+        return settings.font_name
     
     def get_font_size(self):
-        return self.options.font_size_menu
+        return settings.font_size_menu
     
     def get_detail_font_size(self):
-        return self.options.font_size_detail
+        return settings.font_size_detail
     
     def get_selected_font_size(self):
-        return self.options.font_size_selected
+        return settings.font_size_selected
     
     def get_thumbnail_loader(self):
-        thumbnail_factory = ThumbnailFactory(self.options.thumbnail_dir, self.get_metadata_pathname(self.options.image_dir))
+        thumbnail_factory = ThumbnailFactory(settings.thumbnail_dir, self.get_metadata_pathname(settings.image_dir))
         return thumbnail_factory
     
     def get_media_client(self, media_file):
