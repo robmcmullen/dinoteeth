@@ -42,7 +42,11 @@ class AVScanBase(Persistent):
         self.title_key = self.calc_title_key(file, info, guess)
     
     def __str__(self):
-        return "%s/%s %d audio, %d subtitles, length=%s" % (self.category, self.subcat, len(self.audio), len(self.subtitles), self.length)
+        try:
+            v = self.video[0]
+            return "%s/%s %dx%d %s video, %d audio, %d subtitles, length=%s" % (self.category, self.subcat, v.width, v.height, v.codec, len(self.audio), len(self.subtitles), self.length)
+        except:
+            return "%s/%s %d audio, %d subtitles, length=%s" % (self.category, self.subcat, len(self.audio), len(self.subtitles), self.length)
     
     def sort_key(self):
         """Return a 5-tuple:
@@ -89,9 +93,45 @@ class AVScanBase(Persistent):
     def init_common(self, file, info, guess):
         # Rather than saving a copy of the entire metadata scan, just save the
         # parts that we are going to use later.  This reduces database size by
-        # almost an order of magnitude
-        self.audio = info.audio
-        self.subtitles = info.subtitles
+        # an order of magnitude
+        self.video = []
+        for i, v in enumerate(info.video):
+            self.video.append({
+                'codec': v.codec,
+                'width': v.width,
+                'height': v.height,
+                'id': v.id,
+                })
+        
+        self.audio = []
+        for i, a in enumerate(info.audio):
+            title = a.title
+            if not title:
+                channels = a.channels
+                if not channels:
+                    title = "Audio Track %d" % (i + 1)
+                else:
+                    if a.channels == 1:
+                        title = "Mono"
+                    elif a.channels == 2:
+                        title = "Stereo"
+                    else:
+                        title = "%d Channels" % a.channels
+            self.audio.append({
+                'title': title,
+                'channels': a.channels,
+                'codec': a.codec,
+                'id': a.id,
+                })
+        
+        self.subtitles = []
+        for s in info.subtitles:
+            self.subtitles.append({
+                'title': s.title,
+                'codec': s.codec,
+                'id': s.id,
+                })
+        
         self.length = info.length
         
         self.selected_audio_id = 0
@@ -111,20 +151,7 @@ class AVScanBase(Persistent):
     def get_audio_options(self):
         options = []
         for i, audio in enumerate(self.iter_audio()):
-#            print "audio track: %s" % audio
-            title = audio.title
-            if not title:
-                channels = audio.channels
-                if not channels:
-                    title = "Audio Track %d" % (i + 1)
-                else:
-                    if audio.channels == 1:
-                        title = "Mono"
-                    elif audio.channels == 2:
-                        title = "Stereo"
-                    else:
-                        title = "%d Channels" % audio.channels
-            options.append((i, i == self.selected_audio_id, title))
+            options.append((i, i == self.selected_audio_id, audio.title))
         if not options:
             # "No audio" is not an option by default; only if there really is
             # no audio available in the media
