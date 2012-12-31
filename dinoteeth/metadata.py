@@ -248,3 +248,9 @@ class MetadataLoader(object):
         """
         return []
 
+    def get_icon(self, icon_code):
+        path = os.path.join(self.metadata_root, "icons", icon_code).encode('utf-8')
+        for ext in [".jpg", ".png", ".gif"]:
+            if os.path.exists(path + ext):
+                return path + ext
+        return None

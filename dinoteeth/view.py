@@ -246,13 +246,26 @@ class DetailRenderer(Renderer):
         imgpath = loader.get_poster(metadata, season=season)
         print "draw_mmdb: %s, type=%s" % (imgpath, type(imgpath))
         image = self.window.get_image(imgpath)
-        self.window.blit(image, self.x, self.y + self.h - image.height, 0)
+        y = self.y + self.h - image.height
+        self.window.blit(image, self.x, y, 0)
         
         self.window.draw_markup(metadata.get_markup(m.get('media_file', None)),
                                 self.window.detail_font,
                                 x=self.x + image.width + 10, y=self.y + self.h,
                                 anchor_x='left', anchor_y='top',
                                 width=self.w - image.width - 10)
+        
+        icon_codes = metadata.get_icon_codes(m.get('media_file', None))
+        print icon_codes
+        x = self.x
+        for icon_code in icon_codes:
+            imgpath = loader.get_icon(icon_code)
+            if imgpath is None:
+                continue
+            print imgpath
+            image = self.window.get_image(imgpath)
+            self.window.blit(image, x, y - image.height-10, 0)
+            x += image.width + 10
 
     def draw_imdb_search_result(self, item, m):
         result = m['imdb_search_result']

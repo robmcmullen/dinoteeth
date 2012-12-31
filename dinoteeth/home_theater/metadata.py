@@ -430,6 +430,16 @@ class HomeTheaterMetadata(BaseMetadata):
         text = """\n
 %s\n""" % _(media_file.pathname)
         return text
+    
+    def get_icon_codes(self, media_file):
+        print "cert: %s" % self.certificate
+        codes = ["ratings/%s" % self.certificate]
+        if media_file:
+            try:
+                codes.append("video/%s" % media_file.scan.video[0]['codec'])
+            except:
+                pass
+        return codes
 
 
 class FakeMetadata(HomeTheaterMetadata):

@@ -98,6 +98,7 @@ class AVScanBase(Persistent):
         for i, v in enumerate(info.video):
             self.video.append({
                 'codec': v.codec,
+                'fourcc': v.fourcc,
                 'width': v.width,
                 'height': v.height,
                 'id': v.id,
