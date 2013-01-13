@@ -432,8 +432,12 @@ class HomeTheaterMetadata(BaseMetadata):
         return text
     
     def get_icon_codes(self, media_file):
-        print "cert: %s" % self.certificate
-        codes = ["ratings/%s" % self.certificate]
+        codes = []
+        try:
+            print "cert: %s" % self.certificate
+            codes = ["ratings/%s" % self.certificate]
+        except AttributeError:
+            pass
         if media_file:
             try:
                 codes.append("video/%s" % media_file.scan.video[0]['codec'])
