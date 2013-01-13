@@ -541,7 +541,7 @@ class RootPopulator(MMDBPopulator):
         yield "Just Movies", TopLevelVideos(self, self.config, lambda f: f.scan.subcat == "movie")
         yield "Just Series", TopLevelVideos(self, self.config, lambda f: f.scan.subcat == "series")
         yield "Favorites", MetadataLookup(self, self.config, filter=lambda f: f.metadata and f.metadata.starred)
-        yield "Paused", ExpandedLookup(self, self.config, filter=only_paused)
+        yield "Paused", ExpandedLookup(self, self.config, filter=only_paused, time_lookup=play_date)
         yield "Photos & Home Videos", TopLevelPhoto(self.config)
         yield "Games", TopLevelGames(self, self.config)
 
