@@ -49,7 +49,6 @@ class MediaFile(Persistent):
             key = self.metadata.sort_key()
         else:
             key = self.pathname
-        print key
         return key
 
     def reset(self):

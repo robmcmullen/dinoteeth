@@ -59,6 +59,12 @@ class AVScanBase(Persistent):
         """
         raise RuntimeError("abstract method")
     
+    def copy_stats_from(self, old_scan):
+        self.position = old_scan.position
+        self.play_date = old_scan.play_date
+        self.selected_audio_id = old_scan.selected_audio_id
+        self.selected_subtitle_id = old_scan.selected_subtitle_id
+    
     def init_attributes(self, file, info, guess):
         pass
     
@@ -152,7 +158,7 @@ class AVScanBase(Persistent):
     def get_audio_options(self):
         options = []
         for i, audio in enumerate(self.iter_audio()):
-            options.append((i, i == self.selected_audio_id, audio.title))
+            options.append((i, i == self.selected_audio_id, audio['title']))
         if not options:
             # "No audio" is not an option by default; only if there really is
             # no audio available in the media
@@ -218,7 +224,7 @@ class AVScanBase(Persistent):
         i = 0
         for i, subtitle in enumerate(self.iter_subtitles()):
 #            print "subtitle track: %s" % subtitle
-            options.append((i, i == self.selected_subtitle_id, subtitle.title))
+            options.append((i, i == self.selected_subtitle_id, subtitle['title']))
         external = self.get_external_subtitles(pathname)
         for path in external:
             options.append((i, i == self.selected_subtitle_id, os.path.basename(path)))
