@@ -1,3 +1,5 @@
+import os
+
 from ..utils import ExeRunner, vprint
 
 def wprint(text):
@@ -32,6 +34,8 @@ class Subtitle(Stream):
 class Title(object):
     def __init__(self, title_num, handbrake):
         self.title_num = title_num
+        self.user_title_num = title_num
+        self.rel_pathname = ""
         self.handbrake = handbrake
         self.main_feature = False
         self.vts = -1
@@ -48,7 +52,7 @@ class Title(object):
         return bool(self.size)
     
     def __str__(self):
-        s = "title %d: %s " % (self.title_num, self.duration)
+        s = "title %d: %s " % (self.user_title_num, self.duration)
         if self.main_feature:
             s += "(MAIN) "
         s += "%s, %s " % (self.size, self.display_aspect)
@@ -74,6 +78,26 @@ class Title(object):
         if extra:
             s += "\n" + extra
         return s
+    
+    def rel_source(self, source):
+        return os.path.join(source, os.path.basename(self.rel_pathname))
+    
+    def mplayer_cmd(self, source):
+        if self.rel_pathname:
+            cmd = self.rel_source(source)
+        else:
+            cmd = "dvd://%d/%s" % (self.title_num, source)
+        return cmd
+    
+    def handbrake_source(self, source):
+        args = ['-i']
+        if self.rel_pathname:
+            args.append(self.rel_source(source))
+            args.extend(['-t', '1'])
+        else:
+            args.append(source)
+            args.extend(['-t', self.title_num])
+        return args
     
     def num_minutes(self):
         t = self.duration.split(":")

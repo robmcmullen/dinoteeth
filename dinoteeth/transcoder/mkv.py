@@ -36,7 +36,7 @@ class MkvPropEdit(ExeRunner):
         vprint(0, "-Using mkvpropedit to add names to tracks")
         self.args = [source]
         self.args.extend(["-e", "track:1", "-s", "name=%s" % options.name])
-        title = scan.get_title(dvd_title)
+        title = scan.get_user_title(dvd_title)
         #print title
         audio_index = 0
         sub_index = 0

@@ -14,11 +14,13 @@ class HandBrakeEncoder(HandBrake):
         self.scan = scan
         self.title_num = dvd_title
         self.output = output
-        self.title = scan.get_title(self.title_num)
+        self.title = scan.get_user_title(self.title_num)
         if not self.title.is_valid():
             raise HandBrakeScanError()
         self.options = options
         self.audio_only = audio_only
+        
+        self.args = self.title.handbrake_source(source)
         self.select_audio(audio_spec)
         self.select_subtitles(subtitle_spec)
         self.add_options(options)
@@ -116,7 +118,6 @@ class HandBrakeEncoder(HandBrake):
             self.args.extend(["-F", "1", "--subtitle-burn", "1"])
     
     def add_options(self, options):
-        self.args.extend(["-t", str(self.title.title_num)])
         self.args.append("-m") # include chapter markers
         if options.preview > 0:
             self.args.extend(["-c", "1-%d" % options.preview])

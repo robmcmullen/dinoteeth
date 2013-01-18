@@ -25,7 +25,7 @@ class VOBAudioExtractor(object):
         self.handbrake_to_mp3 = dict()
         self.source = source
         self.title = title
-        self.url = "dvd://%d//%s" % (title.title_num, source)
+        self.url = title.mplayer_cmd(source)
         self.track_order = track_order
         self.output = output
         
