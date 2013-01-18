@@ -326,6 +326,14 @@ def canonical_filename(title, film_series, season=-1, episode_char='e', episode=
     if not title:
         base = filename.strip("/")
         title = decode_title_text(os.path.basename(base)).title()
+        match = re.match("(.+) (?:d|disc) ?[0-9]+$", title, re.IGNORECASE)
+        if match:
+            title = match.group(1)
+        match = re.match("(.+) (?:s|season) ?([0-9]+)$", title, re.IGNORECASE)
+        if match:
+            title = match.group(1)
+            season = int(match.group(2))
+            
     name = []
     if season == -1:
         if film_series:
