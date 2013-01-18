@@ -96,7 +96,7 @@ class Title(object):
             args.extend(['-t', '1'])
         else:
             args.append(source)
-            args.extend(['-t', self.title_num])
+            args.extend(['-t', str(self.title_num)])
         return args
     
     def num_minutes(self):
