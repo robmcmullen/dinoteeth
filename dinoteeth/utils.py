@@ -324,7 +324,8 @@ def time_since(d, now=None):
 
 def canonical_filename(title, film_series, season=-1, episode_char='e', episode=-1, episode_name='', ext="mkv", filename=""):
     if not title:
-        title = decode_title_text(os.path.basename(filename)).title()
+        base = filename.strip("/")
+        title = decode_title_text(os.path.basename(base)).title()
     name = []
     if season == -1:
         if film_series:
