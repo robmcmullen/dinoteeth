@@ -18,8 +18,12 @@ try:
     import argparse
 except:
     import dinoteeth.third_party.argparse as argparse
-from dinoteeth.utils import encode_title_text, canonical_filename, parse_int_string, csv_split, ExeRunner, vprint
+from dinoteeth.utils import encode_title_text, canonical_filename, parse_int_string, csv_split, ExeRunner, vprint, find_next_episode_number
 from dinoteeth.transcoder import *
+
+import dinoteeth.settings as settings
+from dinoteeth.third_party.configobj import ConfigObj
+from dinoteeth.third_party.validate import Validator
 
 class TrackInfo(object):
     def __init__(self):
@@ -169,7 +173,7 @@ if __name__ == "__main__":
     sticky_parser.add_argument("--vobsub-first", action="store_false", dest="cc_first", default=True, help="Place vobsub (DVD image subtitles) before closed captions")
     
     # Video options
-    sticky_parser.add_argument("-b", "--vb", action="store", dest="video_bitrate", type=int, default=2000, help="Video bitrate (kb/s)")
+    sticky_parser.add_argument("-b", "--vb", action="store", dest="video_bitrate", type=int, default=0, help="Video bitrate (kb/s)")
     sticky_parser.add_argument("-g", "--grayscale", action="store_true", dest="grayscale", default=False, help="Grayscale encoding")
     sticky_parser.add_argument("--color", action="store_false", dest="grayscale", default=False, help="Color encoding (default)")
     sticky_parser.add_argument("--crop", action="store", dest="crop", default="0:0:0:0", help="Crop parameters (default %(default)s)")
@@ -178,6 +182,10 @@ if __name__ == "__main__":
     sticky_parser.add_argument("--video-encoder", action="store", default="x264", help="Video encoder (default %(default)s)")
     sticky_parser.add_argument("--x264-preset", action="store", default="", help="x264 encoder preset")
     sticky_parser.add_argument("--x264-tune", action="store", default="film", help="x264 encoder tuning (typically either 'film' or 'animation')")
+    sticky_parser.add_argument("--qHD", "--540", "--960", action="store_const", dest="hd_width", default=0, const=960, help="Encode at 960x540 (qHD)")
+    sticky_parser.add_argument("--720p", "--720", "--1280", action="store_const", dest="hd_width", default=0, const=1280, help="Encode at 1280x720 (720p HD)")
+    sticky_parser.add_argument("--768p", "--768", "--1360", "--1366", action="store_const", dest="hd_width", default=0, const=1360, help="Encode at 1360x768 (768p HD)")
+    sticky_parser.add_argument("--1080p", "--1080", "--1920", action="store_const", dest="hd_width", default=0, const=1920, help="Encode at 1920x1080 (Full HD)")
     
     # Audio options
     sticky_parser.add_argument("--audio-encoder", action="store", default="faac", help="Audio encoder (default %(default)s)")
@@ -197,6 +205,36 @@ if __name__ == "__main__":
     title_parser.add_argument("-x", action="store", dest="bonus", default=None, nargs="*", metavar=("NUMBER", "NAME,NAME"), help="Optional starting bonus feature number and optional comma separated list of bonus feature names")
     title_parser.add_argument("-a", action="store", dest="audio", default=None, nargs="+", metavar="AUDIO_TRACK_NUMBER(s) [TITLE,TITLE...]", help="Range of audio track numbers and optional audio track names.  Note: if multiple DVD titles are specified in this title block, the audio tracks will apply to ALL of them")
     title_parser.add_argument("-c", action="store", dest="subtitles", default=None, nargs="+", metavar="SUBTITLE_TRACK_NUMBER(s) [TITLE,TITLE...]", help="Range of subtitle caption numbers and optional corresponding subtitle track names.  Note: if multiple DVD titles are specified in this title block, the audio tracks will apply to ALL of them")
+    
+    default_parser = argparse.ArgumentParser(description="Default Parser")
+    default_parser.add_argument("-c", "--conf_file", default="",
+                help="Specify config file to replace global config file loaded from user's home directory", metavar="FILE")
+    options, extra_args = default_parser.parse_known_args()
+    defaults = {}
+    if options.conf_file:
+        conf_file = options.conf_file
+    else:
+        conf_file = os.path.expanduser("~/.dinoteeth/settings.ini")
+    configspec = ConfigObj(settings.default_conf.splitlines(), list_values=False)
+    ini = ConfigObj(conf_file, configspec=configspec)
+    ini.validate(Validator())
+    
+    # parameters in other sections are only specified through config file
+    for section in ["metadata", "transcode", ]:
+        user = dict(ini[section])
+        print "user [%s]: %s" % (section, user)
+        known = dict(configspec[section])
+        print "known [%s]: %s" % (section, known)
+        for k in known.keys():
+            setattr(settings, k, user[k])
+
+    media_paths = []
+    for path, flags in ini["media_paths"].iteritems():
+        if settings.media_root and not os.path.isabs(path):
+            path = os.path.join(settings.media_root, path)
+        if os.path.isdir(path):
+            media_paths.append(path)
+            print path
     
     # Split argument list by the "-t" option so that each "-t" can have its
     # own arguments
@@ -286,7 +324,12 @@ if __name__ == "__main__":
             subtitles = parse_stream_names(options.subtitles)
             
             if options.episode is not None:
-                numbers, names = parse_episode_info(episode_number, dvd_titles, options.episode)
+                if len(options.episode) == 0:
+                    next = find_next_episode_number(options.name, options.season, "e", source, media_paths)
+                    numbers = range(next, next + len(dvd_titles))
+                    names = [""] * len(dvd_titles)
+                else:
+                    numbers, names = parse_episode_info(episode_number, dvd_titles, options.episode)
                 
                 # add each episode to queue
                 for dvd_title, episode, name in zip(dvd_titles, numbers, names):
@@ -301,7 +344,12 @@ if __name__ == "__main__":
                 episode_number = numbers[-1] + 1
             
             elif options.bonus is not None:
-                numbers, names = parse_episode_info(bonus_number, dvd_titles, options.bonus)
+                if len(options.bonus) == 0:
+                    next = find_next_episode_number(options.name, options.season, "x", source, media_paths)
+                    numbers = range(next, next + len(dvd_titles))
+                    names = [""] * len(dvd_titles)
+                else:
+                    numbers, names = parse_episode_info(bonus_number, dvd_titles, options.bonus)
                 
                 # add each bonus feature to queue
                 for dvd_title, episode, name in zip(dvd_titles, numbers, names):

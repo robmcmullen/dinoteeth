@@ -322,17 +322,22 @@ def time_since(d, now=None):
         return "one year ago"
     return "%d years ago" % years
 
+def deduce_title_and_season(filename):
+    season = -1
+    base = filename.strip("/")
+    title = decode_title_text(os.path.basename(base)).title()
+    match = re.match("(.+) (?:d|disc) ?[0-9]+$", title, re.IGNORECASE)
+    if match:
+        title = match.group(1)
+    match = re.match("(.+) (?:s|season) ?([0-9]+)$", title, re.IGNORECASE)
+    if match:
+        title = match.group(1)
+        season = int(match.group(2))
+    return title, season
+
 def canonical_filename(title, film_series, season=-1, episode_char='e', episode=-1, episode_name='', ext="mkv", filename=""):
     if not title:
-        base = filename.strip("/")
-        title = decode_title_text(os.path.basename(base)).title()
-        match = re.match("(.+) (?:d|disc) ?[0-9]+$", title, re.IGNORECASE)
-        if match:
-            title = match.group(1)
-        match = re.match("(.+) (?:s|season) ?([0-9]+)$", title, re.IGNORECASE)
-        if match:
-            title = match.group(1)
-            season = int(match.group(2))
+        title, season = deduce_title_and_season(filename)
             
     name = []
     if season == -1:
@@ -347,6 +352,34 @@ def canonical_filename(title, film_series, season=-1, episode_char='e', episode=
     if episode_name:
         name.append(episode_name)
     return encode_title_text("-".join(name) + ".%s" % ext)
+
+def find_next_episode_number(title, season=-1, episode_char='e', filename="", media_paths=[]):
+    if not title:
+        title, season = deduce_title_and_season(filename)
+    name = []
+    name.append(title)
+    if season >= 0:
+        name.append("s%02d" % season)
+    name.append(episode_char)
+    base = encode_title_text("-".join(name))
+    count = len(base)
+    largest = 0
+    
+    vprint(0, "scanning for latest episode number: %s" % base)
+    for path in media_paths:
+        for video in iter_dir(path):
+            filename = os.path.basename(video)
+            if filename.startswith(base):
+                num = 0
+                for c in filename[count:]:
+                    if c.isdigit():
+                        num = 10*num + int(c)
+                    else:
+                        break
+                print video, num
+                if num > largest:
+                    largest = num
+    return largest + 1
 
 def iter_dir(path, valid_extensions=None, exclude=None, verbose=False, recurse=False):
     if exclude is not None:

@@ -6,6 +6,7 @@ from common import *
 from audio import MkvAudioExtractor, VOBAudioExtractor, AudioGain
 from mkv import MkvScanner, MkvPropEdit
 from ..utils import vprint
+from .. import settings
 
 class HandBrakeEncoder(HandBrake):
     def __init__(self, source, scan, output, dvd_title, audio_spec, subtitle_spec, options, audio_only=False):
@@ -134,16 +135,34 @@ class HandBrakeEncoder(HandBrake):
                 self.args.extend(("--x264-preset", options.x264_preset))
             if options.x264_tune:
                 self.args.extend(("--x264-tune", options.x264_tune))
-            self.args.extend(("-b", str(options.video_bitrate)))
+            
+            width, height = self.title.size.split("x")
+            width = int(width)
+            print width
+            if width > 720:
+                if options.hd_width > 0:
+                    width = options.hd_width
+                if width >= 1920:
+                    bitrate = settings.hd_1080_video_bitrate
+                elif width >= 1280:
+                    bitrate = settings.hd_720_video_bitrate
+                else:
+                    bitrate = settings.hd_560_video_bitrate
+                self.args.extend(("-w", str(width)))
+            else:
+                bitrate = settings.sd_video_bitrate
+                if self.title.display_aspect in ["16x9", "1.78", "1.77"]:
+                    self.args.extend(("--display-width", "854"))
+                elif self.title.display_aspect in ["4x3", "1.33"]:
+                    self.args.extend(("--pixel-aspect", "8:9"))
+                else:
+                    raise RuntimeError("Unknown standard definition aspect ratio %s" % self.title.display_aspect)
+                self.args.append("--loose-anamorphic")
+            if options.video_bitrate > 0:
+                bitrate = options.video_bitrate
+            self.args.extend(("-b", str(bitrate)))
         if options.grayscale:
             self.args.append("-g")
-        self.args.append("--loose-anamorphic")
-        if self.title.display_aspect in ["16x9", "1.78", "1.77"]:
-            self.args.extend(("--display-width", "854"))
-        elif self.title.display_aspect in ["4x3", "1.33"]:
-            self.args.extend(("--pixel-aspect", "8:9"))
-        else:
-            raise RuntimeError("Unknown aspect ratio %s" % self.title.display_aspect)
         which = options._latest_of("crop", "autocrop")
         if which == "autocrop":
             self.args.extend(["--crop", self.title.autocrop])

@@ -42,6 +42,12 @@ iso_639_1 = string(default="en")
 tmdb_poster_size = string(default="w342")
 
 tvdb_cache_dir = string(default="tvdb-cache")
+
+[transcode]
+sd_video_bitrate = integer(min=1, default=2000)
+hd_560_video_bitrate = integer(min=1, default=2800)
+hd_720_video_bitrate = integer(min=1, default=4000)
+hd_1080_video_bitrate = integer(min=1, default=6000)
 """
 
 # Subtitles
