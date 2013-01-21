@@ -44,11 +44,11 @@ tmdb_poster_size = string(default="w342")
 tvdb_cache_dir = string(default="tvdb-cache")
 
 [transcode]
-sd_video_bitrate = integer(min=1, default=2000)
+sd_video_bitrate = integer(min=1, default=1800)
 hd_width = integer(min=0, default=1280)
-hd_560_video_bitrate = integer(min=1, default=2800)
-hd_720_video_bitrate = integer(min=1, default=4000)
-hd_1080_video_bitrate = integer(min=1, default=6000)
+hd_560_video_bitrate = integer(min=1, default=2500)
+hd_720_video_bitrate = integer(min=1, default=3600)
+hd_1080_video_bitrate = integer(min=1, default=5500)
 audio_encoder = string(default="faac")
 audio_bitrate = integer(min=1, default=160)
 """
