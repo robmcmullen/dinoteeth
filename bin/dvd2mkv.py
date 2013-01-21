@@ -188,8 +188,8 @@ if __name__ == "__main__":
     sticky_parser.add_argument("--1080p", "--1080", "--1920", action="store_const", dest="hd_width", default=0, const=1920, help="Encode at 1920x1080 (Full HD)")
     
     # Audio options
-    sticky_parser.add_argument("--audio-encoder", action="store", default="faac", help="Audio encoder (default %(default)s)")
-    sticky_parser.add_argument("-B", "--ab", action="store", dest="audio_bitrate", type=int, default=160, help="Audio bitrate (kb/s)")
+    sticky_parser.add_argument("--audio-encoder", action="store", default="", help="Audio encoder (faac/lame/copy)")
+    sticky_parser.add_argument("-B", "--ab", action="store", dest="audio_bitrate", type=int, default=0, help="Audio bitrate (kb/s)")
     sticky_parser.add_argument("--normalize", action="store_true", default=True, help="Automatically select gain values to normalize audio (uses an extra encoding pass)")
     sticky_parser.add_argument("--no-normalize", dest="normalize", action="store_false", default=True, help="Automatically select gain values to normalize audio (uses an extra encoding pass)")
     sticky_parser.add_argument("--gain", action="store", default="", help="Specify audio gain (dB, positive values amplify). Comma separated list, otherwise gain value used for all tracks")
