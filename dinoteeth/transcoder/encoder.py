@@ -142,6 +142,8 @@ class HandBrakeEncoder(HandBrake):
             if width > 720:
                 if options.hd_width > 0:
                     width = options.hd_width
+                elif settings.hd_width > 0:
+                    width = settings.hd_width
                 if width >= 1920:
                     bitrate = settings.hd_1080_video_bitrate
                 elif width >= 1280:
