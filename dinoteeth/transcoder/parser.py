@@ -341,7 +341,7 @@ class MakeMkvDirParser(HandBrakeScanParser):
             id = int(match.group(1))
             self.stream_flag = match.group(3)
             order = self.mkv_counters.get(self.stream_flag, 0)
-            vprint(3, "matched mkv %s stream! order=%d, mplayer_id=%d" % (self.stream_flag, order, id))
+            vprint(3, "matched mkv %s stream! order=%d, stream_num=%d mplayer_id=%d" % (self.stream_flag, order, id, order-1))
             if self.stream_flag == "Audio":
                 self.current_stream = Audio(order)
                 self.current_title.audio.append(self.current_stream)
@@ -354,7 +354,7 @@ class MakeMkvDirParser(HandBrakeScanParser):
             else:
                 vprint(0, "ignoring mkv stream type %s" % self.stream_flag)
             self.mkv_counters[self.stream_flag] += 1
-            self.current_stream.mplayer_id = id
+            self.current_stream.mplayer_id = order - 1
             self.current_stream.lang = match.group(2)
             if not self.current_stream.name:
                 self.current_stream.name = self.current_stream.lang
