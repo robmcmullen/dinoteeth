@@ -30,6 +30,9 @@ class Subtitle(Stream):
     
     def __str__(self):
         return "subtitle #%d: %s id=%d %s %s %s" % (self.order, self.name, self.mplayer_id, self.lang, self.threecc, self.type)
+    
+    def is_burnable(self):
+        return self.type == "vobsub" or self.type == "pgs"
 
 class Title(object):
     def __init__(self, title_num, handbrake):

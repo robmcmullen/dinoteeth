@@ -86,17 +86,17 @@ class HandBrakeEncoder(HandBrake):
                 names.append(name)
         
         if not tracks:
-            vobsub = []
+            burnable = []
             cc = None
             default_set = self.title.find_subtitle_by_language()
             for sub in default_set:
-                if sub.type == "vobsub":
-                    vobsub.append(sub)
+                if sub.is_burnable():
+                    burnable.append(sub)
                 if cc is None and sub.type == "cc":
                     cc = sub
-            if vobsub:
-                tracks.extend([v.order for v in vobsub])
-                names.append([v.lang for v in vobsub])
+            if burnable:
+                tracks.extend([v.order for v in burnable])
+                names.append([v.lang for v in burnable])
             if cc is not None:
                 if self.options.cc_first:
                     tracks[0:0] = [cc.order]
@@ -109,7 +109,7 @@ class HandBrakeEncoder(HandBrake):
 
         for track in tracks:
             sub = self.title.find_subtitle_by_handbrake_id(track)
-            if sub.type == "vobsub":
+            if sub.is_burnable():
                 scan = True
                 tracks[0:0] = ["scan"]
                 break
