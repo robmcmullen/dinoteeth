@@ -50,6 +50,7 @@ hd_560_video_bitrate = integer(min=1, default=2500)
 hd_720_video_bitrate = integer(min=1, default=3600)
 hd_768_video_bitrate = integer(min=1, default=4000)
 hd_1080_video_bitrate = integer(min=1, default=5500)
+bonus_bitrate_scale = float(min=0.5, default=0.75)
 audio_encoder = string(default="faac")
 audio_bitrate = integer(min=1, default=160)
 """

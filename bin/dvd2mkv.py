@@ -356,7 +356,7 @@ if __name__ == "__main__":
                 for dvd_title, episode, name in zip(dvd_titles, numbers, names):
                     filename = canonical_filename(options.name, options.film_series, options.season, "x", episode, name, options.ext, filename=source)
                     try:
-                        encoder = HandBrakeEncoder(source, scan, filename, dvd_title, audio, subtitles, options)
+                        encoder = HandBrakeEncoder(source, scan, filename, dvd_title, audio, subtitles, options, bonus=True)
                         queue.append(encoder)
                     except HandBrakeScanError:
                         print "Bad title number %s!  Skipping." % dvd_title

@@ -9,7 +9,7 @@ from ..utils import vprint
 from .. import settings
 
 class HandBrakeEncoder(HandBrake):
-    def __init__(self, source, scan, output, dvd_title, audio_spec, subtitle_spec, options, audio_only=False):
+    def __init__(self, source, scan, output, dvd_title, audio_spec, subtitle_spec, options, audio_only=False, bonus=False):
         HandBrake.__init__(self, source)
         self.source = source
         self.scan = scan
@@ -24,7 +24,7 @@ class HandBrakeEncoder(HandBrake):
         self.args = self.title.handbrake_source(source)
         self.select_audio(audio_spec)
         self.select_subtitles(subtitle_spec)
-        self.add_options(options)
+        self.add_options(options, bonus)
         self.args.extend(["-o", output])
     
     def clone_audio_only(self):
@@ -118,7 +118,7 @@ class HandBrakeEncoder(HandBrake):
         if scan:
             self.args.extend(["-F", "1", "--subtitle-burn", "1"])
     
-    def add_options(self, options):
+    def add_options(self, options, bonus):
         self.args.append("-m") # include chapter markers
         if options.preview > 0:
             self.args.extend(["-c", "1-%d" % options.preview])
@@ -164,6 +164,8 @@ class HandBrakeEncoder(HandBrake):
                 self.args.append("--loose-anamorphic")
             if options.video_bitrate > 0:
                 bitrate = options.video_bitrate
+            if bonus:
+                bitrate = int(bitrate * settings.bonus_bitrate_scale)
             self.args.extend(("-b", str(bitrate)))
         if options.grayscale:
             self.args.append("-g")
