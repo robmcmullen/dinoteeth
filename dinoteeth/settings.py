@@ -52,7 +52,7 @@ hd_768_video_bitrate = integer(min=1, default=4000)
 hd_1080_video_bitrate = integer(min=1, default=5500)
 bonus_bitrate_scale = float(min=0.5, default=0.75)
 audio_encoder = string(default="faac")
-audio_bitrate = integer(min=1, default=160)
+audio_bitrate = integer(min=1, default=192)
 """
 
 # Subtitles
