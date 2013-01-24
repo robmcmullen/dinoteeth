@@ -235,6 +235,7 @@ if __name__ == "__main__":
         if os.path.isdir(path):
             media_paths.append(path)
             print path
+    media_paths.append(os.getcwd())
     
     # Split argument list by the "-t" option so that each "-t" can have its
     # own arguments
