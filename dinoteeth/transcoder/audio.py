@@ -49,24 +49,45 @@ class VOBAudioExtractor(object):
 class AudioGain(ExeRunner):
     exe_name = "normalize"
     
-    def setCommandLine(self, source, extractor=None, options=None, *args, **kwargs):
+    def setCommandLine(self, source, extractor=None, gains_output=None, options=None, *args, **kwargs):
         self.extractor = extractor
         vprint(0, "-Using normalize to compute audio gain for %s" % source)
         self.args = ["-n", "--no-progress"]
         self.normalize_order = []
-        for handbrake_id, output in extractor.handbrake_to_mp3.iteritems():
-            self.args.append(output)
-            self.normalize_order.append(handbrake_id)
+        if self.extractor is None:
+            index = 1
+            for line in gains_output.splitlines():
+                if 'dB' in line:
+                    self.normalize_order.append(index)
+                    index += 1
+            self.compute_gains(gains_output)
+        else:
+            for handbrake_id, output in extractor.handbrake_to_mp3.iteritems():
+                self.args.append(output)
+                self.normalize_order.append(handbrake_id)
 
     def parseOutput(self, output):
-        self.gains = ['']*len(self.normalize_order)
-
+        self.compute_gains(output)
+        self.extractor.cleanup()
+    
+    def compute_gains(self, output):
+        gains = [0.0]*len(self.normalize_order)
+        peaks = [0.0]*len(self.normalize_order)
+        
         index = 0
         for line in output.splitlines():
             if 'dB' in line:
                 details = line.split()
                 gain = details[2][:-2]
-                self.gains[self.normalize_order[index] - 1] = gain
+                gains[self.normalize_order[index] - 1] = float(gain)
+                peak = details[1][:-4]
+                peaks[self.normalize_order[index] - 1] = float(peak)
                 index += 1
-        vprint(0, "--Computed gains: %s" % str(self.gains))
-        self.extractor.cleanup()
+        vprint(0, "--Computed peaks: %s" % str(peaks))
+        vprint(0, "--Computed gains: %s" % str(gains))
+        self.gains = []
+        for peak, gain in zip(peaks, gains):
+            if abs(peak) < 0.1:
+                gain = 0.0
+            self.gains.append(str(gain))
+        vprint(0, "--Gains after excluding zero peaks: %s" % str(self.gains))
