@@ -169,7 +169,7 @@ class MenuItem(object):
                 self.cursor = 0
             elif self.cursor >= self.num_items():
                 self.cursor = self.num_items() - 1
-                self.verify_cursor(delta)
+            self.verify_cursor(delta)
     
     def is_selectable(self):
         return self.enabled
@@ -283,6 +283,8 @@ class MenuPopulator(object):
             items.sort()
         for title, populator in items:
             item = MenuItem(title, populate_children=populator)
+            if populator is None:
+                item.enabled = False
             if hasattr(populator, 'play'):
                 item.action=populator.play
             if hasattr(populator, 'get_metadata'):

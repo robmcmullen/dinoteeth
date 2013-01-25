@@ -31,6 +31,7 @@ class AbstractLayout(object):
     def set_root(self, root):
         self.root = root
         self.hierarchy = [root]
+        root.activate_menu()
     
     def push_root(self, new_root):
         self.stack.append((self.root, self.hierarchy))

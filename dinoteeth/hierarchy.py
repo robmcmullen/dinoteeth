@@ -372,6 +372,8 @@ class MediaPlayMultiple(MMDBPopulator):
 
 
 class ExpandedLookup(MetadataLookup):
+    indent = u"      "
+    
     def __init__(self, parent, config, filter=None, time_lookup=None):
         MetadataLookup.__init__(self, parent, config, filter)
         if time_lookup is None:
@@ -394,21 +396,21 @@ class ExpandedLookup(MetadataLookup):
             media_files = scans_in_each[m]
             if m.media_subcategory == "series":
                 if m.is_mini_series():
-                    yield unicode(m.title), None
+                    yield self.indent + unicode(m.title), None
                     yield unicode(m.title), SeriesEpisodes(self, self.config, m.id)
                 else:
                     seasons = media_files.get_seasons()
                     for s in seasons:
-                        yield u"%s - Season %d" % (unicode(m.title), s), None
+                        yield self.indent + u"%s - Season %d" % (unicode(m.title), s), None
                         episodes = media_files.get_episodes(s)
                         for f in episodes:
-                            yield "  Resume %s (Paused at %s)" % (unicode(f.scan.display_title), f.scan.paused_at_text()), MediaPlay(self.config, m, f, resume=True)
+                            yield "Resume %s (Paused at %s)" % (unicode(f.scan.display_title), f.scan.paused_at_text()), MediaPlay(self.config, m, f, resume=True)
             elif m.media_subcategory == "movies":
-                yield unicode(m.title), None
+                yield self.indent + unicode(m.title), None
                 media_files.sort()
                 bonus = media_files.get_bonus()
                 for f in media_files:
-                    yield "  Resume %s (Paused at %s)" % (unicode(f.scan.display_title), f.scan.paused_at_text()), MediaPlay(self.config, m, f, resume=True)
+                    yield "Resume %s (Paused at %s)" % (unicode(f.scan.display_title), f.scan.paused_at_text()), MediaPlay(self.config, m, f, resume=True)
 
 
 class ChangeImdbRoot(MetadataLookup):
