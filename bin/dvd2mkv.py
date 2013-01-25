@@ -204,7 +204,7 @@ if __name__ == "__main__":
     title_parser.add_argument("-e", action="store", dest="episode", default=None, nargs="*", metavar=("NUMBER", "NAME,NAME"), help="Optional starting episode number and optional comma separated list of episode names")
     title_parser.add_argument("-x", action="store", dest="bonus", default=None, nargs="*", metavar=("NUMBER", "NAME,NAME"), help="Optional starting bonus feature number and optional comma separated list of bonus feature names")
     title_parser.add_argument("-a", action="store", dest="audio", default=None, nargs="+", metavar="AUDIO_TRACK_NUMBER(s) [TITLE,TITLE...]", help="Range of audio track numbers and optional audio track names.  Note: if multiple DVD titles are specified in this title block, the audio tracks will apply to ALL of them")
-    title_parser.add_argument("-c", action="store", dest="subtitles", default=None, nargs="+", metavar="SUBTITLE_TRACK_NUMBER(s) [TITLE,TITLE...]", help="Range of subtitle caption numbers and optional corresponding subtitle track names.  Note: if multiple DVD titles are specified in this title block, the audio tracks will apply to ALL of them")
+    title_parser.add_argument("--sub", action="store", dest="subtitles", default=None, nargs="+", metavar="SUBTITLE_TRACK_NUMBER(s) [TITLE,TITLE...]", help="Range of subtitle caption numbers and optional corresponding subtitle track names.  Note: if multiple DVD titles are specified in this title block, the audio tracks will apply to ALL of them")
     
     default_parser = argparse.ArgumentParser(description="Default Parser")
     default_parser.add_argument("-c", "--conf_file", default="",
