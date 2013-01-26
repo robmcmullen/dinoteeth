@@ -47,6 +47,8 @@ class MMDBPopulator(MenuPopulator):
                 print "No loader for %s" % str(metadata)
 
 class MetadataLookup(MMDBPopulator):
+    heading_indent = u"      "
+    
     def __init__(self, parent, config, filter=None):
         MMDBPopulator.__init__(self, config)
         self.parent = parent
@@ -59,16 +61,20 @@ class MetadataLookup(MMDBPopulator):
     def iter_create(self):
         metadata = self.get_sorted_metadata()
         for m in metadata:
-            if m.media_category == "video":
-                if m.media_subcategory == "series":
-                    if m.is_mini_series():
-                        yield unicode(m.title), SeriesEpisodes(self, self.config, m)
-                    else:
-                        yield unicode(m.title), SeriesTopLevel(self, self.config, m)
-                elif m.media_subcategory == "movies":
-                    yield unicode(m.title), MovieTopLevel(self, self.config, m)
-            elif m.media_category == "game":
-                yield unicode(m.title), GameDetails(self, self.config, m)
+            data = self.get_menu_data(m)
+            yield data
+    
+    def get_menu_data(self, m):
+        if m.media_category == "video":
+            if m.media_subcategory == "series":
+                if m.is_mini_series():
+                    return unicode(m.title), SeriesEpisodes(self, self.config, m)
+                else:
+                    return unicode(m.title), SeriesTopLevel(self, self.config, m)
+            elif m.media_subcategory == "movies":
+                return unicode(m.title), MovieTopLevel(self, self.config, m)
+        elif m.media_category == "game":
+            return unicode(m.title), GameDetails(self, self.config, m)
     
     def get_metadata(self):
         return {
@@ -136,6 +142,46 @@ class TopLevelGames(TopLevelLookup):
 
 
 class DateLookup(MetadataLookup):
+    def __init__(self, parent, config, filter=None, time_lookup=None):
+        MetadataLookup.__init__(self, parent, config, filter)
+        if time_lookup is None:
+            time_lookup = lambda f: f.metadata.date_added
+        self.time_lookup = time_lookup
+    
+    def get_sorted_metadata_with_date(self):
+        unique, scans_in_each = self.media.get_unique_metadata_with_value(self.time_lookup)
+        order = sorted([(v, m) for m, v in unique.iteritems()])
+        metadata_with_date = [(item[1], item[0]) for item in reversed(order)]
+        return metadata_with_date
+    
+    labels = [
+        ("Last Week", 7*24*3600),
+        ("2 Weeks Ago", 14*24*3600),
+        ("A Month Ago", 31*24*3600),
+        ("2 Months Ago", 62*24*3600),
+        ("3 Months Ago ", 93*24*3600),
+        ("6 Months Ago", 182*24*3600),
+        ("Last Year", 365*24*3600),
+        ("A Long Time Ago", 365*24*3600*100),
+        ]
+    
+    def iter_create(self):
+        metadata = self.get_sorted_metadata_with_date()
+        label_index = 0
+        label_needed = True
+        start_time = time.time()
+        for m, m_time in metadata:
+            data = self.get_menu_data(m)
+            while m_time < start_time - self.labels[label_index][1]:
+                label_index += 1
+                label_needed = True
+            if label_needed:
+                yield self.heading_indent + self.labels[label_index][0], None
+                label_needed = False
+            yield data
+
+
+class IndexedDateLookup(MetadataLookup):
     def __init__(self, parent, config, filter=None, time_lookup=None):
         MetadataLookup.__init__(self, parent, config, filter)
         if time_lookup is None:
@@ -372,8 +418,6 @@ class MediaPlayMultiple(MMDBPopulator):
 
 
 class ExpandedLookup(MetadataLookup):
-    indent = u"      "
-    
     def __init__(self, parent, config, filter=None, time_lookup=None):
         MetadataLookup.__init__(self, parent, config, filter)
         if time_lookup is None:
@@ -396,17 +440,17 @@ class ExpandedLookup(MetadataLookup):
             media_files = scans_in_each[m]
             if m.media_subcategory == "series":
                 if m.is_mini_series():
-                    yield self.indent + unicode(m.title), None
+                    yield self.heading_indent + unicode(m.title), None
                     yield unicode(m.title), SeriesEpisodes(self, self.config, m.id)
                 else:
                     seasons = media_files.get_seasons()
                     for s in seasons:
-                        yield self.indent + u"%s - Season %d" % (unicode(m.title), s), None
+                        yield self.heading_indent + u"%s - Season %d" % (unicode(m.title), s), None
                         episodes = media_files.get_episodes(s)
                         for f in episodes:
                             yield "Resume %s (Paused at %s)" % (unicode(f.scan.display_title), f.scan.paused_at_text()), MediaPlay(self.config, m, f, resume=True)
             elif m.media_subcategory == "movies":
-                yield self.indent + unicode(m.title), None
+                yield self.heading_indent + unicode(m.title), None
                 media_files.sort()
                 bonus = media_files.get_bonus()
                 for f in media_files:
