@@ -253,6 +253,11 @@ class HandBrakeEncoder(HandBrake):
         extractor.run()
         normalizer = AudioGain(self.output, extractor=extractor)
         normalizer.run()
+#        txt = """Computing levels...
+#  level        peak         gain
+#-31.6890dBFS  -9.100dBFS 19.6890dB  tmp.Roxanne.mkv.0.wav                 
+#"""
+#        normalizer = AudioGain(self.output, gains_output=txt)
         return normalizer.gains
     
     def compute_gains(self):
@@ -260,11 +265,21 @@ class HandBrakeEncoder(HandBrake):
             return
         gains = []
         if self.options.gain:
-            self.args.extend(("--gain", str(self.options.gain)))
+            gains = str(self.options.gain).split(",")
         elif self.options.normalize:
             gains = self.compute_gains_mplayer()
+        if gains:
             self.args.append("--gain")
             self.args.extend([",".join(gains)])
+            if self.options.hb_normalize:
+                norm = []
+                for gain in gains:
+                    if float(gain) > 0:
+                        norm.append("1")
+                    else:
+                        norm.append("0")
+                self.args.append("--normalize-mix")
+                self.args.extend([",".join(norm)])
 
     def rename_tracks(self):
         vprint(0, "-Preparing to rename tracks in %s" % self.output)
