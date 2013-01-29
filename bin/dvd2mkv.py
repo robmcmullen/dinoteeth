@@ -325,6 +325,12 @@ if __name__ == "__main__":
             audio = parse_stream_names(options.audio)
             subtitles = parse_stream_names(options.subtitles)
             
+            # Force episodes if multiple titles are given but neither episodes
+            # or bonus numbers are specified
+            if len(dvd_titles) > 1:
+                if options.bonus is None and options.episode is None:
+                    options.episode = []
+            
             if options.episode is not None:
                 if len(options.episode) == 0:
                     next = find_next_episode_number(options.name, options.season, "e", source, media_paths)
