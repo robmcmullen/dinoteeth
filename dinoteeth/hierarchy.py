@@ -155,12 +155,12 @@ class DateLookup(MetadataLookup):
         return metadata_with_date
     
     labels = [
-        ("Last Week", 7*24*3600),
-        ("2 Weeks Ago", 14*24*3600),
-        ("A Month Ago", 31*24*3600),
-        ("2 Months Ago", 62*24*3600),
-        ("3 Months Ago ", 93*24*3600),
-        ("6 Months Ago", 182*24*3600),
+        ("This Week", 7*24*3600),
+        ("Last Week", 14*24*3600),
+        ("This Month", 31*24*3600),
+        ("Last Month", 62*24*3600),
+        ("Last 3 Months", 93*24*3600),
+        ("Last 6 Months", 182*24*3600),
         ("Last Year", 365*24*3600),
         ("A Long Time Ago", 365*24*3600*100),
         ]
