@@ -247,9 +247,21 @@ class AVScanBase(Persistent):
     def set_last_position(self, last_pos):
         if self.is_considered_complete(last_pos):
             last_pos = -1.0
-        self.play_date = datetime.utcnow()
-        self.position = last_pos
-        utils.DBFacade.commit()
+        retry = 3
+        while retry > 0:
+            self.play_date = datetime.utcnow()
+            self.position = last_pos
+            try:
+                utils.DBFacade.commit()
+                print "Updated position"
+                return
+            except:
+                utils.DBFacade.abort()
+            
+            import time
+            print "Retrying..."
+            time.sleep(.2)
+            retry -= 1
 
     def get_last_position(self):
         return self.position

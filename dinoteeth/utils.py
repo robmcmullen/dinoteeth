@@ -6,12 +6,14 @@ from persistent import Persistent
 log = logging.getLogger("dinoteeth.utils")
 
 from ZEO import ClientStorage
-from ZODB import DB, FileStorage
+from ZODB import DB, FileStorage, POSException
 import transaction
 from persistent.mapping import PersistentMapping
 
 
 class DBFacade(object):
+    conflict = POSException.ConflictError
+    
     def __init__(self, path, host=""):
         if host:
             addr = host.split(":")
@@ -64,10 +66,12 @@ class DBFacade(object):
         for callback in cls.callbacks:
             callback()
     
-    def rollback(self):
+    @classmethod
+    def rollback(cls):
         transaction.rollback()
     
-    def abort(self):
+    @classmethod
+    def abort(cls):
         transaction.abort()
     
     def get_last_modified(self):
