@@ -112,6 +112,7 @@ class TopLevelLookup(MetadataLookup):
         yield "Favorites", MetadataLookup(self, self.config, filter=lambda f: f.metadata.starred)
         yield "Recently Added", DateLookup(self, self.config)
         yield "Recently Played", DateLookup(self, self.config, filter=lambda f: f.scan.play_date is not None, time_lookup=play_date)
+        yield "In HD", MetadataLookup(self, self.config, filter=lambda f: (hasattr(f.scan, 'video') and f.scan.video and f.scan.video[0]['width'] > 900))
         
         for title, credit_entry in self.iter_credit():
             yield title, credit_entry
