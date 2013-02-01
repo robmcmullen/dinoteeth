@@ -90,7 +90,7 @@ class SearchPopulator(MetadataLookup):
     def set_search_text(self, text):
         self.root_title = "Search: %s_" % text
         text = text.lower()
-        print "search text: -->%s<--" % text
+#        print "search text: -->%s<--" % text
         self.filter = lambda f: text in f.metadata.title.lower()
 
 
@@ -269,7 +269,6 @@ class MovieTopLevel(PlayableEntries):
     def iter_create(self):
         media_files = self.get_media().static_list()
         media_files.sort()
-        print media_files
         
         bonus = media_files.get_bonus()
         found_bonus = False
