@@ -107,12 +107,13 @@ class HandBrakeEncoder(HandBrake):
         
         self.subtitle_track_order = tracks[:]
 
-        for track in tracks:
-            sub = self.title.find_subtitle_by_handbrake_id(track)
-            if sub.is_burnable():
-                scan = True
-                tracks[0:0] = ["scan"]
-                break
+        if self.title.scanable_subtitles:
+            for track in tracks:
+                sub = self.title.find_subtitle_by_handbrake_id(track)
+                if sub.is_burnable():
+                    scan = True
+                    tracks[0:0] = ["scan"]
+                    break
         
         self.args.extend(["-s", ",".join([str(t) for t in tracks])])
         if scan:

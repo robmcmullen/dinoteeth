@@ -50,6 +50,7 @@ class Title(object):
         self.fps = ""
         self.audio = []
         self.subtitle = []
+        self.scanable_subtitles = True
     
     def is_valid(self):
         return bool(self.size)

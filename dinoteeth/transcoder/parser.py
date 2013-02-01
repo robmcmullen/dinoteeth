@@ -325,6 +325,9 @@ class MakeMkvDirParser(HandBrakeScanParser):
             filename = match.group(1)
             vprint(3, "matched! mkv stream=%s" % filename)
             self.current_title.rel_pathname = filename
+            
+            # MakeMKV pulls out forced subtitles into a separate track
+            self.current_title.scanable_subtitles = False
             basename = os.path.basename(filename)
             match = self.re_mkv_title_num_begin.match(basename)
             if match:
