@@ -194,6 +194,7 @@ class Config(object):
     def restore_after_external_app(self):
         win = self.main_window
         win.set_using_external_app(False, settings.fullscreen)
+        self.refresh_database()
     
     def create_root(self):
         self.root = RootMenu(self)
@@ -222,6 +223,10 @@ class Config(object):
     def get_home_theater_database(self):
         db = HomeTheaterDatabase(self.get_object_database())
         return db
+    
+    def refresh_database(self):
+        zodb = self.get_object_database()
+        zodb.sync()
     
     def start_update_monitor(self):
         watcher = FileWatcher(self.db)

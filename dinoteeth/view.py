@@ -69,6 +69,7 @@ class AbstractLayout(object):
         self.refresh_menu()
     
     def refresh_menu(self):
+        self.config.refresh_database()
         menu = self.get_menu()
         menu.do_repopulate()
     
