@@ -20,6 +20,7 @@ class MMDBPopulator(MenuPopulator):
     
     def get_cached_media(self):
         if self.cached_media is None or True:
+#        if self.cached_media is None:
             log.debug("start: getting media for %s" % self.__class__.__name__)
             self.cached_media = self.get_media()
             log.debug("finish: getting media for %s" % self.__class__.__name__)
@@ -31,9 +32,11 @@ class MMDBPopulator(MenuPopulator):
         return SearchPopulator(self, self.config, text)
     
     def get_sorted_metadata(self):
+        log.debug("start: sorting media for %s" % self.__class__.__name__)
         unique, scans_in_each = self.media.get_unique_metadata()
         metadata = list(unique)
         metadata.sort()
+        log.debug("finish: sorting media for %s" % self.__class__.__name__)
         return metadata
         
     def iter_image_path(self):

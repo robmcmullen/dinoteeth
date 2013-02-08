@@ -2,6 +2,7 @@ import os, sys, glob, time, bisect, logging
 
 from updates import UpdateManager
 from utils import DBFacade
+import settings
 
 log = logging.getLogger("dinoteeth.model")
 
@@ -314,7 +315,7 @@ class MenuPopulator(object):
     def get_mosaic_size(self):
         return 100, 140
 
-    def thumbnail_mosaic(self, window, x, y, w, h):
+    def thumbnail_mosaic_all_at_once(self, window, x, y, w, h):
         nominal_x, nominal_y = self.get_mosaic_size()
         min_x = x
         max_x = x + w
@@ -331,3 +332,42 @@ class MenuPopulator(object):
                 break
             window.blit(thumb_image, x + (nominal_x - thumb_image.width) / 2, y - nominal_y + (nominal_y - thumb_image.height) / 2)
             x += nominal_x
+
+    def thumbnail_mosaic_incremental(self, window, x, y, w, h):
+        print "thumbnail_mosaic_incremental"
+        iterator = self.thumbnail_mosaic_iterator(window, x, y, w, h)
+        window.schedule_draw_iterator(iterator)
+    
+    def thumbnail_mosaic(self, window, x, y, w, h):
+        if settings.high_horsepower:
+            self.thumbnail_mosaic_all_at_once(window, x, y, w, h)
+        else:
+            self.thumbnail_mosaic_incremental(window, x, y, w, h)
+    
+    draw_rows = False
+    
+    def thumbnail_mosaic_iterator(self, window, x, y, w, h):
+        print "thumbnail_mosaic_iterator: start"
+        nominal_x, nominal_y = self.get_mosaic_size()
+        min_x = x
+        max_x = x + w
+        min_y = y
+        y = y + h
+        for imgpath in self.iter_image_path():
+            print "thumbnail_mosaic_iterator: in loop"
+            thumb_image = self.get_thumbnail(window, imgpath)
+            if thumb_image is None:
+                continue
+            print imgpath
+            if x + nominal_x > max_x:
+                x = min_x
+                y -= nominal_y
+                if self.draw_rows:
+                    yield True
+            if y - nominal_y < min_y:
+                yield True
+                raise StopIteration
+            window.blit(thumb_image, x + (nominal_x - thumb_image.width) / 2, y - nominal_y + (nominal_y - thumb_image.height) / 2)
+            x += nominal_x
+            if not self.draw_rows:
+                yield True

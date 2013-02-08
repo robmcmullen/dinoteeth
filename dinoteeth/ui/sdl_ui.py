@@ -103,7 +103,7 @@ class SdlMainWindow(MainWindow):
                     func_name = self.event_code_to_callback[ev.user.code]
                     callback = getattr(self, func_name)
                     retval = callback(*user_data)
-                    if retval != "skip redraw":
+                    if retval == "force redraw":
                         break
                 
             UpdateManager.process_tasks()
@@ -125,6 +125,7 @@ class SdlMainWindow(MainWindow):
     known_events = {
         'on_status_update': 1,
         'on_timer': 2,
+        'on_timer_tick': 3,
         }
     event_code_to_callback = {}
     for callback, code in known_events.iteritems():
@@ -150,12 +151,40 @@ class SdlMainWindow(MainWindow):
     ########## Timer functions
     
     scheduled = {}
-    timer_resolution = .2
+    timer_resolution = .02
     
     def schedule_once(self, callback, seconds):
         scheduled_time = time.time() + seconds
         self.scheduled[callback] = scheduled_time
         UpdateManager.start_ticks(self.timer_resolution, scheduled_time)
+    
+    def clear_draw_iterator(self):
+        self.draw_iterator = None
+    
+    def schedule_draw_iterator(self, iterator):
+        scheduled_time = time.time() + 2
+        self.draw_iterator = iterator
+        UpdateManager.start_ticks(self.timer_resolution, scheduled_time)
+    
+    def on_timer_tick(self, text=None):
+        if self.using_external_app:
+            print "ignoring status; external app in use"
+        if text is not None:
+            self.status_text.put(text)
+            if time.time() > self.next_allowed_status_update:
+                self.next_allowed_status_update = time.time() + self.status_update_interval
+                #return "force redraw"
+        if self.draw_iterator:
+            print "draw_iterator"
+            try:
+                print "draw_iterator: calling"
+                drawn = self.draw_iterator.next()
+                print "draw_iterator: called"
+                self.flip()
+                SDL.SDL_Delay(1)
+            except StopIteration:
+                self.flip()
+                self.draw_iterator = None
     
     def unschedule(self, callback):
         if callback in self.scheduled:
@@ -177,8 +206,8 @@ class SdlMainWindow(MainWindow):
         self.scheduled = still_pending
         if not self.scheduled:
             UpdateManager.stop_ticks()
-        if not called:
-            return "skip redraw"
+        if called:
+            return "force redraw"
     
     ########## Drawing functions
     

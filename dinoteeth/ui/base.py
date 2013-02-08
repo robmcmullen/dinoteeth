@@ -16,6 +16,7 @@ class MainWindow(object):
         self.using_external_app = False
         self.app_config = config
         self.thumbnail_loader = thumbnails
+        self.draw_iterator = None
     
     def get_fonts(self, config):
         self.font = self.get_font_detail(config.get_font_name(),
@@ -43,13 +44,15 @@ class MainWindow(object):
     def on_status_update(self, text=None):
         if self.using_external_app:
             print "ignoring status; external app in use"
-            return "skip redraw"
         elif text is not None:
             self.status_text.put(text)
             if time.time() > self.next_allowed_status_update:
                 self.next_allowed_status_update = time.time() + self.status_update_interval
-            else:
-                return "skip redraw"
+                return "force redraw"
+    
+    def on_timer_tick(self, text=None):
+        if self.using_external_app:
+            print "ignoring status; external app in use"
     
     def set_using_external_app(self, state, fullscreen):
         self.using_external_app = state

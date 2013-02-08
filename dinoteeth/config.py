@@ -60,6 +60,7 @@ class Config(object):
         parser.add_argument("-w", "--window", dest='fullscreen', action="store_false")
         parser.add_argument("--guest-mode", action="store_true")
         parser.add_argument("--default-subtitles", action="store_true")
+        parser.add_argument("--slow-machine", dest='high_horsepower', action="store_false")
         return parser
     
     def parse_args(self, args, parser):
@@ -181,7 +182,8 @@ class Config(object):
                                       margins=margins,
                                       thumbnails=self.get_thumbnail_loader())
             
-            event_callback = self.main_window.get_event_callback('on_status_update')
+#            event_callback = self.main_window.get_event_callback('on_status_update')
+            event_callback = self.main_window.get_event_callback('on_timer_tick')
             UpdateManager(event_callback, self.db, self.get_thumbnail_loader())
             if self.options.test_threads:
                 UpdateManager.test()

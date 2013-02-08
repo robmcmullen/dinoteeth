@@ -106,6 +106,7 @@ class MenuDetail2ColumnLayout(AbstractLayout):
         self.footer_box = (-1, -1, self.width + 2, footer_h + y)
     
     def draw(self):
+        self.window.clear_draw_iterator()
         self.title_renderer.draw(self.hierarchy)
         while True:
             try:
