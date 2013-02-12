@@ -211,6 +211,13 @@ class SdlMainWindow(MainWindow):
     
     ########## Drawing functions
     
+    def clip(self, x, y, w, h):
+        destrect = SDL.SDL_Rect(x, self.height - y - h, w, h)
+        SDL.SDL_SetClipRect(self.screen, SDL.pointer(destrect))
+    
+    def unclip(self):
+        SDL.SDL_SetClipRect(self.screen, None)
+    
     def draw_text(self, text, font, x=0, y=0, bold=False, italic=False, color=None, anchor_x='left', anchor_y='bottom'):
         if bold:
             text = "<b>%s</b>" % text

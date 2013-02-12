@@ -132,6 +132,12 @@ class Renderer(object):
         
     def compute_params(self, conf):
         pass
+    
+    def clip(self):
+        self.window.clip(self.x, self.y, self.w, self.h)
+    
+    def unclip(self):
+        self.window.unclip()
 
 
 class MenuRenderer(Renderer):
@@ -183,6 +189,7 @@ class VerticalMenuRenderer(MenuRenderer):
             item = menu.get_selected_item()
         except IndexError:
             raise MenuEmptyError
+        self.clip()
         self.draw_item(item, self.center, True)
         item.do_on_selected_item()
         
@@ -203,6 +210,7 @@ class VerticalMenuRenderer(MenuRenderer):
             self.draw_item(item, y, False)
             y -= self.window.font.height
             i += 1
+        self.unclip()
 
 
 class TitleRenderer(Renderer):

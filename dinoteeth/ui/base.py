@@ -93,6 +93,12 @@ class MainWindow(object):
     
     ########## Drawing functions
     
+    def clip(self, x, y, w, h):
+        raise RuntimeError("Abstract method")
+    
+    def unclip(self):
+        raise RuntimeError("Abstract method")
+    
     def draw_text(self, text, font, x=0, y=0, bold=False, italic=False, color=None, anchor_x='left', anchor_y='bottom'):
         raise RuntimeError("Abstract method")
     
