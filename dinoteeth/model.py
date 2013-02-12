@@ -348,6 +348,7 @@ class MenuPopulator(object):
     
     def thumbnail_mosaic_iterator(self, window, x, y, w, h):
         print "thumbnail_mosaic_iterator: start"
+        window.clear_rect(x, y, w, h)
         nominal_x, nominal_y = self.get_mosaic_size()
         min_x = x
         max_x = x + w

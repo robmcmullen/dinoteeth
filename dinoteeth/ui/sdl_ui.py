@@ -109,7 +109,6 @@ class SdlMainWindow(MainWindow):
             UpdateManager.process_tasks()
     
     def on_draw(self):
-        self.clear()
         self.layout.draw()
     
     def refresh(self):
@@ -180,8 +179,6 @@ class SdlMainWindow(MainWindow):
                 print "draw_iterator: calling"
                 drawn = self.draw_iterator.next()
                 print "draw_iterator: called"
-                self.flip()
-                SDL.SDL_Delay(1)
             except StopIteration:
                 self.flip()
                 self.draw_iterator = None
@@ -217,6 +214,11 @@ class SdlMainWindow(MainWindow):
     
     def unclip(self):
         SDL.SDL_SetClipRect(self.screen, None)
+    
+    def clear_rect(self, x, y, w, h):
+        destrect = SDL.SDL_Rect(x, self.height - y - h, w, h)
+        print "clearing %s" % str((x, self.height - y - h, w, h))
+        SDL.SDL_FillRect(self.screen, SDL.pointer(destrect), 0)
     
     def draw_text(self, text, font, x=0, y=0, bold=False, italic=False, color=None, anchor_x='left', anchor_y='bottom'):
         if bold:

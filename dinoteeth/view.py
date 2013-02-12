@@ -138,6 +138,9 @@ class Renderer(object):
     
     def unclip(self):
         self.window.unclip()
+    
+    def clear(self):
+        self.window.clear_rect(self.x, self.y, self.w, self.h)
 
 
 class MenuRenderer(Renderer):
@@ -189,6 +192,7 @@ class VerticalMenuRenderer(MenuRenderer):
             item = menu.get_selected_item()
         except IndexError:
             raise MenuEmptyError
+        self.clear()
         self.clip()
         self.draw_item(item, self.center, True)
         item.do_on_selected_item()
@@ -215,6 +219,7 @@ class VerticalMenuRenderer(MenuRenderer):
 
 class TitleRenderer(Renderer):
     def draw(self, hierarchy):
+        self.clear()
         title = []
         for menu in hierarchy:
             title.append(menu.title)
@@ -243,6 +248,7 @@ class DetailRenderer(Renderer):
             self.draw_poster(item, m)
     
     def draw_image(self, item, m):
+        self.clear()
         image = self.window.get_image(m['image'])
         self.window.blit(image, self.x, self.h - image.height, 0)
     
@@ -251,6 +257,7 @@ class DetailRenderer(Renderer):
         image_generator(self.window, self.x, self.y, self.w, self.h)
     
     def draw_mmdb(self, item, m):
+        self.clear()
         metadata = m['mmdb']
         season = m.get('season', None)
         loader = MetadataLoader.get_loader(metadata)
@@ -279,6 +286,7 @@ class DetailRenderer(Renderer):
             x += image.width + 10
 
     def draw_imdb_search_result(self, item, m):
+        self.clear()
         result = m['imdb_search_result']
         print result
         metadata = m['metadata']
@@ -303,6 +311,7 @@ class DetailRenderer(Renderer):
                                 width=self.w - image.width - 10)
     
     def draw_poster(self, item, m):
+        self.clear()
         imgpath = m['poster_path']
         image = self.window.get_image(imgpath)
         self.window.blit(image, self.x, self.y + self.h - image.height, 0)
@@ -354,6 +363,7 @@ class SimpleStatusRenderer(StatusRenderer):
 
 class FooterRenderer(Renderer):
     def draw(self, controller):
+        self.clear()
         text = controller.get_markup()
         self.window.draw_box(self.x, self.y, self.w, self.h,
                              (0,0,0,255), (255, 255, 255, 255))
