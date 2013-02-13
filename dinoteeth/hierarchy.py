@@ -113,6 +113,7 @@ class TopLevelLookup(MetadataLookup):
     def iter_create(self):
         yield "All", MetadataLookup(self, self.config)
         yield "Favorites", MetadataLookup(self, self.config, filter=lambda f: f.metadata.starred)
+        yield "Paused", ExpandedLookup(self, self.config, filter=only_paused, time_lookup=play_date)
         yield "Recently Added", DateLookup(self, self.config)
         yield "Recently Played", DateLookup(self, self.config, filter=lambda f: f.scan.play_date is not None, time_lookup=play_date)
         yield "In HD", MetadataLookup(self, self.config, filter=lambda f: (hasattr(f.scan, 'video') and f.scan.video and f.scan.video[0]['width'] > 900))
@@ -587,10 +588,10 @@ class RootPopulator(MMDBPopulator):
 
     def iter_create(self):
         yield "Favorites", MetadataLookup(self, self.config, filter=lambda f: f.metadata and f.metadata.starred)
+        yield "Paused", ExpandedLookup(self, self.config, filter=only_paused, time_lookup=play_date)
         yield "Movies & Series", TopLevelVideos(self, self.config)
         yield "Just Movies", TopLevelVideos(self, self.config, lambda f: f.scan.subcat == "movie")
         yield "Just Series", TopLevelVideos(self, self.config, lambda f: f.scan.subcat == "series")
-        yield "Paused", ExpandedLookup(self, self.config, filter=only_paused, time_lookup=play_date)
         yield "Photos & Home Videos", TopLevelPhoto(self.config)
         yield "Games", TopLevelGames(self, self.config)
 
