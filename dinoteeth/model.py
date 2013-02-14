@@ -78,6 +78,12 @@ class MenuItem(object):
                 log.debug("unstarred %s" % base_metadata.id)
             DBFacade.commit()
     
+    def do_stop(self, **kwargs):
+        if self.metadata and self.metadata['media_file']:
+            media_file = self.metadata['media_file']
+            media_file.scan.set_last_position()
+            DBFacade.commit()
+    
     def do_populate(self):
         if self.populated < self.__class__.refresh_time:
             if self.populate_children:

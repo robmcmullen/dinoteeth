@@ -244,7 +244,7 @@ class AVScanBase(Persistent):
     def is_considered_complete(self, last_pos):
         return last_pos >= self.percent_considered_complete * self.length
 
-    def set_last_position(self, last_pos):
+    def set_last_position(self, last_pos=-1.0):
         if self.is_considered_complete(last_pos):
             last_pos = -1.0
         retry = 3

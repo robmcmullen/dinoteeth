@@ -60,6 +60,8 @@ class VerticalMenuController(object):
             self.process_star()
         elif keycode == k.F4:
             self.start_search()
+        elif keycode == k.F9:
+            self.process_stop()
         else:
             self.process_search(keycode)
     
@@ -94,6 +96,11 @@ class VerticalMenuController(object):
         menu = self.layout.get_menu()
         selected = menu.get_selected_item()
         selected.do_star(config=self.config)
+    
+    def process_stop(self):
+        menu = self.layout.get_menu()
+        selected = menu.get_selected_item()
+        selected.do_stop(config=self.config)
     
     def in_search(self):
         menu = self.layout.get_menu()
