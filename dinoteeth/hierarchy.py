@@ -97,6 +97,9 @@ class SearchPopulator(MetadataLookup):
         self.filter = lambda f: text in f.metadata.title.lower()
 
 
+def never_played(item):
+    return item.scan.play_date is None
+
 def only_paused(item):
     if item.scan.play_date is None:
         return False
@@ -116,6 +119,7 @@ class TopLevelLookup(MetadataLookup):
         yield "Paused", ExpandedLookup(self, self.config, filter=only_paused, time_lookup=play_date)
         yield "Recently Added", DateLookup(self, self.config)
         yield "Recently Played", DateLookup(self, self.config, filter=lambda f: f.scan.play_date is not None, time_lookup=play_date)
+        yield "Never Played", MetadataLookup(self, self.config, filter=never_played)
         yield "In HD", MetadataLookup(self, self.config, filter=lambda f: (hasattr(f.scan, 'video') and f.scan.video and f.scan.video[0]['width'] > 900))
         
         for title, credit_entry in self.iter_credit():
