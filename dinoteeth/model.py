@@ -351,7 +351,7 @@ class MenuPopulator(object):
         window.schedule_draw_iterator(iterator)
     
     def thumbnail_mosaic(self, window, x, y, w, h):
-        if settings.high_horsepower:
+        if not settings.delayed_rendering:
             self.thumbnail_mosaic_all_at_once(window, x, y, w, h)
         else:
             self.thumbnail_mosaic_incremental(window, x, y, w, h)

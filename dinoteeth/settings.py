@@ -4,7 +4,7 @@ ui = string(default="sdl")
 fullscreen = boolean(default=True)
 guest_mode = boolean(default=False)
 default_subtitles = boolean(default=False)
-high_horsepower = boolean(default=True)
+delayed_rendering = boolean(default=True)
 
 [posters]
 poster_width = integer(default=342)

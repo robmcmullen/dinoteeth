@@ -60,7 +60,7 @@ class Config(object):
         parser.add_argument("-w", "--window", dest='fullscreen', action="store_false")
         parser.add_argument("--guest-mode", action="store_true")
         parser.add_argument("--default-subtitles", action="store_true")
-        parser.add_argument("--slow-machine", dest='high_horsepower', action="store_false")
+        parser.add_argument("--immediate-rendering", dest='delayed_rendering', action="store_false")
         return parser
     
     def parse_args(self, args, parser):
