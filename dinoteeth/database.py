@@ -107,6 +107,7 @@ class StaticFileList(list):
         else:
             filtered = StaticFileList([item for item in self if criteria(item)])
         print "Filtering done!"
+        return filtered
     
 class FilteredFileList(StaticFileList):
     def __init__(self, parent=None, filter_callable=None, *args, **kwargs):
