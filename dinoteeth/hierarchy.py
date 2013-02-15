@@ -52,13 +52,23 @@ class MMDBPopulator(MenuPopulator):
 class MetadataLookup(MMDBPopulator):
     heading_indent = u"      "
     
-    def __init__(self, parent, config, filter=None):
+    def __init__(self, parent, config, filter=None, metadata_filter=None, metadata_filter_accept=None):
         MMDBPopulator.__init__(self, config)
         self.parent = parent
         self.filter = filter
+        self.metadata_filter = metadata_filter
+        if metadata_filter_accept is None:
+            metadata_filter_accept = lambda v: v == 0
+        self.metadata_filter_accept = metadata_filter_accept
     
     def get_media(self):
         media = self.parent.get_media().filter(self.filter)
+        if self.metadata_filter:
+            unique, scans_in_each = media.get_unique_metadata_with_value(self.metadata_filter)
+            media = StaticFileList()
+            for metadata, value in unique.iteritems():
+                if self.metadata_filter_accept(value):
+                    media.extend(scans_in_each[metadata])
         return media
         
     def iter_create(self):
@@ -97,9 +107,6 @@ class SearchPopulator(MetadataLookup):
         self.filter = lambda f: text in f.metadata.title.lower()
 
 
-def never_played(item):
-    return item.scan.play_date is None
-
 def only_paused(item):
     if item.scan.play_date is None:
         return False
@@ -119,7 +126,7 @@ class TopLevelLookup(MetadataLookup):
         yield "Paused", ExpandedLookup(self, self.config, filter=only_paused, time_lookup=play_date)
         yield "Recently Added", DateLookup(self, self.config)
         yield "Recently Played", DateLookup(self, self.config, filter=lambda f: f.scan.play_date is not None, time_lookup=play_date)
-        yield "Never Played", MetadataLookup(self, self.config, filter=never_played)
+        yield "Never Played", MetadataLookup(self, self.config, metadata_filter=play_date)
         yield "In HD", MetadataLookup(self, self.config, filter=lambda f: (hasattr(f.scan, 'video') and f.scan.video and f.scan.video[0]['width'] > 900))
         
         for title, credit_entry in self.iter_credit():
@@ -604,36 +611,22 @@ class RootPopulator(MMDBPopulator):
             'image': 'background-merged.jpg',
             }
 
-class TestMenuPopulator(MetadataLookup):
+class TestMenuSearch(MetadataLookup):
     def __init__(self, config, match):
-        MetadataLookup.__init__(self, self, config, lambda f: match in f.metadata.title)
+        parent = RootPopulator(config)
+        MetadataLookup.__init__(self, parent, config, lambda f: match in f.metadata.title.lower())
         self.root_title = "Dinoteeth Testing: match %s" % match
-        
-    def get_media(self):
-        stuff = self.config.db.get_all("all").filter(self.filter)
-        print stuff
-        return stuff
-    
-    def iter_create(self):
-        media_files = self.get_media()
-        metadata = list(set([f.metadata for f in media_files]))
-        for m in metadata:
-            if m.media_category == "video":
-                if m.media_subcategory == "series":
-                    if m.is_mini_series():
-                        pop = SeriesEpisodes(self, self.config, m)
-                    else:
-                        pop = SeriesTopLevel(self, self.config, m)
-                elif m.media_subcategory == "movies":
-                    pop = MovieTopLevel(self, self.config, m)
-            elif m.media_category == "game":
-                pop = GameDetails(self, self.config, m)
-            
-            for item in pop.iter_create():
-                yield item
+
+class TestMenu(MetadataLookup):
+    def __init__(self, config):
+        parent = RootPopulator(config)
+        MetadataLookup.__init__(self, parent, config, metadata_filter=play_date)
+        self.root_title = "Never Played"
 
 def RootMenu(config):
-    if config.options.test_menu:
-        return MenuItem.create_root(TestMenuPopulator(config, config.options.test_menu))
+    if config.options.test_menu_search:
+        return MenuItem.create_root(TestMenuSearch(config, config.options.test_menu_search))
+    elif config.options.test_menu:
+        return MenuItem.create_root(TestMenu(config))
     else:
         return MenuItem.create_root(RootPopulator(config))

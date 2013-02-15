@@ -109,6 +109,12 @@ class StaticFileList(list):
         print "Filtering done!"
         return filtered
     
+    def static_list(self):
+        slist = StaticFileList()
+        for item in self:
+            slist.append(item)
+        return slist
+    
 class FilteredFileList(StaticFileList):
     def __init__(self, parent=None, filter_callable=None, *args, **kwargs):
         list.__init__(self, *args, **kwargs)
@@ -120,12 +126,6 @@ class FilteredFileList(StaticFileList):
     def filter(self, criteria):
         filtered = FilteredFileList(parent=self, filter_callable=criteria)
         return filtered
-    
-    def static_list(self):
-        slist = StaticFileList()
-        for item in self:
-            slist.append(item)
-        return slist
     
     def __iter__(self):
         if self.parent is None:

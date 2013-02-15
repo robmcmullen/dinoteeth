@@ -52,7 +52,8 @@ class Config(object):
                     help="Specify config file", metavar="FILE")
         parser.add_argument("-v", "--verbose", action="count", default=0)
         parser.add_argument("--test-threads", action="store_true", default=False)
-        parser.add_argument("--test-menu", action="store", default="")
+        parser.add_argument("--test-menu", action="store_true", default=False)
+        parser.add_argument("--test-menu-search", action="store", default="")
         
         # commands that can override settings in the [default] section; defaults
         # are provided by the configspec set in settings.default_conf
