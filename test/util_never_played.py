@@ -53,15 +53,17 @@ if __name__ == '__main__':
             found_mistakes = True
     if found_mistakes:
         db.zodb.commit()
+    
+    show_all = True
 
     fake_date = datetime.datetime(1999,12,31)
     unique, scans_in_each = media.get_unique_metadata_with_value(play_date)
     order = unique.keys()
     order.sort()
-    print "Press 'p' to mark played, 'q' to quit or any other key to skip"
+    print "Press 'p' to mark played, 'n' for never played, and 'q' to quit or any other key to skip"
     for metadata in order:
         t = unique[metadata]
-        if t == 0:
+        if t == 0 or show_all:
             print t, unicode(metadata).encode('utf-8')
             ch = getch()
             if ch == 'q' or ord(ch) == 27:
@@ -69,4 +71,8 @@ if __name__ == '__main__':
             if ch == 'p':
                 for s in scans_in_each[metadata]:
                     s.scan.play_date = fake_date
+                db.zodb.commit()
+            elif ch == 'n':
+                for s in scans_in_each[metadata]:
+                    s.scan.play_date = None
                 db.zodb.commit()
