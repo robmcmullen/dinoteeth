@@ -161,7 +161,8 @@ class HandBrakeEncoder(HandBrake):
                 elif self.title.display_aspect in ["4x3", "1.33"]:
                     self.args.extend(("--pixel-aspect", "8:9"))
                 else:
-                    raise RuntimeError("Unknown standard definition aspect ratio %s" % self.title.display_aspect)
+                    self.vprint(0, "Nonstandard aspect ratio; using %s pixel aspect ratio" % self.title.pixel_aspect)
+                    self.args.extend(("--pixel-aspect", self.title.pixel_aspect))
                 self.args.append("--loose-anamorphic")
             if options.video_bitrate > 0:
                 bitrate = options.video_bitrate
