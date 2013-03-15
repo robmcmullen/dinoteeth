@@ -182,7 +182,7 @@ if __name__ == "__main__":
     sticky_parser.add_argument("--video-encoder", action="store", default="x264", help="Video encoder (default %(default)s)")
     sticky_parser.add_argument("--x264-preset", action="store", default="", help="x264 encoder preset")
     sticky_parser.add_argument("--x264-tune", action="store", default="film", help="x264 encoder tuning (typically either 'film' or 'animation')")
-    sticky_parser.add_argument("--qHD", "--540", "--960", action="store_const", dest="hd_width", default=0, const=960, help="Encode at 960x540 (qHD)")
+    sticky_parser.add_argument("--qHD", "--qhd", "--540", "--960", action="store_const", dest="hd_width", default=0, const=960, help="Encode at 960x540 (qHD)")
     sticky_parser.add_argument("--720p", "--720", "--1280", action="store_const", dest="hd_width", default=0, const=1280, help="Encode at 1280x720 (720p HD)")
     sticky_parser.add_argument("--768p", "--768", "--1360", "--1366", action="store_const", dest="hd_width", default=0, const=1360, help="Encode at 1360x768 (768p HD)")
     sticky_parser.add_argument("--1080p", "--1080", "--1920", action="store_const", dest="hd_width", default=0, const=1920, help="Encode at 1920x1080 (Full HD)")
