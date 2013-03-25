@@ -172,6 +172,12 @@ class HomeTheaterMetadataLoader(MetadataLoader):
                 if kind == "series":
                     # IMDb runtimes are not very accurate for series, so
                     # just accept the first match when it's a series
+                    log.debug("skipping inaccurate series runtimes; using %s" % movie)
+                    if movie is None:
+                        try:
+                            movie = self.get_metadata(guess)
+                        except:
+                            pass
                     return movie
                 elif r - avg_scale < avg_runtime < r + avg_scale:
                     break
