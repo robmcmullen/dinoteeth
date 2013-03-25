@@ -456,7 +456,7 @@ class FakeMetadata(HomeTheaterMetadata):
         return True
 
 class FakeMovieMetadata(FakeMetadata):
-    media_subcategory = "movies"
+    media_subcategory = "movie"
     
     def get_markup(self, media_file=None):
         title = self.title
@@ -491,7 +491,7 @@ class FakeSeriesMetadata(FakeMetadata):
 
 
 class MovieMetadata(HomeTheaterMetadata):
-    media_subcategory = "movies"
+    media_subcategory = "movie"
     imdb_prefix = "tt"
     
     def __init__(self, movie_obj, tmdb_obj):

@@ -84,7 +84,7 @@ class MetadataLookup(MMDBPopulator):
                     return unicode(m.title), SeriesEpisodes(self, self.config, m)
                 else:
                     return unicode(m.title), SeriesTopLevel(self, self.config, m)
-            elif m.media_subcategory == "movies":
+            elif m.media_subcategory == "movie":
                 return unicode(m.title), MovieTopLevel(self, self.config, m)
         elif m.media_category == "game":
             return unicode(m.title), GameDetails(self, self.config, m)
@@ -464,7 +464,7 @@ class ExpandedLookup(MetadataLookup):
                         episodes = media_files.get_episodes(s)
                         for f in episodes:
                             yield "Resume %s (Paused at %s)" % (unicode(f.scan.display_title), f.scan.paused_at_text()), MediaPlay(self.config, m, f, resume=True)
-            elif m.media_subcategory == "movies":
+            elif m.media_subcategory == "movie":
                 yield self.heading_indent + unicode(m.title), None
                 media_files.sort()
                 bonus = media_files.get_bonus()
