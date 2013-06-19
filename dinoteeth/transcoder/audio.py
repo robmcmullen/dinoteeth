@@ -89,5 +89,5 @@ class AudioGain(ExeRunner):
         for peak, gain in zip(peaks, gains):
             if abs(peak) < 0.1:
                 gain = 0.0
-            self.gains.append(str(gain))
-        vprint(0, "--Gains after excluding zero peaks: %s" % str(self.gains))
+            self.gains.append(str(gain / 2.0))
+        vprint(0, "--Gains after excluding zero peaks: %s (halved to compensate for differences in normalize and handbrake)" % str(self.gains))
