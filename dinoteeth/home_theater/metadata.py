@@ -554,7 +554,10 @@ class MovieMetadata(HomeTheaterMetadata):
         if item is None:
             return
         log.debug((u"update_with_media_files: %s: %s" % (self.title, item)).encode('utf8'))
-        self.film_number = item.scan.film_number
+        try:
+            self.film_number = item.scan.film_number
+        except:
+            pass
     
     def get_markup(self, media_file=None):
         genres = u", ".join([unicode(i) for i in self.genres])

@@ -89,17 +89,25 @@ class HomeTheaterMetadataLoader(MetadataLoader):
         exact_matches.extend(others)
         return exact_matches
     
-    def get_metadata_by_id(self, imdb_id):
+    def get_metadata_subcategory(self, imdb_kind, expected_kind):
+        if imdb_kind in ['movie', 'video movie'] or (imdb_kind == 'tv movie' and expected_kind == 'movie'):
+            return 'movie'
+        elif imdb_kind in ['series', 'tv series', 'tv mini series'] or (imdb_kind == 'tv movie' and expected_kind == 'series'):
+            return 'series'
+        return None
+    
+    def get_metadata_by_id(self, imdb_id, expected_kind):
         imdb_obj = self.proxies.imdb_api.get_movie(imdb_id)
         kind = imdb_obj.get('kind')
         if 'kind' is None:
             log.error("Bad IMDb object for %s; possibly website timeout" % imdb_id)
             return
+        subcat = self.get_metadata_subcategory(kind, expected_kind)
             
-        if kind in ['movie', 'video movie', 'tv movie']:
+        if subcat == 'movie':
             tmdb_obj = self.proxies.tmdb_api.get_imdb_id(imdb_id)
             metadata = MovieMetadata(imdb_obj, tmdb_obj)
-        elif kind in ['series', 'tv series', 'tv mini series']:
+        elif subcat == 'series':
             tvdb_obj = self.proxies.tvdb_api.get_imdb_id(imdb_id)
             metadata = SeriesMetadata(imdb_obj, tvdb_obj)
         else:
@@ -109,9 +117,9 @@ class HomeTheaterMetadataLoader(MetadataLoader):
         print (u"%s: %s -> %s" % (imdb_obj['title'], kind, metadata.media_subcategory)).encode('utf8')
         return metadata
     
-    def get_metadata(self, result):
+    def get_metadata(self, result, kind):
         imdb_id = result.imdb_id
-        return self.get_metadata_by_id(imdb_id)
+        return self.get_metadata_by_id(imdb_id, kind)
     
     def get_fake_metadata(self, title_key, scans):
         kind = title_key.subcategory
@@ -124,9 +132,10 @@ class HomeTheaterMetadataLoader(MetadataLoader):
     
     def get_basic_metadata(self, title_key, result):
         id = result.imdb_id
-        if result['kind'] in ['movie', 'video movie', 'tv movie']:
+        subcat = self.get_metadata_subcategory(result['kind'], title_key.subcategory)
+        if subcat == 'movie':
             metadata = FakeMovieMetadata(id, title_key, None)
-        elif result['kind'] in ['series', 'tv series', 'tv mini series']:
+        elif subcat == 'series':
             metadata = FakeSeriesMetadata(id, title_key, None)
         else:
             # It's a video game or something else; skip it
@@ -152,7 +161,7 @@ class HomeTheaterMetadataLoader(MetadataLoader):
                 print "using tmdb: %s" % runtimes
             else:
                 try:
-                    movie = self.get_metadata(guess)
+                    movie = self.get_metadata(guess, kind)
                 except:
                     print "failed loading imdb; probably in production or rumored movie"
                     continue
@@ -175,7 +184,7 @@ class HomeTheaterMetadataLoader(MetadataLoader):
                     log.debug("skipping inaccurate series runtimes; using %s" % movie)
                     if movie is None:
                         try:
-                            movie = self.get_metadata(guess)
+                            movie = self.get_metadata(guess, kind)
                         except:
                             pass
                     return movie
@@ -194,7 +203,7 @@ class HomeTheaterMetadataLoader(MetadataLoader):
                     closest = diff
                     best = guess.imdb_id
         if best is not None:
-            best = self.get_metadata_by_id(best)
+            best = self.get_metadata_by_id(best, kind)
         return best
         
     def best_guess(self, title_key, scans):
@@ -210,7 +219,7 @@ class HomeTheaterMetadataLoader(MetadataLoader):
         if avg_runtime > 0:
             best = self.best_loop(guesses, kind, total_runtime, avg_runtime)
         elif len(guesses) > 0:
-            best = self.get_metadata(guesses[0])
+            best = self.get_metadata(guesses[0], kind)
         if best:
             log.debug("best guess: %s, %s" % (best.title.encode('utf8'), best.runtimes))
         else:

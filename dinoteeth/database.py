@@ -186,14 +186,26 @@ class HomeTheaterDatabase(object):
         return media_file
     
     def change_metadata(self, media_files, imdb_id):
+        # Find all title keys referenced by the scans
+        title_keys = set()
+        subcat = set()
+        for item in media_files:
+            title_keys.add(item.scan.title_key)
+            subcat.add(item.scan.title_key.subcategory)
+        
+        if len(subcat) > 1:
+            log.error("Multiple categories (%s) for media files: %s, have to fix manually somehow." % (str(subcat),str(media_files)))
+            return
+        
+        subcat = subcat.pop()
+        
         metadata = self.get_metadata(imdb_id)
         if metadata is None:
             log.error("Metadata for %s must be stored in database before changing media files' metadata" % imdb_id)
-        
-        # Find all title keys referenced by the scans
-        title_keys = set()
-        for item in media_files:
-            title_keys.add(item.scan.title_key)
+        if metadata.media_subcategory != subcat:
+            log.error("Reloading metadata to fix subcategory mismatch: files=%s, metadata=%s" % (subcat, metadata.media_subcategory))
+            metadata = MetadataLoader.get_metadata(title_key, media_files)
+            self.metadata[metadata.id] = metadata
         
         # Reset title key lookup to use new metadata
         for title_key in title_keys:
@@ -269,30 +281,33 @@ class HomeTheaterDatabase(object):
             scans = StaticFileList(scans)
             yield t, scans
     
+    def lookup_metadata(self, title_key, scans, force=False):
+        user_mid = MetadataLoader.get_user_specified_metadata_id(title_key)
+        metadata = self.title_key_to_metadata.get(title_key, None)
+        
+        # Also update metadata if the user specified metadata ID has changed
+        if force or metadata is None or (user_mid is not None and user_mid != metadata.id) or metadata.media_subcategory != title_key.subcategory:
+            metadata = MetadataLoader.get_metadata(title_key, scans)
+            if metadata is None:
+                return
+            
+            # Check to see some other title key hasn't already generated
+            # the same metadata object, and use the previously saved
+            # metadata if so
+            if metadata.id in self.metadata:
+                metadata = self.metadata[metadata.id]
+            else:
+                self.metadata[metadata.id] = metadata
+            self.title_key_to_metadata[title_key] = metadata
+        for item in scans:
+            item.metadata = metadata
+        metadata.update_with_media_files(scans)
+        metadata.merge_database_objects(self)
+    
     def update_metadata_map(self):
         t = self.zodb.get_mapping("title_key_to_metadata")
         for title_key, scans in self.iter_title_key_map():
-            user_mid = MetadataLoader.get_user_specified_metadata_id(title_key)
-            metadata = t.get(title_key, None)
-            
-            # Also update metadata if the user specified metadata ID has changed
-            if metadata is None or (user_mid is not None and user_mid != metadata.id):
-                metadata = MetadataLoader.get_metadata(title_key, scans)
-                if metadata is None:
-                    continue
-                
-                # Check to see some other title key hasn't already generated
-                # the same metadata object, and use the previously saved
-                # metadata if so
-                if metadata.id in self.metadata:
-                    metadata = self.metadata[metadata.id]
-                else:
-                    self.metadata[metadata.id] = metadata
-                self.title_key_to_metadata[title_key] = metadata
-            for item in scans:
-                item.metadata = metadata
-            metadata.update_with_media_files(scans)
-            metadata.merge_database_objects(self)
+            self.lookup_metadata(title_key, scans)
             
         # Help for debugging a recursion error in zodb
         if False:

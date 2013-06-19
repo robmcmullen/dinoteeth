@@ -112,7 +112,7 @@ class MetadataLoader(object):
         metadata = None
         mid = loader.get_user_specified_metadata_id(title_key)
         if mid:
-            metadata = loader.get_metadata_by_id(mid)
+            metadata = loader.get_metadata_by_id(mid, title_key.subcategory)
         if not metadata:
             metadata = loader.best_guess(title_key, scans)
         return metadata
@@ -138,7 +138,7 @@ class MetadataLoader(object):
         """
         raise NotImplementedError()
     
-    def get_metadata_by_id(self, imdb_id):
+    def get_metadata_by_id(self, imdb_id, subcategory):
         """Return a metadata instance given a known valid id
         """
         raise NotImplementedError()

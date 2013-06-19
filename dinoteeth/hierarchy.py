@@ -509,7 +509,7 @@ class ChangeImdb(MMDBPopulator):
         
     def play(self, config=None):
         status = "Selected %s" % self.result['smart long imdb canonical title'].encode('utf-8')
-        metadata = self.loader.get_metadata_by_id(self.result.imdb_id)
+        metadata = self.loader.get_metadata_by_id(self.result.imdb_id, self.title_key.subcategory)
         metadata.merge_database_objects(self.config.db)
         self.config.db.zodb.commit()
         media_files = self.parent.get_media()
