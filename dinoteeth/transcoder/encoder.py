@@ -107,7 +107,7 @@ class HandBrakeEncoder(HandBrake):
         
         self.subtitle_track_order = tracks[:]
 
-        if self.title.scanable_subtitles:
+        if self.title.scanable_subtitles and not self.options.no_burn:
             for track in tracks:
                 sub = self.title.find_subtitle_by_handbrake_id(track)
                 if sub.is_burnable():
