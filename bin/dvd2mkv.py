@@ -174,7 +174,7 @@ if __name__ == "__main__":
     
     # Video options
     sticky_parser.add_argument("-b", "--vb", action="store", dest="video_bitrate", type=int, default=0, help="Video bitrate (kb/s)")
-    sticky_parser.add_argument("-g", "--grayscale", action="store_true", dest="grayscale", default=False, help="Grayscale encoding")
+    sticky_parser.add_argument("-g", "--grayscale", "--greyscale", action="store_true", dest="grayscale", default=False, help="Grayscale encoding")
     sticky_parser.add_argument("--color", action="store_false", dest="grayscale", default=False, help="Color encoding (default)")
     sticky_parser.add_argument("--crop", action="store", dest="crop", default="0:0:0:0", help="Crop parameters (default %(default)s)")
     sticky_parser.add_argument("--autocrop", action="store_true", default=False, help="Use autocrop as determined from the scan (default %(default)s)")
