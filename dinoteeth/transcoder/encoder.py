@@ -171,6 +171,8 @@ class HandBrakeEncoder(HandBrake):
             self.args.extend(("-b", str(bitrate)))
         if options.grayscale:
             self.args.append("-g")
+        if not options.dvdnav:
+            self.args.append("--no-dvdnav")
         which = options._latest_of("crop", "autocrop")
         if which == "autocrop":
             self.args.extend(["--crop", self.title.autocrop])
