@@ -265,7 +265,7 @@ class Timer(threading.Thread):
                 if self._want_abort:
                     return
                 time.sleep(self._resolution)
-                print "timer!!!!"
+#                print "timer!!!!"
                 self._event_callback()
                 if time.time() > self._expire_time:
                     self.stop_ticks()
@@ -281,9 +281,10 @@ class Timer(threading.Thread):
     def stop_ticks(self):
         if not self._want_abort:
             self._event.clear()
+        print "Timer.stop_ticks: timer expired!!!"
 
     def abort(self):
-        print "stopping timer"
+        print "Timer.abort: stopping timer!!!"
         self._want_abort = True
         self._event.set()
 
