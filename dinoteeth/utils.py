@@ -194,15 +194,26 @@ class HttpProxyBase(object):
         import bs4
         return bs4.BeautifulSoup(page)
     
-    def load_url(self, url, use_cache=True):
+    def clear_cache(self, url):
+        cached = self.get_cache_path(url)
+        if os.path.exists(cached):
+            os.remove(cached)
+    
+    def load_url(self, url, use_cache=True, force_refresh=False):
+        if force_refresh:
+            self.clear_cache(url)
         if use_cache:
             cached = self.get_cache_path(url)
             if os.path.exists(cached):
                 page = open(cached).read()
                 return page
         import requests
-        page = requests.get(url).content
-        if use_cache:
+        r = requests.get(url)
+        print "url: %s" % url
+        print "status: %s" % r.status_code
+        print "history: %s" % r.history
+        page = r.content
+        if use_cache and r.status_code == 200:
             fh = open(cached, "wb")
             fh.write(page)
             fh.close()

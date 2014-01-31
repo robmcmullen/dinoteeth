@@ -38,7 +38,7 @@ class TMDb3_API(HttpProxyBase):
         if self.__class__.image_base_url:
             return
         url = self.get_conf_url()
-        page = self.load_url(url)
+        page = self.load_url(url, force_refresh=True)
         self.process_conf(page)
     
     def get_conf_url(cls):
