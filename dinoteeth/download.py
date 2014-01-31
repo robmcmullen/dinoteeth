@@ -15,7 +15,7 @@ class HttpClient(asyncore.dispatcher):
         self.log = logging.getLogger(self.url)
         self.parsed_url = urlparse.urlparse(url)
         asyncore.dispatcher.__init__(self)
-        self.write_buffer = 'GET %s HTTP/1.0\r\nAccept:*/*;q=0.8\r\n\r\n' % self.url
+        self.write_buffer = 'GET %s HTTP/1.0\r\nHost: %s\r\nAccept:*/*;q=0.8\r\n\r\n' % (self.parsed_url.path, self.parsed_url.netloc)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         address = (self.parsed_url.netloc, 80)
         self.log.debug('connecting to %s', address)
@@ -93,6 +93,7 @@ class FileConsumer(Consumer):
             self.header_complete = True
             if self.include_header:
                 self.fh.write(self.header)
+        self.log.debug('header: %s' % str(self.header))
         self.fh.write(data)
         self.size += len(data)
     
@@ -194,7 +195,7 @@ if __name__ == '__main__':
                         format='%(name)s: %(message)s',
                         )
 
-    manager = TaskManager()
+    manager = TaskManager(lambda s: None)
     downloader = BackgroundHttpDownloader()
     manager.start_dispatcher(downloader)
     manager.add_task(DownloadTask('http://www.python.org/', "python.html", overwrite=True))
@@ -202,6 +203,7 @@ if __name__ == '__main__':
     manager.add_task(DownloadTask('http://docs.python.org/release/2.6.8/_static/py.png', "py.png"))
     manager.add_task(DownloadTask('http://docs.python.org/release/2.6.8/_static/py.png', "py2.png"))
     manager.add_task(DownloadTask('http://docs.python.org/release/2.6.8/_static/py.png', "py3.png"))
+    manager.add_task(DownloadTask('http://image.tmdb.org/t/p/w342/vpk4hLyiuI2SqCss0T3jeoYcL8E.jpg', "test.jpg"))
     for i in range(10):
         time.sleep(1)
         tasks = manager.get_finished()
