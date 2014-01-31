@@ -341,6 +341,12 @@ def deduce_title_and_season(filename):
     season = -1
     base = filename.strip("/")
     title = decode_title_text(os.path.basename(base)).title()
+    print "deduce1: title=%s" % title
+    
+    # Fix incorrectly capitalized apostrophe stuff
+    title = title.replace("'S ", "'s ")
+    print "deduce2: title=%s" % title
+    
     match = re.match("(.+)[- ]* (?:d|disc) ?[0-9]+$", title, re.IGNORECASE)
     if match:
         title = match.group(1)
@@ -348,12 +354,13 @@ def deduce_title_and_season(filename):
     if match:
         title = match.group(1)
         season = int(match.group(2))
-    return title.strip(" -_"), season
+    return title.strip(" -_,"), season
 
 def canonical_filename(title, film_series, season=-1, episode_char='e', episode=-1, episode_name='', ext="mkv", filename=""):
+    print title
     if not title:
         title, season = deduce_title_and_season(filename)
-            
+    print title
     name = []
     if season == -1:
         if film_series:
@@ -362,6 +369,7 @@ def canonical_filename(title, film_series, season=-1, episode_char='e', episode=
     else:
         name.append(title)
         name.append("s%02d" % season)
+    print name
     if episode > -1:
         name.append("%s%02d" % (episode_char, episode))
     if episode_name:
