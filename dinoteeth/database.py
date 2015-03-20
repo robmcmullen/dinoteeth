@@ -21,7 +21,10 @@ class StaticFileList(list):
     def get_seasons(self):
         seasons = set()
         for m in self:
-            seasons.add(m.scan.season)
+            try:
+                seasons.add(m.scan.season)
+            except AttributeError:
+                seasons.add(0)
         seasons = list(seasons)
         seasons.sort()
         return seasons
@@ -29,8 +32,12 @@ class StaticFileList(list):
     def get_episodes(self, season_number):
         episodes = []
         for m in self:
-            if m.scan.season == season_number:
-                episodes.append(m)
+            try:
+                if m.scan.season == season_number:
+                    episodes.append(m)
+            except AttributeError:
+                if season_number == 0:
+                    episodes.append(m)
         episodes.sort()
         return episodes
     

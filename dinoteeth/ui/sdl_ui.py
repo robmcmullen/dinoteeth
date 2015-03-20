@@ -99,7 +99,7 @@ class SdlMainWindow(MainWindow):
                 elif ev.type == SDL.SDL_USEREVENT:
                     argid = int(ev.user.data1)
                     user_data = self.event_data.pop(argid)
-                    print "User event! code=%d data1=%s user_data=%s" % (ev.user.code, ev.user.data1, str(user_data))
+#                    print "User event! code=%d data1=%s user_data=%s" % (ev.user.code, ev.user.data1, str(user_data))
                     func_name = self.event_code_to_callback[ev.user.code]
                     callback = getattr(self, func_name)
                     retval = callback(*user_data)
@@ -161,7 +161,7 @@ class SdlMainWindow(MainWindow):
         self.draw_iterator = None
     
     def schedule_draw_iterator(self, iterator):
-        scheduled_time = time.time() + 2
+        scheduled_time = time.time() + 2000
         self.draw_iterator = iterator
         UpdateManager.start_ticks(self.timer_resolution, scheduled_time)
     
@@ -180,6 +180,9 @@ class SdlMainWindow(MainWindow):
                 drawn = self.draw_iterator.next()
                 print "draw_iterator: called"
             except StopIteration:
+                print "draw_iterator: ended"
+                scheduled_time = time.time() + 2
+                UpdateManager.start_ticks(self.timer_resolution, scheduled_time)
                 self.flip()
                 self.draw_iterator = None
     

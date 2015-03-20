@@ -119,6 +119,7 @@ class OrderedNamespace(argparse.Namespace):
         order.extend(b.__arg_call_order__[:])
         d1 = {}
         d1.update(self.__dict__)
+        print "merge: other order = %s" % other.__arg_call_order__
         for k in other.__arg_call_order__: # only override non-default values in other
             d1[k] = other.__dict__[k]
         for k,v in other.__dict__.iteritems(): # add any missing default items from b
@@ -155,6 +156,7 @@ if __name__ == "__main__":
     global_parser.add_argument("--overwrite", action="store_true", default=False, help="Overwrite existing encoded files")
     global_parser.add_argument("-o", action="store", dest="output", default="", help="Output directory  (default current directory)")
     global_parser.add_argument("--info", action="store_true", dest="info", default=False, help="Only print info")
+    global_parser.add_argument("-n", action="store", dest="name", default='', help="Movie or TV Series name")
     global_parser.add_argument("-f", action="store", dest="film_series", default=[], nargs=2, metavar=("SERIES_NAME", "FILM_NUMBER"), help="Film series name and number in series (e.g. \"James Bond\" 1 or \"Harry Potter\" 8 etc.)")
     global_parser.add_argument("-s", action="store", type=int, dest="season", default=-1, help="Season number")
     global_parser.add_argument("--lang", action="store", default="eng",
@@ -167,17 +169,23 @@ if __name__ == "__main__":
 
 
     sticky_parser = argparse.ArgumentParser(description="Sticky arguments that remain set until explicitly reset")
-    sticky_parser.add_argument("-n", action="store", dest="name", default='', help="Movie or TV Series name")
+    # Putting name in stick parser exposes a bug in the OrderedNamespace
+    # handling: the name argument always has a default value of "" which
+    # causes the call to _prepend to overwrite the user's value with ""
+#    sticky_parser.add_argument("-n", action="store", dest="name", default='', help="Movie or TV Series name")
     sticky_parser.add_argument("--ext", action="store", dest="ext", default="mkv", help="Output file format (default %(default)s)")
     sticky_parser.add_argument("--cc-first", action="store_true", dest="cc_first", default=True, help="Place closed captions before vobsub (DVD image subtitles)")
     sticky_parser.add_argument("--vobsub-first", action="store_false", dest="cc_first", default=True, help="Place vobsub (DVD image subtitles) before closed captions")
+    sticky_parser.add_argument("--start-at", action="store", default="", help="start encoding at a given frame, duration (in seconds), or pts (on a 90kHz clock)")
+    sticky_parser.add_argument("--stop-at", action="store", default="", help="stop encoding at a given frame, duration (in seconds), or pts (on a 90kHz clock)")
     
     # Video options
     sticky_parser.add_argument("-b", "--vb", action="store", dest="video_bitrate", type=int, default=0, help="Video bitrate (kb/s)")
     sticky_parser.add_argument("-g", "--grayscale", "--greyscale", action="store_true", dest="grayscale", default=False, help="Grayscale encoding")
     sticky_parser.add_argument("--color", action="store_false", dest="grayscale", default=False, help="Color encoding (default)")
-    sticky_parser.add_argument("--crop", action="store", dest="crop", default="0:0:0:0", help="Crop parameters (default %(default)s)")
-    sticky_parser.add_argument("--autocrop", action="store_true", default=False, help="Use autocrop as determined from the scan (default %(default)s)")
+    sticky_parser.add_argument("--crop", action="store", dest="crop", default="0/0/0/0", help="Crop parameters (default %(default)s)")
+    sticky_parser.add_argument("--autocrop", action="store_true", default=True, help="Use autocrop as determined from the scan (default %(default)s)")
+    sticky_parser.add_argument("--noautocrop", action="store_false", default=True, help="Don't use autocrop")
     sticky_parser.add_argument("--decomb", action="store_true", default=False, help="Add deinterlace (decomb) filter (slows processing by up to 50%)")
     sticky_parser.add_argument("--video-encoder", action="store", default="x264", help="Video encoder (default %(default)s)")
     sticky_parser.add_argument("--x264-preset", action="store", default="", help="x264 encoder preset")
@@ -213,6 +221,7 @@ if __name__ == "__main__":
     default_parser.add_argument("-c", "--conf_file", default="",
                 help="Specify config file to replace global config file loaded from user's home directory", metavar="FILE")
     options, extra_args = default_parser.parse_known_args()
+    print("after default_parser: extra_args: %s" % extra_args)
     defaults = {}
     if options.conf_file:
         conf_file = options.conf_file
@@ -258,12 +267,17 @@ if __name__ == "__main__":
     
     global_options, sticky_args = global_parser.parse_known_args(global_args, namespace=OrderedNamespace())
     ExeRunner.verbose = global_options.verbose
+    vprint(1, "after global_parser: sticky_args: %s" % sticky_args)
     sticky_options, extra_args = sticky_parser.parse_known_args(sticky_args, namespace=OrderedNamespace())
+    vprint(1, "after sticky_parser: extra_args: %s" % extra_args)
     sticky_options._prepend(global_options)
+    vprint(1, "sticky_options: %s" % sticky_options)
     title_options = []
     for args in title_args:
         new_sticky_options, extra_args = sticky_parser.parse_known_args(args, namespace=OrderedNamespace())
+        vprint(1, "after sticky_parser: extra_args: %s" % extra_args)
         sticky_options._append(new_sticky_options)
+        vprint(1, "new sticky_options: %s" % sticky_options)
         options, extra_args = title_parser.parse_known_args(extra_args, namespace=OrderedNamespace())
         options._prepend(sticky_options)
         vprint(1, "title(s): %s" % options.dvd_title)

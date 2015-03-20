@@ -120,13 +120,21 @@ class HandBrakeEncoder(HandBrake):
             self.args.extend(["-F", "1", "--subtitle-burn", "1"])
     
     def add_options(self, options, bonus):
+        width, height = self.title.size.split("x")
+        width = int(width)
+        height = int(height)
+        print width, "x", height
         self.args.append("-m") # include chapter markers
+        if options.start_at:
+            self.args.extend(("--start-at", "duration:%s" % options.start_at))
+        if options.stop_at:
+            self.args.extend(("--stop-at", "duration:%s" % options.stop_at))
         if options.preview > 0:
             self.args.extend(["-c", "1-%d" % options.preview])
         if options.fast or self.audio_only:
             self.args.extend(["-r", "5"])
             self.args.extend(["-b", "100"])
-            self.args.extend(["-w", "160"])
+#            self.args.extend(["-w", "160"])
         else:
             self.args.extend(["-2", "-T", "--detelecine"])
             if options.decomb:
@@ -137,23 +145,21 @@ class HandBrakeEncoder(HandBrake):
             if options.x264_tune:
                 self.args.extend(("--x264-tune", options.x264_tune))
             
-            width, height = self.title.size.split("x")
-            width = int(width)
-            print width
             if width > 720:
+                w = width
                 if options.hd_width > 0:
-                    width = options.hd_width
+                    w = options.hd_width
                 elif settings.hd_width > 0:
-                    width = settings.hd_width
-                if width >= 1920:
+                    w = settings.hd_width
+                if w >= 1920:
                     bitrate = settings.hd_1080_video_bitrate
-                elif width >= 1360:
+                elif w >= 1360:
                     bitrate = settings.hd_768_video_bitrate
-                elif width >= 1280:
+                elif w >= 1280:
                     bitrate = settings.hd_720_video_bitrate
                 else:
                     bitrate = settings.hd_560_video_bitrate
-                self.args.extend(("-w", str(width)))
+                self.args.extend(("-w", str(w)))
             else:
                 bitrate = settings.sd_video_bitrate
                 if self.title.display_aspect in ["16x9", "1.78", "1.77"]:
@@ -177,6 +183,12 @@ class HandBrakeEncoder(HandBrake):
         if which == "autocrop":
             self.args.extend(["--crop", self.title.autocrop])
         else:
+            if ":" in options.crop:
+                print options.crop
+                crop_width, crop_height, crop_x, crop_y = [int(s) for s in options.crop.split(":")]
+                options.crop = "%d/%d/%d/%d" % (crop_y, height - (crop_y + crop_height), crop_x, width - (crop_x + crop_width))
+                print options.crop
+                #sys.exit()
             self.args.extend(["--crop", options.crop])
         
         # Audio settings
@@ -188,6 +200,7 @@ class HandBrakeEncoder(HandBrake):
         if options.audio_bitrate > 0:
             bitrate = options.audio_bitrate
         self.args.extend(("-B", str(bitrate)))
+        print self.args
     
     def enqueue_output(self, out, queue):
         for line in iter(out.readline, ''):
@@ -332,16 +345,22 @@ class HandBrakeOutput(object):
                     self.state = line
                     return
                 if line.startswith("Subtitle stream"):
-                    info_unsplit, hits = line.split(": ", 1)
-                    info = info_unsplit.split()
-                    stream_id = info[2]
-                    details = hits.split()
-                    hits = int(details[0])
-                    forced = int(details[2][1:])
+                    stream_id, hits, forced = self.sub_hits(line)
                     if forced > 0:
                         vprint(0, "--burning in %d forced subtitles (of %d) for subtitle stream %s" % (forced, hits, stream_id))
                     else:
                         vprint(0, "--no forced subtitles to burn in for subtitle stream %s" % stream_id)
+                if line.startswith("Subtitle track"):
+#-->[14:17:29] Subtitle track 2 (id 0x2) 'English': 1066 hits (0 forced)<--
+#-->[14:17:29] Subtitle track 3 (id 0x3) 'English': 108 hits (108 forced)<--
+#-->[14:17:29] Subtitle track 4 (id 0x4) 'English': 108 hits (108 forced)<--
+#-->[14:17:29] Found a subtitle candidate with id 0x3 (contains forced subs)<--
+                    stream_id, hits, forced = self.sub_hits(line)
+                    vprint(0, "---subtitle scan track %s: %d hits, %d forced" % (stream_id, hits, forced))
+                    return
+                if line.startswith("Found a subtitle candidate"):
+                    vprint(0, "---%s" % line)
+                    return
                 if line.startswith("libhb: work result"):
                     _, ret = line.split(" = ", 1)
                     if ret == "0":
@@ -350,7 +369,9 @@ class HandBrakeOutput(object):
                         vprint(0, "-Handbrake failed with return code %s" % ret)
                     return
             if self.state == "job configuration:":
-                if time is not None:
+#                if time is not None:
+#                    self.configuration += line + "\n"
+                if line.startswith(" "):
                     self.configuration += line + "\n"
                 else:
                     if self.job == self.expected_jobs:
@@ -365,3 +386,13 @@ class HandBrakeOutput(object):
                 vprint(0, "--finished encode pass %s/%s" % (self.job, self.expected_jobs))
                 self.state = None
                 return
+    
+    def sub_hits(self, line):
+        info_unsplit, hits = line.split(": ", 1)
+        info = info_unsplit.split()
+        stream_id = info[2]
+        details = hits.split()
+        hits = int(details[0])
+        forced = int(details[2][1:])
+        return stream_id, hits, forced
+        

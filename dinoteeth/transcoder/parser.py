@@ -8,6 +8,7 @@ from ..utils import vprint
 class HandBrakeScanParser(object):
     registered = []
     
+    re_progress = re.compile("Scanning title.+ %")
     re_title_summary = re.compile("\+ title (\d+):")
     re_autocrop = re.compile("  \+ autocrop: (.+)")
     re_duration = re.compile("  \+ duration: (.+)")
@@ -39,8 +40,8 @@ class HandBrakeScanParser(object):
         self.current_title = None
         self.current_stream = None
         self.stream_flag = None
-        
         for line in self.output.splitlines():
+            line = self.re_progress.sub("", line)
             vprint(4, line)
             if self.process_line(line):
                 continue
@@ -70,6 +71,34 @@ class HandBrakeScanParser(object):
                 best = item
         best = best.strip(" )")
         return best
+    
+    def process_scan(self, line):
+        if self.process_scan_common(line):
+            return True
+        if self.process_scan_subclass(line):
+            return True
+        return False
+    
+    def process_scan_common(self, line):
+        match = self.re_preview.match(line)
+        if match:
+            title = int(match.group(2))
+            vprint(3, "matched! preview: title=%d" % title)
+            self.current_title = self.scan.get_title(title)
+            self.current_stream = None
+            self.process_title_init(line)
+            return True
+        match = self.re_scan_title.match(line)
+        if match:
+            title = int(match.group(2))
+            vprint(3, "matched! title=%d" % title)
+            self.current_title = self.scan.get_title(title)
+            self.current_stream = None
+            self.process_title_init(line)
+            return True
+    
+    def process_scan_subclass(self, line):
+        return False
     
     def process_line(self, line):
         if self.process_line_common(line):
@@ -113,10 +142,20 @@ class HandBrakeScanParser(object):
             if self.stream_flag == "audio":
                 match = self.re_audio_type.match(line)
                 if match:
+                    vprint(3, "current title:\n%s" % str(self.current_title))
+                    vprint(3, "current title's audio:\n%s" % str(self.current_title.audio))
                     order = int(match.group(1))
                     vprint(2, "audio order: %d" % order)
-                    audio = self.current_title.audio[order - 1]
+                    try:
+                        audio = self.current_title.audio[order - 1]
+                    except IndexError:
+                        audio = Audio(order)
+                        audio.mplayer_id = order - 1
+                        self.current_title.audio.append(audio)
+                        vprint(1, "Adding audio %d to %s" % (order, self.current_title))
                     audio.threecc = match.group(3)
+                    if audio.lang == "unknown":
+                        audio.lang = match.group(3)
                     rate = int(match.group(4))
                     vprint(2, "audio sample rate: %s" % rate)
                     audio.rate = rate
@@ -137,8 +176,11 @@ class HandBrakeScanParser(object):
                         # closed captioned subtitles aren't listed in
                         # earlier subtitle scans, so add it here.
                         subtitle = Subtitle(order)
+                        subtitle.mplayer_id = order - 1
                         self.current_title.subtitle.append(subtitle)
                     subtitle.threecc = match.group(3)
+                    if subtitle.lang == "unknown":
+                        subtitle.lang = match.group(3)
                     type = match.group(4).lower()
                     if "vobsub" in type:
                         subtitle.type = "vobsub"
